@@ -77,6 +77,23 @@ fn analyse_squad(
     bestscout_core::analyse_squad(&players, as_of)
 }
 
+#[tauri::command]
+fn export_shortlist(
+    document: bestscout_core::ShortlistDocument,
+    players: Vec<bestscout_core::Player>,
+    format: bestscout_core::ShortlistFormat,
+) -> Result<String, String> {
+    bestscout_core::export_shortlist(document, &players, format).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn import_shortlist(
+    contents: String,
+    format: bestscout_core::ShortlistFormat,
+) -> Result<bestscout_core::ShortlistDocument, String> {
+    bestscout_core::import_shortlist(&contents, format).map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -90,7 +107,9 @@ pub fn run() {
             validate_snapshot,
             list_roles,
             find_similar_players,
-            analyse_squad
+            analyse_squad,
+            export_shortlist,
+            import_shortlist
         ])
         .run(tauri::generate_context!())
         .expect("failed to run BestScout");

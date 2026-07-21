@@ -87,6 +87,27 @@ describe("BestScout desktop", () => {
     expect(screen.getByRole("heading", { name: "Ähnliche Spieler & Ersatzkandidaten" })).toBeTruthy();
   });
 
+  it("persists shortlist metadata through the dedicated workspace", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Shortlist1" }));
+
+    expect(screen.getByRole("heading", { name: "Scouting-Board" })).toBeTruthy();
+    fireEvent.change(screen.getByRole("textbox", { name: "Tag für Elias Berg" }), { target: { value: "Winterfenster" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tag für Elias Berg hinzufügen" }));
+    expect(screen.getByRole("button", { name: "Tag Winterfenster bei Elias Berg entfernen" })).toBeTruthy();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Notiz für Elias Berg" }), { target: { value: "Noch einmal beobachten" } });
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Notiz für Elias Berg" }).value).toBe("Noch einmal beobachten");
+  });
+
+  it("adds a player from search to the shortlist", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Spielersuche" }));
+    fireEvent.click(screen.getByRole("button", { name: "Shortlist für Noah Hartmann umschalten" }));
+    fireEvent.click(screen.getByRole("button", { name: "Shortlist2" }));
+    expect(screen.getByRole("heading", { name: "Noah Hartmann" })).toBeTruthy();
+  });
+
   it("removes and adds comparison players interactively", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: /^Vergleich/ }));

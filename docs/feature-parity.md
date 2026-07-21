@@ -14,7 +14,7 @@ build. Read and write capabilities are tracked separately.
 - [ ] Wonderkid, bargain, free-agent and expiring-contract lists
 - [x] Player comparison, similar-player search and replacement suggestions
 - [x] Squad depth, age, wage, contract and succession analysis
-- [ ] Shortlists, favourites, tags, notes and CSV/JSON/HTML export
+- [x] Shortlists, favourites, tags, notes and CSV/JSON/HTML export
 
 ## Player and staff editing
 
