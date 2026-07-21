@@ -11,6 +11,18 @@ export type Player = {
   current_ability: number | null;
   potential_ability: number | null;
   attributes: Record<string, number>;
+  details?: {
+    reputation: number | null;
+    international_reputation: number | null;
+    consistency: number | null;
+    important_matches: number | null;
+    injury_proneness: number | null;
+    versatility: number | null;
+    professionalism: number | null;
+    ambition: number | null;
+    tags: string[];
+    note: string | null;
+  };
 };
 
 export type ImportResult = {

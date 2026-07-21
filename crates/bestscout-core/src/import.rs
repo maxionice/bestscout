@@ -82,6 +82,7 @@ pub fn import_players(input: &str) -> Result<ImportResult, ImportError> {
             current_ability: find(&values, Field::Ca).and_then(parse_u16),
             potential_ability: find(&values, Field::Pa).and_then(parse_u16),
             attributes,
+            details: Default::default(),
         });
     }
     Ok(ImportResult {

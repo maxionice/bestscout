@@ -19,6 +19,8 @@ and editing tools while remaining local, transparent and safe.
 - Exact FM26/Proton build fingerprinting and capability profiles
 - Bounded read-only Linux process inspection with no write API
 - Authenticated loopback bridge scaffold for BepInEx/IL2CPP
+- Schema-versioned player, staff, club and competition models
+- Validated global search and composable player-query engine
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.

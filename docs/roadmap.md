@@ -7,12 +7,14 @@
 - [x] CSV parser with locale-aware aliases
 - [x] Compatibility fingerprint command for Proton/FM26
 - [x] Versioned capability profiles and read-only process-map inspection
-- [ ] Synthetic fixture generator
+- [x] Synthetic fixture generator
 
 ## 0.2 — Scout
 
+- [x] Canonical player, staff, club and competition domain models
+- [x] Composable player query protocol and deterministic global search
 - [ ] Complete player, staff and club tables
-- [ ] Advanced composable filters and saved views
+- [ ] Saved views and custom columns
 - [ ] All FM26 roles and duties
 - [ ] Multi-player comparison and radar charts
 - [ ] Squad planning, contract and wage analysis
