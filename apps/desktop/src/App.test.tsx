@@ -35,4 +35,16 @@ describe("BestScout desktop", () => {
     expect(screen.getByRole("region", { name: "Erweiterte Spielerfilter" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "U21-Talente" })).toBeTruthy();
   });
+
+  it("switches between FM26 phases and recalculates the selected role", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Spielersuche" }));
+
+    expect(screen.getByRole("region", { name: "FM26-Rollenprofil wählen" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Rollen mit Ball" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Gegen den Ball/ }));
+    expect(screen.getByRole("group", { name: "Rollen gegen den Ball" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Pressing Forward/ }));
+    expect(screen.getByText(/Rollenprofil: Pressing Forward/)).toBeTruthy();
+  });
 });

@@ -81,7 +81,46 @@ export type SearchHit = {
 export type PlayerQueryResult = {
   total: number;
   offset: number;
-  rows: Array<{ player: Player; role_score: { score: number; coverage: number } | null }>;
+  rows: PlayerQueryRow[];
+};
+
+export type RolePhase = "in_possession" | "out_of_possession";
+
+export type RoleFamily =
+  | "goalkeeper"
+  | "centre_back"
+  | "full_back"
+  | "wing_back"
+  | "defensive_midfield"
+  | "central_midfield"
+  | "attacking_midfield"
+  | "wide_midfield"
+  | "winger"
+  | "forward";
+
+export type RoleProfile = {
+  id: string;
+  name: string;
+  phase: RolePhase;
+  family: RoleFamily;
+  weights: Record<string, number>;
+};
+
+export type RoleScore = {
+  role_id: string;
+  score: number;
+  coverage: number;
+  contributions: Array<{
+    attribute: string;
+    value: number;
+    weight: number;
+    contribution: number;
+  }>;
+};
+
+export type PlayerQueryRow = {
+  player: Player;
+  role_score: RoleScore | null;
 };
 
 export type LiveEnvironment = {
