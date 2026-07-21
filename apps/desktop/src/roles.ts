@@ -1,4 +1,4 @@
-import type { Player, PlayerQueryRow, RoleProfile } from "./types";
+import type { Player, PlayerQueryRow, RoleProfile, SimilarPlayer } from "./types";
 
 // Keeps the web preview and tests useful when the Tauri command layer is unavailable.
 // The native application replaces this subset with the complete Rust-owned catalog.
@@ -61,4 +61,33 @@ export function locallyRatedRows(players: Player[], role: RoleProfile | undefine
   return players
     .map((player) => ({ player, role_score: scorePlayerLocally(player, role) }))
     .sort((left, right) => (right.role_score?.score ?? 0) - (left.role_score?.score ?? 0));
+}
+
+export function findSimilarLocally(reference: Player, players: Player[], role: RoleProfile | undefined, limit = 5): SimilarPlayer[] {
+  const weights = role
+    ? Object.entries(role.weights)
+    : [...new Set(players.flatMap((player) => Object.keys(player.attributes)))].map((attribute) => [attribute, 1] as const);
+  const totalWeight = weights.reduce((sum, [, weight]) => sum + weight, 0);
+  return players
+    .filter((player) => player.id !== reference.id)
+    .map((player) => {
+      let seenWeight = 0;
+      let squaredDistance = 0;
+      for (const [attribute, weight] of weights) {
+        const left = reference.attributes[attribute];
+        const right = player.attributes[attribute];
+        if (typeof left !== "number" || typeof right !== "number") continue;
+        seenWeight += weight;
+        squaredDistance += (left - right) ** 2 * weight;
+      }
+      const normalizedDistance = seenWeight > 0 ? Math.sqrt(squaredDistance / seenWeight) / 19 : 1;
+      return {
+        player,
+        similarity: Math.round(Math.max(0, 1 - normalizedDistance) * 10_000) / 100,
+        coverage: Math.round((totalWeight > 0 ? seenWeight / totalWeight : 0) * 10_000) / 100,
+        role_score: scorePlayerLocally(player, role),
+      };
+    })
+    .sort((left, right) => right.similarity - left.similarity || right.coverage - left.coverage || left.player.name.localeCompare(right.player.name, "de"))
+    .slice(0, Math.max(1, Math.min(100, limit)));
 }

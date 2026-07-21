@@ -50,6 +50,25 @@ fn list_roles() -> Vec<bestscout_core::RoleProfile> {
     bestscout_core::builtin_roles().to_vec()
 }
 
+#[tauri::command]
+fn find_similar_players(
+    players: Vec<bestscout_core::Player>,
+    reference_id: String,
+    role_id: Option<String>,
+    limit: usize,
+) -> Result<Vec<bestscout_core::SimilarPlayer>, String> {
+    let reference = players
+        .iter()
+        .find(|player| player.id == reference_id)
+        .ok_or_else(|| format!("reference player {reference_id} was not found"))?;
+    Ok(bestscout_core::find_similar_players(
+        reference,
+        &players,
+        role_id.as_deref(),
+        limit,
+    ))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -61,7 +80,8 @@ pub fn run() {
             query_players,
             load_synthetic_snapshot,
             validate_snapshot,
-            list_roles
+            list_roles,
+            find_similar_players
         ])
         .run(tauri::generate_context!())
         .expect("failed to run BestScout");

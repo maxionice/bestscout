@@ -1,3 +1,4 @@
+pub mod comparison;
 pub mod fixtures;
 pub mod import;
 pub mod model;
@@ -6,6 +7,7 @@ pub mod roles;
 pub mod scoring;
 pub mod validation;
 
+pub use comparison::{SimilarPlayer, find_similar_players};
 pub use fixtures::synthetic_snapshot;
 pub use import::{ImportError, ImportResult, import_players};
 pub use model::{

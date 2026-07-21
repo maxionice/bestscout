@@ -123,6 +123,13 @@ export type PlayerQueryRow = {
   role_score: RoleScore | null;
 };
 
+export type SimilarPlayer = {
+  player: Player;
+  similarity: number;
+  coverage: number;
+  role_score: RoleScore | null;
+};
+
 export type LiveEnvironment = {
   installations: Array<{
     root: string;
