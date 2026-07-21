@@ -566,10 +566,11 @@ function WindowTitlebar({ verified }: { verified: boolean }) {
   );
 }
 
-function LiveWorkspace({ environment, isDetecting, onDetect }: { environment: LiveEnvironment | null; isDetecting: boolean; onDetect: () => void }) {
+export function LiveWorkspace({ environment, isDetecting, onDetect }: { environment: LiveEnvironment | null; isDetecting: boolean; onDetect: () => void }) {
   const installation = environment?.installations[0];
   const compatibility = installation?.compatibility;
   const fingerprint = installation?.build_fingerprint;
+  const access = environment?.process_access;
 
   return (
     <div className="live-workspace">
@@ -587,7 +588,7 @@ function LiveWorkspace({ environment, isDetecting, onDetect }: { environment: Li
 
       <section className="capability-grid" aria-label="Live-Fähigkeiten">
         <Capability title="Build-Profil" enabled={compatibility?.status === "exact"} detail={compatibility?.label ?? "Kein Profil abgeglichen"} />
-        <Capability title="Prozessinspektion" enabled={environment?.process_inspection_allowed ?? false} detail={environment?.processes.length ? `${environment.processes.length} FM26-Prozess gefunden` : "Kein laufender FM26-Prozess"} />
+        <Capability title="Read-only Probe" enabled={access?.executable_signature_valid ?? false} detail={access ? `PID ${access.inspection.pid} · MZ-Signatur bestätigt` : environment?.process_access_error ?? "Kein lesbarer FM26-Spielprozess"} />
         <Capability title="In-Game Bridge" enabled={environment?.bridge?.health.read_only ?? false} detail={environment?.bridge ? `Bridge ${environment.bridge.health.bridge_version} · PID ${environment.bridge.health.pid}` : "Noch nicht in FM26 installiert"} />
         <Capability title="Domänendaten" enabled={environment?.reader_allowed ?? false} detail="Spieler-, Vereins- und Staff-Layout noch gesperrt" />
         <Capability title="Editor" enabled={environment?.editor_allowed ?? false} detail="Schreiben erst nach validierten Feldprofilen" locked />
@@ -600,6 +601,9 @@ function LiveWorkspace({ environment, isDetecting, onDetect }: { environment: Li
         </Card.Header>
         <Card.Content>
           <BuildRow label="Steam Build" value={installation?.steam_build_id ?? "–"} />
+          <BuildRow label="Spielprozess" value={access ? `PID ${access.inspection.pid} · ${access.inspection.readable_region_count}/${access.inspection.region_count} Bereiche lesbar` : "–"} />
+          <BuildRow label="fm.exe Basis" value={formatAddress(access?.inspection.fm_executable_base)} />
+          <BuildRow label="GameAssembly Basis" value={formatAddress(access?.inspection.game_assembly_base)} />
           <BuildRow label="fm.exe" value={fingerprint?.executable.sha256 ?? "–"} />
           <BuildRow label="GameAssembly.dll" value={fingerprint?.game_assembly.sha256 ?? "–"} />
           <BuildRow label="global-metadata.dat" value={fingerprint?.global_metadata.sha256 ?? "–"} />
@@ -607,6 +611,10 @@ function LiveWorkspace({ environment, isDetecting, onDetect }: { environment: Li
       </Card>
     </div>
   );
+}
+
+function formatAddress(address: number | null | undefined) {
+  return typeof address === "number" ? `0x${address.toString(16)}` : "–";
 }
 
 function Capability({ title, enabled, detail, locked = false }: { title: string; enabled: boolean; detail: string; locked?: boolean }) {

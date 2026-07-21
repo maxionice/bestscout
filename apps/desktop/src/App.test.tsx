@@ -2,7 +2,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import App from "./App";
+import App, { LiveWorkspace } from "./App";
+import type { LiveEnvironment } from "./types";
 
 afterEach(cleanup);
 
@@ -61,5 +62,34 @@ describe("BestScout desktop", () => {
     fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
     expect(screen.getByRole("button", { name: "U21-Spielmacher" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ansicht U21-Spielmacher löschen" })).toBeTruthy();
+  });
+
+  it("shows the verified read-only probe for the real game process", () => {
+    const environment = {
+      installations: [{
+        root: "/games/fm26", executable: "/games/fm26/fm.exe", game_assembly: "/games/fm26/GameAssembly.dll",
+        global_metadata: "/games/fm26/global-metadata.dat", steam_build_id: "23583635",
+        build_fingerprint: {
+          executable: { sha256: "a".repeat(64), size: 1 }, game_assembly: { sha256: "b".repeat(64), size: 2 },
+          global_metadata: { sha256: "c".repeat(64), size: 3 },
+        },
+        compatibility: {
+          status: "exact", profile_id: "fm26-steam-23583635", label: "FM26 Steam build 23583635",
+          capabilities: { process_inspection: true, domain_read: false, domain_write: false }, reason: "match",
+        },
+      }],
+      processes: [{ pid: 77, command: "fm.exe" }], bridge: null,
+      process_access: {
+        inspection: { pid: 77, region_count: 100, readable_region_count: 90, fm_executable_base: 0x140000000, game_assembly_base: 0x6ffff0000000 },
+        executable_signature_valid: true,
+      },
+      process_access_error: null, process_inspection_allowed: true, reader_allowed: false, editor_allowed: false,
+      message: "FM26 is running with verified read-only process access",
+    } satisfies LiveEnvironment;
+
+    render(<LiveWorkspace environment={environment} isDetecting={false} onDetect={() => undefined} />);
+    expect(screen.getByText("PID 77 · MZ-Signatur bestätigt")).toBeTruthy();
+    expect(screen.getByText("0x140000000")).toBeTruthy();
+    expect(screen.getByTitle("PID 77 · 90/100 Bereiche lesbar")).toBeTruthy();
   });
 });

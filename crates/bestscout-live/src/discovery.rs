@@ -6,8 +6,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BridgeProbe, BuildFingerprint, Capabilities, CompatibilityReport, fingerprint_file,
-    match_profile, probe_bridge,
+    BridgeProbe, BuildFingerprint, Capabilities, CompatibilityReport, ProcessAccessProbe,
+    fingerprint_file, match_profile, probe_bridge, probe_process_read_access,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,6 +32,8 @@ pub struct LiveEnvironment {
     pub installations: Vec<FmInstallation>,
     pub processes: Vec<FmProcess>,
     pub bridge: Option<BridgeProbe>,
+    pub process_access: Option<ProcessAccessProbe>,
+    pub process_access_error: Option<String>,
     pub process_inspection_allowed: bool,
     pub reader_allowed: bool,
     pub editor_allowed: bool,
@@ -55,26 +57,49 @@ pub fn discover_environment() -> LiveEnvironment {
         .map(|report| report.capabilities);
     let (process_inspection_allowed, reader_allowed, editor_allowed) =
         resolve_capabilities(capabilities, bridge.as_ref());
+    let (process_access, process_access_error) = if process_inspection_allowed {
+        match processes
+            .first()
+            .map(|process| probe_process_read_access(process.pid))
+        {
+            Some(Ok(probe)) => (Some(probe), None),
+            Some(Err(error)) => (None, Some(error.to_string())),
+            None => (None, None),
+        }
+    } else {
+        (None, None)
+    };
+    let process_access_verified = process_access
+        .as_ref()
+        .is_some_and(|probe| probe.executable_signature_valid);
     let message = match (
         installations.is_empty(),
         processes.is_empty(),
         process_inspection_allowed,
+        process_access_verified,
     ) {
-        (true, _, _) => "Football Manager 26 installation not found".to_owned(),
-        (false, true, true) => {
+        (true, _, _, _) => "Football Manager 26 installation not found".to_owned(),
+        (false, true, true, _) => {
             "FM26 build verified; start and load a save for live access".to_owned()
         }
-        (false, true, false) => {
+        (false, true, false, _) => {
             "FM26 found, but this build is not approved for inspection".to_owned()
         }
-        (false, false, true) => "FM26 is running with a verified inspection profile".to_owned(),
-        (false, false, false) => "FM26 is running, but its build profile is unknown".to_owned(),
+        (false, false, true, true) => {
+            "FM26 is running with verified read-only process access".to_owned()
+        }
+        (false, false, true, false) => {
+            "FM26 is running, but read-only process access failed".to_owned()
+        }
+        (false, false, false, _) => "FM26 is running, but its build profile is unknown".to_owned(),
     };
 
     LiveEnvironment {
         installations,
         processes,
         bridge,
+        process_access,
+        process_access_error,
         process_inspection_allowed,
         reader_allowed,
         editor_allowed,
@@ -162,7 +187,8 @@ fn discover_processes() -> Vec<FmProcess> {
     let Ok(entries) = fs::read_dir("/proc") else {
         return Vec::new();
     };
-    let mut result = Vec::new();
+    let mut game_processes = Vec::new();
+    let mut launcher_processes = Vec::new();
     for entry in entries.flatten() {
         let Some(pid) = entry
             .file_name()
@@ -183,12 +209,26 @@ fn discover_processes() -> Vec<FmProcess> {
                 .file_name()
                 .is_some_and(|name| name.eq_ignore_ascii_case("fm.exe"))
         });
-        if comm_matches || argument_matches {
-            result.push(FmProcess { pid, command });
+        if comm_matches {
+            game_processes.push(FmProcess { pid, command });
+        } else if argument_matches {
+            launcher_processes.push(FmProcess { pid, command });
         }
     }
-    result.sort_by_key(|process| process.pid);
-    result
+    select_detected_processes(game_processes, launcher_processes)
+}
+
+fn select_detected_processes(
+    mut game_processes: Vec<FmProcess>,
+    mut launcher_processes: Vec<FmProcess>,
+) -> Vec<FmProcess> {
+    game_processes.sort_by_key(|process| process.pid);
+    launcher_processes.sort_by_key(|process| process.pid);
+    if game_processes.is_empty() {
+        launcher_processes
+    } else {
+        game_processes
+    }
 }
 
 #[cfg(test)]
@@ -240,6 +280,32 @@ mod tests {
         assert_eq!(
             resolve_capabilities(None, Some(&bridge(true, true, false))),
             (false, false, false)
+        );
+    }
+
+    #[test]
+    fn selects_the_real_game_process_instead_of_proton_launchers() {
+        let game = FmProcess {
+            pid: 30,
+            command: "fm.exe".to_owned(),
+        };
+        let launchers = vec![
+            FmProcess {
+                pid: 10,
+                command: "proton fm.exe".to_owned(),
+            },
+            FmProcess {
+                pid: 20,
+                command: "reaper fm.exe".to_owned(),
+            },
+        ];
+        assert_eq!(
+            select_detected_processes(vec![game.clone()], launchers.clone()),
+            vec![game]
+        );
+        assert_eq!(
+            select_detected_processes(Vec::new(), launchers.clone()),
+            launchers
         );
     }
 }

@@ -18,6 +18,7 @@ and editing tools while remaining local, transparent and safe.
 - Search, filters and local shortlist UI
 - Exact FM26/Proton build fingerprinting and capability profiles
 - Bounded read-only Linux process inspection with no write API
+- Real Proton game-process selection with a two-byte PE-signature access probe
 - Authenticated loopback bridge scaffold for BepInEx/IL2CPP
 - Schema-versioned player, staff, club and competition models
 - Validated global search and composable player-query engine
