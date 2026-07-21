@@ -152,6 +152,17 @@ export type LiveEnvironment = {
     health: { bridge_version: string; pid: number; read_only: boolean };
     capabilities: { health: boolean; domain_read: boolean; domain_write: boolean };
   } | null;
+  process_access: {
+    inspection: {
+      pid: number;
+      region_count: number;
+      readable_region_count: number;
+      fm_executable_base: number | null;
+      game_assembly_base: number | null;
+    };
+    executable_signature_valid: boolean;
+  } | null;
+  process_access_error: string | null;
   process_inspection_allowed: boolean;
   reader_allowed: boolean;
   editor_allowed: boolean;

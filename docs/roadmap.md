@@ -27,6 +27,7 @@
 - [x] Detect FM26 under Steam/Proton
 - [x] Versioned executable, GameAssembly and IL2CPP metadata fingerprints
 - [x] Reject unknown or partial fingerprint matches
+- [x] Select the real Proton game process and verify minimal read-only access
 - [ ] Resolve validated FM26 domain roots
 - [ ] Read players, staff, clubs and competitions
 - [x] Reject unsupported builds safely

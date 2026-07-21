@@ -66,6 +66,12 @@ pub struct ProcessInspection {
     pub game_assembly_base: Option<u64>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProcessAccessProbe {
+    pub inspection: ProcessInspection,
+    pub executable_signature_valid: bool,
+}
+
 impl ProcessMap {
     pub fn readable_region(&self, address: u64, length: usize) -> Option<&MemoryRegion> {
         self.regions
@@ -103,6 +109,8 @@ pub enum ProcessError {
     UnreadableRange { address: u64, length: usize },
     #[error("cannot read process memory: {0}")]
     ReadMemory(#[source] io::Error),
+    #[error("fm.exe is not mapped in the selected process")]
+    ExecutableNotMapped,
 }
 
 pub fn parse_maps(pid: u32, input: &str) -> Result<ProcessMap, ProcessError> {
@@ -166,8 +174,28 @@ pub fn read_process_map(pid: u32) -> Result<ProcessMap, ProcessError> {
 
 pub fn inspect_process(pid: u32) -> Result<ProcessInspection, ProcessError> {
     let map = read_process_map(pid)?;
-    Ok(ProcessInspection {
-        pid,
+    Ok(inspection_from_map(&map))
+}
+
+/// Performs the smallest useful live read: two bytes at the mapped fm.exe base.
+/// A valid result proves that the selected Proton process can be read without
+/// exposing or using any write primitive.
+pub fn probe_process_read_access(pid: u32) -> Result<ProcessAccessProbe, ProcessError> {
+    let process = ReadOnlyProcessMemory::open(pid)?;
+    let executable_base = process
+        .map()
+        .module_base("fm.exe")
+        .ok_or(ProcessError::ExecutableNotMapped)?;
+    let signature = process.read_exact_at(executable_base, 2)?;
+    Ok(ProcessAccessProbe {
+        inspection: inspection_from_map(process.map()),
+        executable_signature_valid: signature == b"MZ",
+    })
+}
+
+fn inspection_from_map(map: &ProcessMap) -> ProcessInspection {
+    ProcessInspection {
+        pid: map.pid,
         region_count: map.regions.len(),
         readable_region_count: map
             .regions
@@ -176,7 +204,7 @@ pub fn inspect_process(pid: u32) -> Result<ProcessInspection, ProcessError> {
             .count(),
         fm_executable_base: map.module_base("fm.exe"),
         game_assembly_base: map.module_base("GameAssembly.dll"),
-    })
+    }
 }
 
 #[cfg(not(target_os = "linux"))]

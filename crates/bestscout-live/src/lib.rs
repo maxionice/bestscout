@@ -18,8 +18,9 @@ pub use fingerprint::{
     BuildFingerprint, ExecutableFingerprint, FingerprintError, fingerprint_file,
 };
 pub use process::{
-    MemoryPermissions, MemoryRegion, ProcessError, ProcessInspection, ProcessMap,
-    ReadOnlyProcessMemory, inspect_process, parse_maps, read_process_map,
+    MemoryPermissions, MemoryRegion, ProcessAccessProbe, ProcessError, ProcessInspection,
+    ProcessMap, ReadOnlyProcessMemory, inspect_process, parse_maps, probe_process_read_access,
+    read_process_map,
 };
 pub use profile::{
     Capabilities, CompatibilityProfile, CompatibilityReport, CompatibilityStatus, ProfileError,
