@@ -8,8 +8,11 @@ import {
   ShieldCheck, Star, Trophy, UserRoundCog, Users, Zap, Minus, Square, X,
 } from "lucide-react";
 import { demoPlayers } from "./demo";
+import { RoleExplorer } from "./RoleExplorer";
+import { locallyRatedRows, previewRoles } from "./roles";
 import type {
-  DatabaseSnapshot, ImportResult, LiveEnvironment, Player, PlayerQueryResult, SearchHit,
+  DatabaseSnapshot, ImportResult, LiveEnvironment, Player, PlayerQueryResult, PlayerQueryRow,
+  RolePhase, RoleProfile, SearchHit,
 } from "./types";
 
 const nav = [
@@ -19,12 +22,6 @@ const nav = [
 
 const money = new Intl.NumberFormat("de-DE", { notation: "compact", style: "currency", currency: "EUR", maximumFractionDigits: 1 });
 const totalPlayerAttributes = 47;
-
-function score(player: Player) {
-  const keys = ["passing", "vision", "decisions", "first_touch", "technique", "composure"];
-  const values = keys.map((key) => player.attributes[key]).filter((v): v is number => typeof v === "number");
-  return values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length / 20 * 100) : 0;
-}
 
 export default function App() {
   const [players, setPlayers] = useState(demoPlayers);
@@ -43,6 +40,9 @@ export default function App() {
   const [globalQuery, setGlobalQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [roles, setRoles] = useState<RoleProfile[]>(previewRoles);
+  const [rolePhase, setRolePhase] = useState<RolePhase>("in_possession");
+  const [selectedRoleId, setSelectedRoleId] = useState("deep_lying_playmaker");
   const input = useRef<HTMLInputElement>(null);
 
   const locallyFiltered = useMemo(() => {
@@ -56,12 +56,13 @@ export default function App() {
       && (minPotential <= 0 || (player.potential_ability ?? 0) >= minPotential)
       && (maximumValue === null || (player.value ?? Number.POSITIVE_INFINITY) <= maximumValue));
   }, [players, query, u21Only, freeAgentsOnly, minPotential, maxValueMillions]);
-  const [filtered, setFiltered] = useState(locallyFiltered);
+  const selectedRole = roles.find((role) => role.id === selectedRoleId);
+  const [filtered, setFiltered] = useState<PlayerQueryRow[]>(() => locallyRatedRows(demoPlayers, previewRoles[0]));
   const activeFilterCount = Number(u21Only) + Number(freeAgentsOnly) + Number(minPotential > 0) + Number(maxValueMillions > 0);
 
   useEffect(() => {
     let cancelled = false;
-    setFiltered(locallyFiltered);
+    setFiltered(locallyRatedRows(locallyFiltered, selectedRole));
     const predicates: unknown[] = [];
     if (query.trim()) predicates.push({ operator: "predicate", items: { kind: "text_contains", value: query } });
     if (u21Only) predicates.push({ operator: "predicate", items: { kind: "age_between", minimum: 0, maximum: 21 } });
@@ -74,19 +75,29 @@ export default function App() {
         query: {
           filter: { operator: "all", items: predicates },
           sort: { field: "role_score", direction: "descending" },
-          role_id: "deep_lying_playmaker",
+          role_id: selectedRoleId,
           offset: 0,
           limit: 10_000,
         },
       }).then((result) => {
-        if (!cancelled) setFiltered(result.rows.map((row) => row.player));
+        if (!cancelled) setFiltered(result.rows);
       }).catch(() => undefined);
     }, 100);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [players, query, u21Only, freeAgentsOnly, minPotential, maxValueMillions, locallyFiltered]);
+  }, [players, query, u21Only, freeAgentsOnly, minPotential, maxValueMillions, locallyFiltered, selectedRole, selectedRoleId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    invoke<RoleProfile[]>("list_roles")
+      .then((catalog) => {
+        if (!cancelled && catalog.length > 0) setRoles(catalog);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     invoke<DatabaseSnapshot>("load_synthetic_snapshot")
@@ -156,6 +167,15 @@ export default function App() {
     });
   }
 
+  function changeRolePhase(phase: RolePhase) {
+    setRolePhase(phase);
+    const current = roles.find((role) => role.id === selectedRoleId);
+    if (current?.phase !== phase) {
+      const firstRole = roles.find((role) => role.phase === phase);
+      if (firstRole) setSelectedRoleId(firstRole.id);
+    }
+  }
+
   return (
     <div className="app-shell">
       <WindowTitlebar verified={liveEnvironment?.process_inspection_allowed ?? false} />
@@ -216,6 +236,13 @@ export default function App() {
           />
         ) : (
         <>
+        <RoleExplorer
+          roles={roles}
+          selectedRoleId={selectedRoleId}
+          phase={rolePhase}
+          onPhaseChange={changeRolePhase}
+          onRoleChange={setSelectedRoleId}
+        />
         {filtersOpen && (
           <FilterPanel
             u21Only={u21Only}
@@ -263,8 +290,9 @@ export default function App() {
                     <Table.Column id="score">ROLLENWERT</Table.Column>
                   </Table.Header>
                   <Table.Body items={filtered} renderEmptyState={() => <div className="empty">Keine passenden Spieler gefunden.</div>}>
-                    {(player) => {
-                      const rating = score(player);
+                    {(row) => {
+                      const player = row.player;
+                      const rating = Math.round(row.role_score?.score ?? 0);
                       return (
                         <Table.Row id={player.id} key={player.id}>
                           <Table.Cell><button className={`star ${shortlist.has(player.id) ? "active" : ""}`} onClick={() => toggleShortlist(player.id)} aria-label="Shortlist umschalten"><Star size={17} fill="currentColor" /></button></Table.Cell>
@@ -274,7 +302,7 @@ export default function App() {
                           <Table.Cell>{player.club ?? "–"}</Table.Cell>
                           <Table.Cell>{player.value ? money.format(player.value) : "–"}</Table.Cell>
                           <Table.Cell><span className="ca">{player.current_ability ?? "?"}</span><span className="muted"> / {player.potential_ability ?? "?"}</span></Table.Cell>
-                          <Table.Cell><div className="rating"><span>{rating}</span><i><b style={{ width: `${rating}%` }} /></i></div></Table.Cell>
+                          <Table.Cell><div className="rating" title={`${row.role_score?.coverage ?? 0}% Datenabdeckung`}><span>{rating}</span><i><b style={{ width: `${rating}%` }} /></i><small>{Math.round(row.role_score?.coverage ?? 0)}%</small></div></Table.Cell>
                         </Table.Row>
                       );
                     }}
@@ -283,7 +311,7 @@ export default function App() {
               </Table.ScrollContainer>
             </Table>
           </Card.Content>
-          <Card.Footer className="table-footer"><span>{filtered.length} von {players.length} Spielern</span><span>Rollenprofil: Tiefer Spielmacher</span></Card.Footer>
+          <Card.Footer className="table-footer"><span>{filtered.length} von {players.length} Spielern</span><span>Rollenprofil: {selectedRole?.name ?? "–"} · {rolePhase === "in_possession" ? "Mit Ball" : "Gegen den Ball"}</span></Card.Footer>
         </Card>
         </>
         )}
