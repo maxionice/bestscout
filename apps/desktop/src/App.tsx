@@ -141,8 +141,8 @@ export default function App() {
                     <Table.Column id="ca">CA / PA</Table.Column>
                     <Table.Column id="score">ROLLENWERT</Table.Column>
                   </Table.Header>
-                  <Table.Body renderEmptyState={() => <div className="empty">Keine passenden Spieler gefunden.</div>}>
-                    {filtered.map((player) => {
+                  <Table.Body items={filtered} renderEmptyState={() => <div className="empty">Keine passenden Spieler gefunden.</div>}>
+                    {(player) => {
                       const rating = score(player);
                       return (
                         <Table.Row id={player.id} key={player.id}>
@@ -156,7 +156,7 @@ export default function App() {
                           <Table.Cell><div className="rating"><span>{rating}</span><i><b style={{ width: `${rating}%` }} /></i></div></Table.Cell>
                         </Table.Row>
                       );
-                    })}
+                    }}
                   </Table.Body>
                 </Table.Content>
               </Table.ScrollContainer>
