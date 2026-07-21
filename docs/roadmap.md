@@ -18,7 +18,7 @@
 - [ ] Complete player, staff and club tables
 - [x] Saved views and custom columns
 - [x] All FM26 in/out-of-possession role attribute profiles
-- [ ] Multi-player comparison and radar charts
+- [x] Multi-player comparison, role-weighted radar charts and similar-player search
 - [ ] Squad planning, contract and wage analysis
 - [ ] Shortlist import/export and notes
 

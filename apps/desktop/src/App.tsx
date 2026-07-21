@@ -8,6 +8,7 @@ import {
   ShieldCheck, Star, Trophy, UserRoundCog, Users, Zap, Minus, Square, X,
 } from "lucide-react";
 import { demoPlayers } from "./demo";
+import { ComparisonWorkspace } from "./ComparisonWorkspace";
 import { RoleExplorer } from "./RoleExplorer";
 import { locallyRatedRows, previewRoles } from "./roles";
 import { ViewToolbar } from "./ViewToolbar";
@@ -33,6 +34,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState("Übersicht");
   const [shortlist, setShortlist] = useState<Set<string>>(new Set(["103"]));
+  const [comparison, setComparison] = useState<Set<string>>(new Set(["101", "103"]));
   const [status, setStatus] = useState("Demo-Daten · noch nicht mit FM26 verbunden");
   const [liveEnvironment, setLiveEnvironment] = useState<LiveEnvironment | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
@@ -180,6 +182,15 @@ export default function App() {
     });
   }
 
+  function toggleComparison(id: string) {
+    setComparison((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < 4) next.add(id);
+      return next;
+    });
+  }
+
   function changeRolePhase(phase: RolePhase) {
     setRolePhase(phase);
     const current = roles.find((role) => role.id === selectedRoleId);
@@ -270,6 +281,7 @@ export default function App() {
             <Button key={label} variant={active === label ? "secondary" : "ghost"} className="nav-button" onPress={() => setActive(label)}>
               <Icon size={17} /><span>{label}</span>
               {label === "Shortlist" && shortlist.size > 0 && <span className="nav-count">{shortlist.size}</span>}
+              {label === "Vergleich" && comparison.size > 0 && <span className="nav-count">{comparison.size}</span>}
             </Button>
           ))}
         </nav>
@@ -322,6 +334,10 @@ export default function App() {
           onPhaseChange={changeRolePhase}
           onRoleChange={setSelectedRoleId}
         />
+        {active === "Vergleich" ? (
+          <ComparisonWorkspace players={players} role={selectedRole} selectedIds={comparison} onToggle={toggleComparison} />
+        ) : (
+        <>
         <ViewToolbar
           savedViews={savedViews}
           activeViewId={activeViewId}
@@ -387,6 +403,8 @@ export default function App() {
           </Card.Content>
           <Card.Footer className="table-footer"><span>{filtered.length} von {players.length} Spielern</span><span>Rollenprofil: {selectedRole?.name ?? "–"} · {rolePhase === "in_possession" ? "Mit Ball" : "Gegen den Ball"}</span></Card.Footer>
         </Card>
+        </>
+        )}
         </>
         )}
       </main>

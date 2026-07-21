@@ -64,6 +64,30 @@ describe("BestScout desktop", () => {
     expect(screen.getByRole("button", { name: "Ansicht U21-Spielmacher löschen" })).toBeTruthy();
   });
 
+  it("compares players with a role radar and attribute matrix", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: /^Vergleich/ }));
+
+    expect(screen.getByRole("heading", { name: "Direktvergleich" })).toBeTruthy();
+    expect(screen.getByText("2/4 AUSGEWÄHLT")).toBeTruthy();
+    expect(screen.getByRole("img", { name: /Rollenprofil-Radar für/ })).toBeTruthy();
+    expect(screen.getByRole("grid", { name: "Verglichene Rollenattribute" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Ähnliche Spieler & Ersatzkandidaten" })).toBeTruthy();
+  });
+
+  it("removes and adds comparison players interactively", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: /^Vergleich/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Elias Berg aus Vergleich entfernen/ }));
+    expect(screen.getByText("Noch einen Spieler auswählen")).toBeTruthy();
+    expect(screen.queryByRole("grid", { name: "Verglichene Rollenattribute" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hinzufügen: Elias Berg" }));
+    expect(screen.getByText("2/4 AUSGEWÄHLT")).toBeTruthy();
+    expect(screen.getByRole("grid", { name: "Verglichene Rollenattribute" })).toBeTruthy();
+  });
+
   it("shows the verified read-only probe for the real game process", () => {
     const environment = {
       installations: [{
