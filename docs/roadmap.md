@@ -13,6 +13,7 @@
 
 - [x] Canonical player, staff, club and competition domain models
 - [x] Composable player query protocol and deterministic global search
+- [x] HeroUI global-search workspace and advanced player filter surface
 - [ ] Complete player, staff and club tables
 - [ ] Saved views and custom columns
 - [ ] All FM26 roles and duties

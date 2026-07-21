@@ -1,14 +1,16 @@
-import { useMemo, useRef, useState } from "react";
-import { Button, Card, Input, Table, TextField } from "@heroui/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Button, Card, Input, NumberField, Table, TextField } from "@heroui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
-  Activity, BarChart3, CheckCircle2, ChevronDown, CircleOff, Database, FileUp,
-  Filter, Fingerprint, LayoutDashboard, LockKeyhole, RefreshCw, Search,
-  ShieldCheck, Star, Users, Zap, Minus, Square, X,
+  Activity, BarChart3, Building2, CheckCircle2, ChevronDown, CircleOff, Database,
+  FileUp, Filter, Fingerprint, LayoutDashboard, LockKeyhole, RefreshCw, Search,
+  ShieldCheck, Star, Trophy, UserRoundCog, Users, Zap, Minus, Square, X,
 } from "lucide-react";
 import { demoPlayers } from "./demo";
-import type { ImportResult, LiveEnvironment, Player } from "./types";
+import type {
+  DatabaseSnapshot, ImportResult, LiveEnvironment, Player, PlayerQueryResult, SearchHit,
+} from "./types";
 
 const nav = [
   [LayoutDashboard, "Übersicht"], [Search, "Spielersuche"], [Users, "Kaderanalyse"],
@@ -26,18 +28,97 @@ function score(player: Player) {
 export default function App() {
   const [players, setPlayers] = useState(demoPlayers);
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState("Spielersuche");
+  const [active, setActive] = useState("Übersicht");
   const [shortlist, setShortlist] = useState<Set<string>>(new Set(["103"]));
   const [status, setStatus] = useState("Demo-Daten · noch nicht mit FM26 verbunden");
   const [liveEnvironment, setLiveEnvironment] = useState<LiveEnvironment | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [u21Only, setU21Only] = useState(false);
+  const [freeAgentsOnly, setFreeAgentsOnly] = useState(false);
+  const [minPotential, setMinPotential] = useState(0);
+  const [maxValueMillions, setMaxValueMillions] = useState(0);
+  const [snapshot, setSnapshot] = useState<DatabaseSnapshot | null>(null);
+  const [globalQuery, setGlobalQuery] = useState("");
+  const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
-  const filtered = useMemo(() => {
+  const locallyFiltered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("de");
-    return players.filter((player) => !needle || [player.name, player.club, player.nationality, ...player.positions]
-      .some((value) => value?.toLocaleLowerCase("de").includes(needle)));
-  }, [players, query]);
+    const maximumValue = maxValueMillions > 0 ? maxValueMillions * 1_000_000 : null;
+    return players.filter((player) =>
+      (!needle || [player.name, player.club, player.nationality, ...player.positions]
+        .some((value) => value?.toLocaleLowerCase("de").includes(needle)))
+      && (!u21Only || (player.age ?? 99) <= 21)
+      && (!freeAgentsOnly || !player.club)
+      && (minPotential <= 0 || (player.potential_ability ?? 0) >= minPotential)
+      && (maximumValue === null || (player.value ?? Number.POSITIVE_INFINITY) <= maximumValue));
+  }, [players, query, u21Only, freeAgentsOnly, minPotential, maxValueMillions]);
+  const [filtered, setFiltered] = useState(locallyFiltered);
+  const activeFilterCount = Number(u21Only) + Number(freeAgentsOnly) + Number(minPotential > 0) + Number(maxValueMillions > 0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setFiltered(locallyFiltered);
+    const predicates: unknown[] = [];
+    if (query.trim()) predicates.push({ operator: "predicate", items: { kind: "text_contains", value: query } });
+    if (u21Only) predicates.push({ operator: "predicate", items: { kind: "age_between", minimum: 0, maximum: 21 } });
+    if (freeAgentsOnly) predicates.push({ operator: "predicate", items: { kind: "free_agent" } });
+    if (minPotential > 0) predicates.push({ operator: "predicate", items: { kind: "potential_ability_between", minimum: minPotential, maximum: 200 } });
+    if (maxValueMillions > 0) predicates.push({ operator: "predicate", items: { kind: "value_between", minimum: 0, maximum: maxValueMillions * 1_000_000 } });
+    const timer = window.setTimeout(() => {
+      invoke<PlayerQueryResult>("query_players", {
+        players,
+        query: {
+          filter: { operator: "all", items: predicates },
+          sort: { field: "role_score", direction: "descending" },
+          role_id: "deep_lying_playmaker",
+          offset: 0,
+          limit: 10_000,
+        },
+      }).then((result) => {
+        if (!cancelled) setFiltered(result.rows.map((row) => row.player));
+      }).catch(() => undefined);
+    }, 100);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [players, query, u21Only, freeAgentsOnly, minPotential, maxValueMillions, locallyFiltered]);
+
+  useEffect(() => {
+    invoke<DatabaseSnapshot>("load_synthetic_snapshot")
+      .then(setSnapshot)
+      .catch(() => setSnapshot(fallbackSnapshot(players)));
+  }, []);
+
+  useEffect(() => {
+    const needle = globalQuery.trim();
+    if (!needle || !snapshot) {
+      setSearchHits([]);
+      setIsSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setIsSearching(true);
+    const timer = window.setTimeout(() => {
+      invoke<SearchHit[]>("search_database", {
+        snapshot,
+        query: { text: needle, kinds: [], limit: 30 },
+      }).then((hits) => {
+        if (!cancelled) setSearchHits(hits);
+      }).catch(() => {
+        if (!cancelled) setSearchHits(localSearch(snapshot, needle));
+      }).finally(() => {
+        if (!cancelled) setIsSearching(false);
+      });
+    }, 120);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [globalQuery, snapshot]);
 
   async function importFile(file?: File) {
     if (!file) return;
@@ -124,7 +205,34 @@ export default function App() {
 
         {active === "Live-Spiel" ? (
           <LiveWorkspace environment={liveEnvironment} isDetecting={isDetecting} onDetect={detectGame} />
+        ) : active === "Übersicht" ? (
+          <OverviewWorkspace
+            snapshot={snapshot}
+            query={globalQuery}
+            onQueryChange={setGlobalQuery}
+            hits={searchHits}
+            isSearching={isSearching}
+          />
         ) : (
+        <>
+        {filtersOpen && (
+          <FilterPanel
+            u21Only={u21Only}
+            freeAgentsOnly={freeAgentsOnly}
+            minPotential={minPotential}
+            maxValueMillions={maxValueMillions}
+            onU21Change={setU21Only}
+            onFreeAgentsChange={setFreeAgentsOnly}
+            onMinPotentialChange={setMinPotential}
+            onMaxValueChange={setMaxValueMillions}
+            onReset={() => {
+              setU21Only(false);
+              setFreeAgentsOnly(false);
+              setMinPotential(0);
+              setMaxValueMillions(0);
+            }}
+          />
+        )}
         <Card className="workspace-card">
           <Card.Header className="workspace-head">
             <div>
@@ -136,7 +244,7 @@ export default function App() {
                 <Search className="search-icon" size={16} />
                 <Input placeholder="Name, Verein, Nation …" />
               </TextField>
-              <Button variant="secondary"><Filter size={16} /> Filter <ChevronDown size={14} /></Button>
+              <Button variant={activeFilterCount > 0 ? "primary" : "secondary"} onPress={() => setFiltersOpen((current) => !current)}><Filter size={16} /> Filter{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""} <ChevronDown className={filtersOpen ? "chevron-open" : ""} size={14} /></Button>
             </div>
           </Card.Header>
           <Card.Content className="p-0">
@@ -176,10 +284,142 @@ export default function App() {
           </Card.Content>
           <Card.Footer className="table-footer"><span>{filtered.length} von {players.length} Spielern</span><span>Rollenprofil: Tiefer Spielmacher</span></Card.Footer>
         </Card>
+        </>
         )}
       </main>
     </div>
   );
+}
+
+function OverviewWorkspace({ snapshot, query, onQueryChange, hits, isSearching }: {
+  snapshot: DatabaseSnapshot | null;
+  query: string;
+  onQueryChange: (value: string) => void;
+  hits: SearchHit[];
+  isSearching: boolean;
+}) {
+  const counts = [
+    [Users, "Spieler", snapshot?.players.length ?? 0],
+    [UserRoundCog, "Staff", snapshot?.staff.length ?? 0],
+    [Building2, "Vereine", snapshot?.clubs.length ?? 0],
+    [Trophy, "Wettbewerbe", snapshot?.competitions.length ?? 0],
+  ] as const;
+
+  return (
+    <div className="overview-workspace">
+      <Card className="global-search-card">
+        <Card.Content>
+          <div className="global-search-copy">
+            <span className="eyebrow">GESAMTE DATENBANK</span>
+            <h2>Globale Suche</h2>
+            <p>Durchsucht Spieler, Staff, Vereine und Wettbewerbe über dieselbe validierte Abfrage-Engine.</p>
+          </div>
+          <TextField aria-label="Gesamte Datenbank durchsuchen" value={query} onChange={onQueryChange} className="global-search-field">
+            <Search className="search-icon" size={18} />
+            <Input placeholder="Name, Verein, Nation oder Wettbewerb …" />
+            {isSearching && <RefreshCw className="global-search-spinner spin" size={16} />}
+          </TextField>
+        </Card.Content>
+      </Card>
+
+      <section className="entity-counts" aria-label="Entitäten im Datensatz">
+        {counts.map(([Icon, label, value]) => (
+          <Card key={label} className="entity-count-card">
+            <Card.Content><Icon size={17} /><div><strong>{value.toLocaleString("de-DE")}</strong><span>{label}</span></div></Card.Content>
+          </Card>
+        ))}
+      </section>
+
+      <Card className="search-results-card">
+        <Card.Header>
+          <div><Card.Title>Suchergebnisse</Card.Title><Card.Description>{query.trim() ? `${hits.length} Treffer für „${query.trim()}“` : "Suchbegriff eingeben, um alle Entitätstypen zu durchsuchen"}</Card.Description></div>
+          <span className="engine-badge"><ShieldCheck size={13} /> CORE ENGINE</span>
+        </Card.Header>
+        <Card.Content>
+          {hits.length > 0 ? hits.map((hit) => <SearchResult key={`${hit.kind}-${hit.id}`} hit={hit} />) : (
+            <div className="search-empty"><Database size={24} /><strong>{query.trim() ? "Keine passenden Einträge" : "Bereit für die globale Suche"}</strong><span>{snapshot ? `Snapshot-Schema ${snapshot.schema_version} · ${snapshot.source}` : "Snapshot wird geladen …"}</span></div>
+          )}
+        </Card.Content>
+      </Card>
+    </div>
+  );
+}
+
+function SearchResult({ hit }: { hit: SearchHit }) {
+  const icons = { player: Users, staff: UserRoundCog, club: Building2, competition: Trophy };
+  const labels = { player: "Spieler", staff: "Staff", club: "Verein", competition: "Wettbewerb" };
+  const Icon = icons[hit.kind];
+  return (
+    <Button variant="ghost" className="search-result">
+      <span className={`result-icon ${hit.kind}`}><Icon size={16} /></span>
+      <span className="result-copy"><strong>{hit.name}</strong><small>{hit.subtitle || "Keine Zusatzdaten"}</small></span>
+      <span className="result-kind">{labels[hit.kind]}</span>
+    </Button>
+  );
+}
+
+function FilterPanel({
+  u21Only, freeAgentsOnly, minPotential, maxValueMillions, onU21Change,
+  onFreeAgentsChange, onMinPotentialChange, onMaxValueChange, onReset,
+}: {
+  u21Only: boolean;
+  freeAgentsOnly: boolean;
+  minPotential: number;
+  maxValueMillions: number;
+  onU21Change: (value: boolean) => void;
+  onFreeAgentsChange: (value: boolean) => void;
+  onMinPotentialChange: (value: number) => void;
+  onMaxValueChange: (value: number) => void;
+  onReset: () => void;
+}) {
+  return (
+    <Card className="filter-panel" role="region" aria-label="Erweiterte Spielerfilter">
+      <Card.Content>
+        <div className="filter-heading"><div><strong>Erweiterte Filter</strong><span>Alle aktiven Bedingungen werden gemeinsam angewendet.</span></div><Button size="sm" variant="ghost" onPress={onReset}>Zurücksetzen</Button></div>
+        <div className="filter-controls">
+          <Button size="sm" variant={u21Only ? "primary" : "secondary"} aria-pressed={u21Only} onPress={() => onU21Change(!u21Only)}>U21-Talente</Button>
+          <Button size="sm" variant={freeAgentsOnly ? "primary" : "secondary"} aria-pressed={freeAgentsOnly} onPress={() => onFreeAgentsChange(!freeAgentsOnly)}>Vereinslos</Button>
+          <label className="number-filter"><span>Mindestens PA</span><NumberField aria-label="Minimales Potenzial" value={minPotential} minValue={0} maxValue={200} onChange={onMinPotentialChange}><NumberField.Group><NumberField.Input /><NumberField.DecrementButton aria-label="Potenzial verringern">−</NumberField.DecrementButton><NumberField.IncrementButton aria-label="Potenzial erhöhen">+</NumberField.IncrementButton></NumberField.Group></NumberField></label>
+          <label className="number-filter"><span>Max. Wert in Mio. €</span><NumberField aria-label="Maximaler Marktwert in Millionen" value={maxValueMillions} minValue={0} maxValue={1000} onChange={onMaxValueChange}><NumberField.Group><NumberField.Input /><NumberField.DecrementButton aria-label="Marktwert verringern">−</NumberField.DecrementButton><NumberField.IncrementButton aria-label="Marktwert erhöhen">+</NumberField.IncrementButton></NumberField.Group></NumberField></label>
+        </div>
+      </Card.Content>
+    </Card>
+  );
+}
+
+function fallbackSnapshot(players: Player[]): DatabaseSnapshot {
+  return {
+    schema_version: 1,
+    source: "synthetic",
+    players,
+    staff: [],
+    clubs: [],
+    competitions: [],
+  };
+}
+
+function localSearch(snapshot: DatabaseSnapshot, query: string): SearchHit[] {
+  const needle = normalizeSearch(query);
+  const candidates: SearchHit[] = [
+    ...snapshot.players.map((player) => ({ kind: "player" as const, id: player.id, name: player.name, subtitle: [player.club, player.nationality].filter(Boolean).join(" · "), relevance: 0 })),
+    ...snapshot.staff.map((staff) => ({ kind: "staff" as const, id: staff.id, name: staff.name, subtitle: [staff.club, staff.nationality].filter(Boolean).join(" · "), relevance: 0 })),
+    ...snapshot.clubs.map((club) => ({ kind: "club" as const, id: club.id, name: club.name, subtitle: [club.competition, club.nation].filter(Boolean).join(" · "), relevance: 0 })),
+    ...snapshot.competitions.map((competition) => ({ kind: "competition" as const, id: competition.id, name: competition.name, subtitle: competition.nation ?? "", relevance: 0 })),
+  ];
+  return candidates
+    .map((hit) => {
+      const name = normalizeSearch(hit.name);
+      const subtitle = normalizeSearch(hit.subtitle);
+      const relevance = name === needle ? 1000 : name.startsWith(needle) ? 900 : name.includes(needle) ? 700 : subtitle.includes(needle) ? 500 : 0;
+      return { ...hit, relevance };
+    })
+    .filter((hit) => hit.relevance > 0)
+    .sort((left, right) => right.relevance - left.relevance || left.name.localeCompare(right.name, "de"))
+    .slice(0, 30);
+}
+
+function normalizeSearch(value: string) {
+  return value.trim().toLocaleLowerCase("de").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function WindowTitlebar({ verified }: { verified: boolean }) {

@@ -31,6 +31,59 @@ export type ImportResult = {
   delimiter: string;
 };
 
+export type Staff = {
+  id: string;
+  name: string;
+  age: number | null;
+  club: string | null;
+  nationality: string | null;
+  roles: string[];
+  current_ability: number | null;
+  potential_ability: number | null;
+  reputation: number | null;
+  attributes: Record<string, number>;
+};
+
+export type Club = {
+  id: string;
+  name: string;
+  short_name: string | null;
+  nation: string | null;
+  competition: string | null;
+  reputation: number | null;
+};
+
+export type Competition = {
+  id: string;
+  name: string;
+  short_name: string | null;
+  nation: string | null;
+  reputation: number | null;
+};
+
+export type DatabaseSnapshot = {
+  schema_version: number;
+  source: "synthetic" | "csv" | "live" | "save_game";
+  players: Player[];
+  staff: Staff[];
+  clubs: Club[];
+  competitions: Competition[];
+};
+
+export type SearchHit = {
+  kind: "player" | "staff" | "club" | "competition";
+  id: string;
+  name: string;
+  subtitle: string;
+  relevance: number;
+};
+
+export type PlayerQueryResult = {
+  total: number;
+  offset: number;
+  rows: Array<{ player: Player; role_score: { score: number; coverage: number } | null }>;
+};
+
 export type LiveEnvironment = {
   installations: Array<{
     root: string;
