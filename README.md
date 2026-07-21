@@ -21,6 +21,8 @@ and editing tools while remaining local, transparent and safe.
 - Authenticated loopback bridge scaffold for BepInEx/IL2CPP
 - Schema-versioned player, staff, club and competition models
 - Validated global search and composable player-query engine
+- HeroUI global-search workspace and advanced player filters
+- Custom frameless Linux title bar with native window controls
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.

@@ -134,6 +134,7 @@ pub enum ContractType {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct Contract {
     pub club_id: Option<String>,
     pub starts_on: Option<GameDate>,
@@ -145,6 +146,7 @@ pub struct Contract {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct PlayerStatus {
     pub transfer_listed: bool,
     pub loan_listed: bool,
@@ -154,6 +156,7 @@ pub struct PlayerStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct PlayerDetails {
     pub date_of_birth: Option<GameDate>,
     pub reputation: Option<u16>,
@@ -273,6 +276,7 @@ pub struct Staff {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct ClubFinances {
     pub balance: Option<f64>,
     pub transfer_budget: Option<f64>,
@@ -281,6 +285,7 @@ pub struct ClubFinances {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct ClubFacilities {
     pub training: Option<u8>,
     pub youth: Option<u8>,
@@ -344,5 +349,16 @@ mod tests {
         assert!(GameDate::new(2027, 2, 29).is_none());
         assert!(GameDate::new(2027, 13, 1).is_none());
         assert!(GameDate::new(2027, 4, 31).is_none());
+    }
+
+    #[test]
+    fn accepts_partial_detail_payloads_from_older_clients() {
+        let details: PlayerDetails = serde_json::from_value(serde_json::json!({
+            "reputation": 4200
+        }))
+        .unwrap();
+        assert_eq!(details.reputation, Some(4200));
+        assert!(!details.status.injured);
+        assert!(details.contract.is_none());
     }
 }

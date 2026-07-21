@@ -10,6 +10,8 @@ Tailwind CSS 4 and HeroUI's CSS-first tokens.
 - Neutral graphite surfaces and a restrained mint accent
 - Colour is never the only carrier of state
 - Tables prioritize scanning, keyboard navigation and configurable density
+- A custom 40 px title bar replaces OS decorations and keeps window controls in
+  the same graphite/mint visual system
 
 ## Core tokens
 
