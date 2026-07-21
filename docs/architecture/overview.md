@@ -21,3 +21,14 @@ Live writes are never exposed directly. A change set must pass schema validation
 build compatibility, target identity and range checks. The writer records original
 bytes/values, applies the change, reads it back and commits the journal only after
 verification.
+
+## Canonical snapshots and queries
+
+All adapters produce a schema-versioned `DatabaseSnapshot` containing players,
+staff, clubs and competitions. The core query protocol supports deterministic
+cross-entity search plus recursively composable player filters (`all`, `any`,
+`not`), sorting, role scores and pagination. It is serializable across the Tauri
+boundary so the desktop UI never needs adapter-specific filtering rules.
+
+Synthetic fixtures exercise cross-entity links without shipping proprietary or
+real-world Football Manager database content.

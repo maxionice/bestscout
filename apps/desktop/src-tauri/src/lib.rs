@@ -17,13 +17,45 @@ fn inspect_fm26_process(pid: u32) -> Result<bestscout_live::ProcessInspection, S
     bestscout_live::inspect_process(pid).map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn search_database(
+    snapshot: bestscout_core::DatabaseSnapshot,
+    query: bestscout_core::GlobalSearchQuery,
+) -> Vec<bestscout_core::SearchHit> {
+    bestscout_core::global_search(&snapshot, &query)
+}
+
+#[tauri::command]
+fn query_players(
+    players: Vec<bestscout_core::Player>,
+    query: bestscout_core::PlayerQuery,
+) -> bestscout_core::PlayerQueryResult {
+    bestscout_core::query_players(&players, &query)
+}
+
+#[tauri::command]
+fn load_synthetic_snapshot() -> bestscout_core::DatabaseSnapshot {
+    bestscout_core::synthetic_snapshot()
+}
+
+#[tauri::command]
+fn validate_snapshot(
+    snapshot: bestscout_core::DatabaseSnapshot,
+) -> bestscout_core::SnapshotValidationReport {
+    bestscout_core::validate_snapshot(&snapshot)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             parse_csv,
             detect_fm26,
-            inspect_fm26_process
+            inspect_fm26_process,
+            search_database,
+            query_players,
+            load_synthetic_snapshot,
+            validate_snapshot
         ])
         .run(tauri::generate_context!())
         .expect("failed to run BestScout");

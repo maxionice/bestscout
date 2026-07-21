@@ -171,6 +171,7 @@ mod tests {
             current_ability: None,
             potential_ability: None,
             attributes: [(Passing, 20), (Vision, 10)].into_iter().collect(),
+            details: Default::default(),
         };
         let profile = role(
             "playmaker",
