@@ -1,4 +1,5 @@
 pub mod comparison;
+pub mod editor;
 pub mod fixtures;
 pub mod import;
 pub mod model;
@@ -10,6 +11,12 @@ pub mod squad;
 pub mod validation;
 
 pub use comparison::{SimilarPlayer, find_similar_players};
+pub use editor::{
+    AppliedTransaction, EDITOR_SCHEMA_VERSION, EditEntityKind, EditOperation, EditTransaction,
+    FieldExpectation, JournalChange, JournalEntry, SnapshotBackup, TransactionError,
+    TransactionJournal, apply_transaction, create_backup, restore_backup, snapshot_hash,
+    undo_transaction, verify_read_back,
+};
 pub use fixtures::synthetic_snapshot;
 pub use import::{ImportError, ImportResult, import_players};
 pub use model::{

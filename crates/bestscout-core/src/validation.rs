@@ -82,6 +82,16 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
                 "player name must not be empty",
             );
         }
+        if player.age.is_some_and(|age| age > 120) {
+            issue(
+                &mut issues,
+                "age_out_of_range",
+                "player",
+                &player.id,
+                "age",
+                "age must not exceed 120",
+            );
+        }
         for (attribute, value) in &player.attributes {
             if !(1..=20).contains(value) {
                 issue(
@@ -111,18 +121,27 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
         }
         validate_nonnegative_money(&mut issues, "player", &player.id, "value", player.value);
         validate_nonnegative_money(&mut issues, "player", &player.id, "wage", player.wage);
+        for (field, reputation) in [
+            ("details.reputation", player.details.reputation),
+            (
+                "details.international_reputation",
+                player.details.international_reputation,
+            ),
+        ] {
+            validate_reputation(&mut issues, "player", &player.id, field, reputation);
+        }
         if player
             .details
-            .reputation
-            .is_some_and(|reputation| reputation > 10_000)
+            .date_of_birth
+            .is_some_and(|date| GameDate::new(date.year, date.month, date.day) != Some(date))
         {
             issue(
                 &mut issues,
-                "reputation_out_of_range",
+                "invalid_date",
                 "player",
                 &player.id,
-                "details.reputation",
-                "reputation must not exceed 10000",
+                "details.date_of_birth",
+                "date of birth is not a valid calendar date",
             );
         }
         for (field, value) in [
@@ -153,12 +172,47 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
                 contract.starts_on,
                 contract.expires_on,
                 contract.wage,
+                contract.release_clause,
                 &club_ids,
             );
         }
     }
 
     for staff in &snapshot.staff {
+        if staff.name.trim().is_empty() {
+            issue(
+                &mut issues,
+                "empty_name",
+                "staff",
+                &staff.id,
+                "name",
+                "staff name must not be empty",
+            );
+        }
+        if staff.age.is_some_and(|age| age > 120) {
+            issue(
+                &mut issues,
+                "age_out_of_range",
+                "staff",
+                &staff.id,
+                "age",
+                "age must not exceed 120",
+            );
+        }
+        validate_abilities(
+            &mut issues,
+            "staff",
+            &staff.id,
+            staff.current_ability,
+            staff.potential_ability,
+        );
+        validate_reputation(
+            &mut issues,
+            "staff",
+            &staff.id,
+            "reputation",
+            staff.reputation,
+        );
         for (attribute, value) in &staff.attributes {
             if !(1..=20).contains(value) {
                 issue(
@@ -180,7 +234,89 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
                 contract.starts_on,
                 contract.expires_on,
                 contract.wage,
+                contract.release_clause,
                 &club_ids,
+            );
+        }
+    }
+
+    for club in &snapshot.clubs {
+        if club.name.trim().is_empty() {
+            issue(
+                &mut issues,
+                "empty_name",
+                "club",
+                &club.id,
+                "name",
+                "club name must not be empty",
+            );
+        }
+        validate_reputation(&mut issues, "club", &club.id, "reputation", club.reputation);
+        validate_finite_money(
+            &mut issues,
+            "club",
+            &club.id,
+            "finances.balance",
+            club.finances.balance,
+        );
+        for (field, value) in [
+            ("finances.transfer_budget", club.finances.transfer_budget),
+            ("finances.wage_budget", club.finances.wage_budget),
+            ("finances.debt", club.finances.debt),
+        ] {
+            validate_nonnegative_money(&mut issues, "club", &club.id, field, value);
+        }
+        for (field, value) in [
+            ("facilities.training", club.facilities.training),
+            ("facilities.youth", club.facilities.youth),
+            (
+                "facilities.youth_recruitment",
+                club.facilities.youth_recruitment,
+            ),
+            (
+                "facilities.junior_coaching",
+                club.facilities.junior_coaching,
+            ),
+        ] {
+            if value.is_some_and(|value| !(1..=20).contains(&value)) {
+                issue(
+                    &mut issues,
+                    "facility_out_of_range",
+                    "club",
+                    &club.id,
+                    field,
+                    "facility value must be between 1 and 20",
+                );
+            }
+        }
+    }
+
+    for competition in &snapshot.competitions {
+        if competition.name.trim().is_empty() {
+            issue(
+                &mut issues,
+                "empty_name",
+                "competition",
+                &competition.id,
+                "name",
+                "competition name must not be empty",
+            );
+        }
+        validate_reputation(
+            &mut issues,
+            "competition",
+            &competition.id,
+            "reputation",
+            competition.reputation,
+        );
+        if competition.level == Some(0) {
+            issue(
+                &mut issues,
+                "level_out_of_range",
+                "competition",
+                &competition.id,
+                "level",
+                "competition level must be greater than zero",
             );
         }
     }
@@ -203,6 +339,7 @@ fn validate_contract(
     starts_on: Option<GameDate>,
     expires_on: Option<GameDate>,
     wage: Option<f64>,
+    release_clause: Option<f64>,
     club_ids: &HashSet<&str>,
 ) {
     if club_id.is_some_and(|club_id| !club_ids.contains(club_id)) {
@@ -244,6 +381,56 @@ fn validate_contract(
         );
     }
     validate_nonnegative_money(issues, entity_kind, entity_id, "contract.wage", wage);
+    validate_nonnegative_money(
+        issues,
+        entity_kind,
+        entity_id,
+        "contract.release_clause",
+        release_clause,
+    );
+}
+
+fn validate_abilities(
+    issues: &mut Vec<SnapshotIssue>,
+    entity_kind: &str,
+    entity_id: &str,
+    current_ability: Option<u16>,
+    potential_ability: Option<u16>,
+) {
+    for (field, value) in [
+        ("current_ability", current_ability),
+        ("potential_ability", potential_ability),
+    ] {
+        if value.is_some_and(|value| value > 200) {
+            issue(
+                issues,
+                "ability_out_of_range",
+                entity_kind,
+                entity_id,
+                field,
+                "ability must not exceed 200",
+            );
+        }
+    }
+}
+
+fn validate_reputation(
+    issues: &mut Vec<SnapshotIssue>,
+    entity_kind: &str,
+    entity_id: &str,
+    field: &str,
+    reputation: Option<u16>,
+) {
+    if reputation.is_some_and(|reputation| reputation > 10_000) {
+        issue(
+            issues,
+            "reputation_out_of_range",
+            entity_kind,
+            entity_id,
+            field,
+            "reputation must not exceed 10000",
+        );
+    }
 }
 
 fn validate_unique_ids<'a>(
@@ -294,6 +481,25 @@ fn validate_nonnegative_money(
     }
 }
 
+fn validate_finite_money(
+    issues: &mut Vec<SnapshotIssue>,
+    entity_kind: &str,
+    entity_id: &str,
+    field: &str,
+    value: Option<f64>,
+) {
+    if value.is_some_and(|value| !value.is_finite()) {
+        issue(
+            issues,
+            "invalid_money",
+            entity_kind,
+            entity_id,
+            field,
+            "money value must be finite",
+        );
+    }
+}
+
 fn issue(
     issues: &mut Vec<SnapshotIssue>,
     code: &str,
@@ -338,6 +544,9 @@ mod tests {
             .as_mut()
             .unwrap()
             .club_id = Some("missing-club".into());
+        snapshot.staff[0].reputation = Some(10_001);
+        snapshot.clubs[0].facilities.training = Some(21);
+        snapshot.competitions[0].level = Some(0);
         let report = validate_snapshot(&snapshot);
         assert!(!report.valid);
         for code in [
@@ -345,6 +554,9 @@ mod tests {
             "ability_out_of_range",
             "attribute_out_of_range",
             "unknown_club_reference",
+            "reputation_out_of_range",
+            "facility_out_of_range",
+            "level_out_of_range",
         ] {
             assert!(report.issues.iter().any(|issue| issue.code == code));
         }

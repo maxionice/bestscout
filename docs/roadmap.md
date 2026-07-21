@@ -35,7 +35,7 @@
 
 ## 0.5 — Core editor
 
-- [ ] Transaction journal, backups and undo
+- [x] Transaction journal, private backups, conflict detection and exact undo
 - [ ] Players, contracts, injuries and bans
 - [ ] Clubs, finance and facilities
 - [ ] Transfers, presets and validated mass edit
