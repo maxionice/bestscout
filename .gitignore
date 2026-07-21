@@ -3,6 +3,8 @@ node_modules
 dist
 *.tsbuildinfo
 apps/desktop/src-tauri/gen/schemas/
+bridge/**/bin/
+bridge/**/obj/
 *.log
 .idea
 .vscode

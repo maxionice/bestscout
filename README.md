@@ -16,7 +16,9 @@ and editing tools while remaining local, transparent and safe.
 - Normalized player model
 - Explainable role scoring
 - Search, filters and local shortlist UI
-- Versioned architecture for future FM26 live adapters
+- Exact FM26/Proton build fingerprinting and capability profiles
+- Bounded read-only Linux process inspection with no write API
+- Authenticated loopback bridge scaffold for BepInEx/IL2CPP
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.

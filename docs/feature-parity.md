@@ -37,5 +37,5 @@ build. Read and write capabilities are tracked separately.
 - [ ] Preset manager and filtered mass edit with preview
 - [ ] Attribute freezer with per-field increase policy
 - [ ] Automatic save backup, write verification, journal and undo
-- [ ] Build fingerprinting and read-only fallback for unknown versions
+- [x] Build fingerprinting and read-only fallback for unknown versions
 - [ ] Newgen/facepack assignment tools

@@ -24,9 +24,32 @@ export type LiveEnvironment = {
     root: string;
     executable: string;
     game_assembly: string;
-    fingerprint: { sha256: string; size: number } | null;
+    global_metadata: string;
+    steam_build_id: string | null;
+    build_fingerprint: {
+      executable: { sha256: string; size: number };
+      game_assembly: { sha256: string; size: number };
+      global_metadata: { sha256: string; size: number };
+    } | null;
+    compatibility: {
+      status: "unknown" | "fingerprint_mismatch" | "exact";
+      profile_id: string | null;
+      label: string | null;
+      capabilities: {
+        process_inspection: boolean;
+        domain_read: boolean;
+        domain_write: boolean;
+      };
+      reason: string;
+    } | null;
   }>;
   processes: Array<{ pid: number; command: string }>;
+  bridge: {
+    health: { bridge_version: string; pid: number; read_only: boolean };
+    capabilities: { health: boolean; domain_read: boolean; domain_write: boolean };
+  } | null;
+  process_inspection_allowed: boolean;
+  reader_allowed: boolean;
   editor_allowed: boolean;
   message: string;
 };

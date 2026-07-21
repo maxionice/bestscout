@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>BestScout.Bridge</AssemblyName>
+    <RootNamespace>BestScout.Bridge</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx.Core">
+      <HintPath>$(FM26Root)/BepInEx/core/BepInEx.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx.Unity.IL2CPP">
+      <HintPath>$(FM26Root)/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <HintPath>$(FM26Root)/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="ValidateFM26Root" BeforeTargets="ResolveReferences">
+    <Error Condition="'$(FM26Root)' == ''" Text="Set FM26Root to your Football Manager 26 installation." />
+    <Error Condition="!Exists('$(FM26Root)/BepInEx/core/BepInEx.Unity.IL2CPP.dll')" Text="FM26Root does not contain a BepInEx IL2CPP installation." />
+  </Target>
+</Project>

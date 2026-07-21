@@ -1,0 +1,16 @@
+{
+  "id": "fm26-steam-23583635",
+  "label": "FM26 Steam build 23583635",
+  "steam_build_id": "23583635",
+  "fingerprint": {
+    "executable_sha256": "3653c97f9ccec2be28edc4faae67304b5b6c26733f2f07dea3e7c591d3b9ff73",
+    "game_assembly_sha256": "7ce3eb474dc6093df633f979e869e55b2ec7953fde2e732392a694d379ff7a0c",
+    "global_metadata_sha256": "52287eadeb07d3d222c9e370e64f308260934911807e2073fb0e72f49c273213"
+  },
+  "capabilities": {
+    "process_inspection": true,
+    "domain_read": false,
+    "domain_write": false
+  },
+  "notes": "Fingerprint verified locally. Domain layouts and write operations are intentionally not approved yet."
+}
