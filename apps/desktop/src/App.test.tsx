@@ -47,4 +47,19 @@ describe("BestScout desktop", () => {
     fireEvent.click(screen.getByRole("button", { name: /Pressing Forward/ }));
     expect(screen.getByText(/Rollenprofil: Pressing Forward/)).toBeTruthy();
   });
+
+  it("adds custom columns and saves the complete player view", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Spielersuche" }));
+    fireEvent.click(screen.getByRole("button", { name: /Spalten/ }));
+
+    expect(screen.getByRole("group", { name: "Sichtbare Tabellenspalten" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /NationBasis/ }));
+    expect(screen.getByRole("columnheader", { name: "NATION" })).toBeTruthy();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Name der Ansicht" }), { target: { value: "U21-Spielmacher" } });
+    fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
+    expect(screen.getByRole("button", { name: "U21-Spielmacher" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ansicht U21-Spielmacher löschen" })).toBeTruthy();
+  });
 });

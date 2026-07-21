@@ -25,6 +25,7 @@ and editing tools while remaining local, transparent and safe.
 - Custom frameless Linux title bar with native window controls
 - All 47 player attributes and 86 FM26 in/out-of-possession role profiles
 - Searchable two-phase HeroUI role explorer with backend rankings and coverage indicators
+- Persistent player views and selectable columns for every core field and all 47 attributes
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.

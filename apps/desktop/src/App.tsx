@@ -10,6 +10,11 @@ import {
 import { demoPlayers } from "./demo";
 import { RoleExplorer } from "./RoleExplorer";
 import { locallyRatedRows, previewRoles } from "./roles";
+import { ViewToolbar } from "./ViewToolbar";
+import {
+  createSavedPlayerView, defaultPlayerColumns, loadSavedPlayerViews, persistSavedPlayerViews,
+  playerColumns, type SavedPlayerView,
+} from "./view-preferences";
 import type {
   DatabaseSnapshot, ImportResult, LiveEnvironment, Player, PlayerQueryResult, PlayerQueryRow,
   RolePhase, RoleProfile, SearchHit,
@@ -43,6 +48,9 @@ export default function App() {
   const [roles, setRoles] = useState<RoleProfile[]>(previewRoles);
   const [rolePhase, setRolePhase] = useState<RolePhase>("in_possession");
   const [selectedRoleId, setSelectedRoleId] = useState("deep_lying_playmaker");
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(defaultPlayerColumns);
+  const [savedViews, setSavedViews] = useState<SavedPlayerView[]>(loadSavedPlayerViews);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
   const locallyFiltered = useMemo(() => {
@@ -57,6 +65,7 @@ export default function App() {
       && (maximumValue === null || (player.value ?? Number.POSITIVE_INFINITY) <= maximumValue));
   }, [players, query, u21Only, freeAgentsOnly, minPotential, maxValueMillions]);
   const selectedRole = roles.find((role) => role.id === selectedRoleId);
+  const visibleColumnDefinitions = playerColumns.filter((column) => column.locked || visibleColumns.includes(column.id));
   const [filtered, setFiltered] = useState<PlayerQueryRow[]>(() => locallyRatedRows(demoPlayers, previewRoles[0]));
   const activeFilterCount = Number(u21Only) + Number(freeAgentsOnly) + Number(minPotential > 0) + Number(maxValueMillions > 0);
 
@@ -98,6 +107,10 @@ export default function App() {
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    persistSavedPlayerViews(savedViews);
+  }, [savedViews]);
 
   useEffect(() => {
     invoke<DatabaseSnapshot>("load_synthetic_snapshot")
@@ -176,6 +189,72 @@ export default function App() {
     }
   }
 
+  function saveCurrentView(name: string) {
+    const view = createSavedPlayerView(name, {
+      roleId: selectedRoleId,
+      rolePhase,
+      visibleColumns,
+      filters: { u21Only, freeAgentsOnly, minPotential, maxValueMillions },
+    });
+    setSavedViews((current) => [view, ...current].slice(0, 30));
+    setActiveViewId(view.id);
+  }
+
+  function applySavedView(view: SavedPlayerView) {
+    setSelectedRoleId(view.roleId);
+    setRolePhase(view.rolePhase);
+    setVisibleColumns(view.visibleColumns);
+    setU21Only(view.filters.u21Only);
+    setFreeAgentsOnly(view.filters.freeAgentsOnly);
+    setMinPotential(view.filters.minPotential);
+    setMaxValueMillions(view.filters.maxValueMillions);
+    setActiveViewId(view.id);
+  }
+
+  function resetPlayerView() {
+    setSelectedRoleId("deep_lying_playmaker");
+    setRolePhase("in_possession");
+    setVisibleColumns(defaultPlayerColumns);
+    setU21Only(false);
+    setFreeAgentsOnly(false);
+    setMinPotential(0);
+    setMaxValueMillions(0);
+    setActiveViewId(null);
+  }
+
+  function deleteSavedView(viewId: string) {
+    setSavedViews((current) => current.filter((view) => view.id !== viewId));
+    if (activeViewId === viewId) setActiveViewId(null);
+  }
+
+  function renderPlayerCell(columnId: string, row: PlayerQueryRow) {
+    const player = row.player;
+    switch (columnId) {
+      case "favorite":
+        return <Button isIconOnly size="sm" variant="ghost" className={`star ${shortlist.has(player.id) ? "active" : ""}`} onPress={() => toggleShortlist(player.id)} aria-label={`Shortlist für ${player.name} umschalten`}><Star size={17} fill="currentColor" /></Button>;
+      case "name":
+        return <div className="player"><div className="avatar">{player.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}</div><div><strong>{player.name}</strong><span>{player.nationality ?? "–"}</span></div></div>;
+      case "position": return <span className="position">{player.positions.join(" · ") || "–"}</span>;
+      case "age": return player.age ?? "–";
+      case "club": return player.club ?? "–";
+      case "nationality": return player.nationality ?? "–";
+      case "preferred_foot": return ({ left: "Links", right: "Rechts", both: "Beidfüßig", unknown: "–" } as const)[player.preferred_foot];
+      case "value": return player.value ? money.format(player.value) : "–";
+      case "wage": return player.wage ? `${money.format(player.wage)} / W.` : "–";
+      case "current_ability": return <span className="ca">{player.current_ability ?? "?"}</span>;
+      case "potential_ability": return <span className="potential">{player.potential_ability ?? "?"}</span>;
+      case "role_score": {
+        const rating = Math.round(row.role_score?.score ?? 0);
+        return <div className="rating" title={`${row.role_score?.coverage ?? 0}% Datenabdeckung`}><span>{rating}</span><i><b style={{ width: `${rating}%` }} /></i><small>{Math.round(row.role_score?.coverage ?? 0)}%</small></div>;
+      }
+      default: {
+        const attribute = columnId.startsWith("attribute:") ? columnId.slice("attribute:".length) : "";
+        const value = player.attributes[attribute];
+        return typeof value === "number" ? <span className={`attribute-value level-${Math.min(4, Math.floor(value / 5))}`}>{value}</span> : "–";
+      }
+    }
+  }
+
   return (
     <div className="app-shell">
       <WindowTitlebar verified={liveEnvironment?.process_inspection_allowed ?? false} />
@@ -243,6 +322,16 @@ export default function App() {
           onPhaseChange={changeRolePhase}
           onRoleChange={setSelectedRoleId}
         />
+        <ViewToolbar
+          savedViews={savedViews}
+          activeViewId={activeViewId}
+          visibleColumns={visibleColumns}
+          onApply={applySavedView}
+          onDelete={deleteSavedView}
+          onReset={resetPlayerView}
+          onSave={saveCurrentView}
+          onVisibleColumnsChange={setVisibleColumns}
+        />
         {filtersOpen && (
           <FilterPanel
             u21Only={u21Only}
@@ -280,29 +369,14 @@ export default function App() {
               <Table.ScrollContainer>
                 <Table.Content aria-label="Spielerliste">
                   <Table.Header>
-                    <Table.Column id="favorite" aria-label="Shortlist" />
-                    <Table.Column id="name" isRowHeader>SPIELER</Table.Column>
-                    <Table.Column id="position">POSITION</Table.Column>
-                    <Table.Column id="age">ALTER</Table.Column>
-                    <Table.Column id="club">VEREIN</Table.Column>
-                    <Table.Column id="value">MARKTWERT</Table.Column>
-                    <Table.Column id="ca">CA / PA</Table.Column>
-                    <Table.Column id="score">ROLLENWERT</Table.Column>
+                    {visibleColumnDefinitions.map((column) => <Table.Column key={column.id} id={column.id} isRowHeader={column.id === "name"} aria-label={column.id === "favorite" ? column.label : undefined}>{column.id === "favorite" ? null : column.label.toLocaleUpperCase("de")}</Table.Column>)}
                   </Table.Header>
                   <Table.Body items={filtered} renderEmptyState={() => <div className="empty">Keine passenden Spieler gefunden.</div>}>
                     {(row) => {
                       const player = row.player;
-                      const rating = Math.round(row.role_score?.score ?? 0);
                       return (
                         <Table.Row id={player.id} key={player.id}>
-                          <Table.Cell><button className={`star ${shortlist.has(player.id) ? "active" : ""}`} onClick={() => toggleShortlist(player.id)} aria-label="Shortlist umschalten"><Star size={17} fill="currentColor" /></button></Table.Cell>
-                          <Table.Cell><div className="player"><div className="avatar">{player.name.split(" ").map((p) => p[0]).join("").slice(0, 2)}</div><div><strong>{player.name}</strong><span>{player.nationality ?? "–"}</span></div></div></Table.Cell>
-                          <Table.Cell><span className="position">{player.positions.join(" · ") || "–"}</span></Table.Cell>
-                          <Table.Cell>{player.age ?? "–"}</Table.Cell>
-                          <Table.Cell>{player.club ?? "–"}</Table.Cell>
-                          <Table.Cell>{player.value ? money.format(player.value) : "–"}</Table.Cell>
-                          <Table.Cell><span className="ca">{player.current_ability ?? "?"}</span><span className="muted"> / {player.potential_ability ?? "?"}</span></Table.Cell>
-                          <Table.Cell><div className="rating" title={`${row.role_score?.coverage ?? 0}% Datenabdeckung`}><span>{rating}</span><i><b style={{ width: `${rating}%` }} /></i><small>{Math.round(row.role_score?.coverage ?? 0)}%</small></div></Table.Cell>
+                          {(columnId) => <Table.Cell>{renderPlayerCell(String(columnId), row)}</Table.Cell>}
                         </Table.Row>
                       );
                     }}
