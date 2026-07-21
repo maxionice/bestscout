@@ -109,9 +109,21 @@ name = "bestscout-desktop"
 version = "0.1.0"
 dependencies = [
  "bestscout-core",
+ "bestscout-live",
  "serde",
  "tauri",
  "tauri-build",
+]
+
+[[package]]
+name = "bestscout-live"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.19",
 ]
 
 [[package]]

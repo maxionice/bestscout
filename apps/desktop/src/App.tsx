@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Search, ShieldCheck, Star, Users, Zap,
 } from "lucide-react";
 import { demoPlayers } from "./demo";
-import type { ImportResult, Player } from "./types";
+import type { ImportResult, LiveEnvironment, Player } from "./types";
 
 const nav = [
   [LayoutDashboard, "Übersicht"], [Search, "Spielersuche"], [Users, "Kaderanalyse"],
@@ -47,6 +47,17 @@ export default function App() {
     }
   }
 
+  async function detectGame() {
+    try {
+      const environment = await invoke<LiveEnvironment>("detect_fm26");
+      const install = environment.installations[0];
+      const hash = install?.fingerprint?.sha256.slice(0, 8);
+      setStatus(`${environment.message}${hash ? ` · Build ${hash}` : ""}`);
+    } catch (error) {
+      setStatus(`Spielerkennung fehlgeschlagen: ${String(error)}`);
+    }
+  }
+
   function toggleShortlist(id: string) {
     setShortlist((current) => {
       const next = new Set(current);
@@ -77,7 +88,7 @@ export default function App() {
           <Card.Content>
             <div className="connection-row"><span className="status-dot" /> Offline-Modus</div>
             <p>{status}</p>
-            <Button size="sm" variant="tertiary" className="w-full"><ShieldCheck size={15} /> Spiel erkennen</Button>
+            <Button size="sm" variant="tertiary" className="w-full" onPress={detectGame}><ShieldCheck size={15} /> Spiel erkennen</Button>
           </Card.Content>
         </Card>
       </aside>
