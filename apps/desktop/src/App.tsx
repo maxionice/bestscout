@@ -10,8 +10,10 @@ import {
 import { demoPlayers } from "./demo";
 import { ComparisonWorkspace } from "./ComparisonWorkspace";
 import { RoleExplorer } from "./RoleExplorer";
+import { ShortlistWorkspace } from "./ShortlistWorkspace";
 import { SquadAnalysisWorkspace } from "./SquadAnalysisWorkspace";
 import { locallyRatedRows, previewRoles } from "./roles";
+import { loadShortlist, persistShortlist } from "./shortlist";
 import { ViewToolbar } from "./ViewToolbar";
 import {
   createSavedPlayerView, defaultPlayerColumns, loadSavedPlayerViews, persistSavedPlayerViews,
@@ -34,7 +36,7 @@ export default function App() {
   const [players, setPlayers] = useState(demoPlayers);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState("Übersicht");
-  const [shortlist, setShortlist] = useState<Set<string>>(new Set(["103"]));
+  const [shortlistDocument, setShortlistDocument] = useState(loadShortlist);
   const [comparison, setComparison] = useState<Set<string>>(new Set(["101", "103"]));
   const [status, setStatus] = useState("Demo-Daten · noch nicht mit FM26 verbunden");
   const [liveEnvironment, setLiveEnvironment] = useState<LiveEnvironment | null>(null);
@@ -55,6 +57,7 @@ export default function App() {
   const [savedViews, setSavedViews] = useState<SavedPlayerView[]>(loadSavedPlayerViews);
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const shortlist = useMemo(() => new Set(shortlistDocument.entries.map((entry) => entry.player_id)), [shortlistDocument]);
 
   const locallyFiltered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("de");
@@ -114,6 +117,10 @@ export default function App() {
   useEffect(() => {
     persistSavedPlayerViews(savedViews);
   }, [savedViews]);
+
+  useEffect(() => {
+    persistShortlist(shortlistDocument);
+  }, [shortlistDocument]);
 
   useEffect(() => {
     invoke<DatabaseSnapshot>("load_synthetic_snapshot")
@@ -176,10 +183,14 @@ export default function App() {
   }
 
   function toggleShortlist(id: string) {
-    setShortlist((current) => {
-      const next = new Set(current);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
+    setShortlistDocument((current) => {
+      const existing = current.entries.some((entry) => entry.player_id === id);
+      return {
+        ...current,
+        entries: existing
+          ? current.entries.filter((entry) => entry.player_id !== id)
+          : [...current.entries, { player_id: id, favorite: true, tags: [], note: null }],
+      };
     });
   }
 
@@ -328,6 +339,8 @@ export default function App() {
           />
         ) : active === "Kaderanalyse" ? (
           <SquadAnalysisWorkspace players={players} />
+        ) : active === "Shortlist" ? (
+          <ShortlistWorkspace players={players} document={shortlistDocument} onChange={setShortlistDocument} />
         ) : (
         <>
         <RoleExplorer
@@ -384,7 +397,7 @@ export default function App() {
             </div>
           </Card.Header>
           <Card.Content className="p-0">
-            <Table variant="secondary" className="player-table">
+            <Table key={visibleColumnDefinitions.map((column) => column.id).join("|")} variant="secondary" className="player-table">
               <Table.ScrollContainer>
                 <Table.Content aria-label="Spielerliste">
                   <Table.Header>
@@ -395,7 +408,7 @@ export default function App() {
                       const player = row.player;
                       return (
                         <Table.Row id={player.id} key={player.id}>
-                          {(columnId) => <Table.Cell>{renderPlayerCell(String(columnId), row)}</Table.Cell>}
+                          {visibleColumnDefinitions.map((column) => <Table.Cell key={column.id}>{renderPlayerCell(column.id, row)}</Table.Cell>)}
                         </Table.Row>
                       );
                     }}

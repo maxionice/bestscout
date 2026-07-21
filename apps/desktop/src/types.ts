@@ -209,6 +209,20 @@ export type WageOutlier = {
   multiple_of_average: number;
 };
 
+export type ShortlistEntry = {
+  player_id: string;
+  favorite: boolean;
+  tags: string[];
+  note: string | null;
+};
+
+export type ShortlistDocument = {
+  schema_version: 1;
+  entries: ShortlistEntry[];
+};
+
+export type ShortlistFormat = "json" | "csv" | "html";
+
 export type LiveEnvironment = {
   installations: Array<{
     root: string;

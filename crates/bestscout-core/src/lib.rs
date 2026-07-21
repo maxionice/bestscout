@@ -5,6 +5,7 @@ pub mod model;
 pub mod query;
 pub mod roles;
 pub mod scoring;
+pub mod shortlist;
 pub mod squad;
 pub mod validation;
 
@@ -23,6 +24,10 @@ pub use query::{
 };
 pub use roles::{builtin_roles, in_possession_roles, out_of_possession_roles};
 pub use scoring::{RoleFamily, RolePhase, RoleProfile, ScoreBreakdown, score_player};
+pub use shortlist::{
+    SHORTLIST_SCHEMA_VERSION, ShortlistDocument, ShortlistEntry, ShortlistError, ShortlistFormat,
+    export_shortlist, import_shortlist, normalize_shortlist,
+};
 pub use squad::{
     AnalysisBucket, PositionGroupAnalysis, RiskSeverity, SquadAnalysis, SquadPlayerSummary,
     SuccessionRisk, WageOutlier, analyse_squad,
