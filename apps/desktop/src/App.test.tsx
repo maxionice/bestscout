@@ -26,6 +26,18 @@ describe("BestScout desktop", () => {
     expect(screen.getByText("Editor")).toBeTruthy();
   });
 
+  it("shows squad depth, contracts, wages and succession risks", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Kaderanalyse" }));
+
+    expect(screen.getByRole("heading", { name: "Kadergesundheit" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Positionsbreite" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Vertragshorizont" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Nachfolge- & Verlängerungsrisiken" })).toBeTruthy();
+    expect(screen.getByRole("grid", { name: "Gehaltsausreißer" })).toBeTruthy();
+    expect(screen.getAllByText("Defensives Mittelfeld").length).toBeGreaterThanOrEqual(1);
+  });
+
   it("opens global search and advanced player filters", () => {
     render(<App />);
     expect(screen.getByRole("heading", { name: "Globale Suche" })).toBeTruthy();

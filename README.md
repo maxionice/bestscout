@@ -28,6 +28,7 @@ and editing tools while remaining local, transparent and safe.
 - Searchable two-phase HeroUI role explorer with backend rankings and coverage indicators
 - Persistent player views and selectable columns for every core field and all 47 attributes
 - Four-player comparison with role-weighted radar, attribute matrix and replacement search
+- Squad depth, age, contract, wage and succession-risk analysis
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.

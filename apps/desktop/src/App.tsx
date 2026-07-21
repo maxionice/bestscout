@@ -10,6 +10,7 @@ import {
 import { demoPlayers } from "./demo";
 import { ComparisonWorkspace } from "./ComparisonWorkspace";
 import { RoleExplorer } from "./RoleExplorer";
+import { SquadAnalysisWorkspace } from "./SquadAnalysisWorkspace";
 import { locallyRatedRows, previewRoles } from "./roles";
 import { ViewToolbar } from "./ViewToolbar";
 import {
@@ -325,6 +326,8 @@ export default function App() {
             hits={searchHits}
             isSearching={isSearching}
           />
+        ) : active === "Kaderanalyse" ? (
+          <SquadAnalysisWorkspace players={players} />
         ) : (
         <>
         <RoleExplorer

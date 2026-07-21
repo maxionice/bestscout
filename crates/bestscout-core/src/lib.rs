@@ -5,6 +5,7 @@ pub mod model;
 pub mod query;
 pub mod roles;
 pub mod scoring;
+pub mod squad;
 pub mod validation;
 
 pub use comparison::{SimilarPlayer, find_similar_players};
@@ -22,6 +23,10 @@ pub use query::{
 };
 pub use roles::{builtin_roles, in_possession_roles, out_of_possession_roles};
 pub use scoring::{RoleFamily, RolePhase, RoleProfile, ScoreBreakdown, score_player};
+pub use squad::{
+    AnalysisBucket, PositionGroupAnalysis, RiskSeverity, SquadAnalysis, SquadPlayerSummary,
+    SuccessionRisk, WageOutlier, analyse_squad,
+};
 pub use validation::{
     CURRENT_SCHEMA_VERSION, IssueSeverity, SnapshotIssue, SnapshotValidationReport,
     validate_snapshot,

@@ -19,7 +19,7 @@
 - [x] Saved views and custom columns
 - [x] All FM26 in/out-of-possession role attribute profiles
 - [x] Multi-player comparison, role-weighted radar charts and similar-player search
-- [ ] Squad planning, contract and wage analysis
+- [x] Squad planning, contract, wage and succession analysis
 - [ ] Shortlist import/export and notes
 
 ## 0.3 — Live reader
