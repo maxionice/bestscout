@@ -31,8 +31,13 @@ into the canonical model and validate entity IDs, value ranges and relationships
 
 FM26 exposes generated BepInEx/Il2CppInterop assemblies in a local installation.
 The `BestScout.Bridge` scaffold runs inside the same Proton prefix and provides a
-versioned localhost protocol. Its current health and capability handshake is
-read-only; domain methods remain disabled until their adapters are validated.
+versioned localhost protocol. A thread-safe immutable cache exposes a manifest
+and bounded pages for players, staff, clubs and competitions. Every page carries
+the snapshot ID and page metadata, so the client rejects torn or changed reads.
+The Rust client caps entity counts and response size, reconstructs the canonical
+snapshot and runs full schema and relationship validation before returning data
+to Tauri. Domain publication remains disabled until its FM26 adapter is
+validated.
 
 The repository will not redistribute Football Manager assemblies. Bridge builds
 must reference files from the user's own installation, and the protocol must bind

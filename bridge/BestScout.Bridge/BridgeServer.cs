@@ -17,15 +17,17 @@ internal sealed class BridgeServer : IDisposable
 
     private readonly string _descriptorPath;
     private readonly ManualLogSource _log;
+    private readonly DomainSnapshotStore _snapshots;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly byte[] _tokenBytes = RandomNumberGenerator.GetBytes(32);
     private TcpListener? _listener;
     private Task? _acceptLoop;
 
-    internal BridgeServer(string configDirectory, ManualLogSource log)
+    internal BridgeServer(string configDirectory, ManualLogSource log, DomainSnapshotStore snapshots)
     {
         _descriptorPath = Path.Combine(configDirectory, "bestscout-bridge.json");
         _log = log;
+        _snapshots = snapshots;
     }
 
     internal void Start()
@@ -135,9 +137,37 @@ internal sealed class BridgeServer : IDisposable
         return request.Method switch
         {
             "health" => Success(request.Id, new HealthResult(Plugin.PluginVersion, Environment.ProcessId, true)),
-            "capabilities" => Success(request.Id, new CapabilityResult(true, false, false)),
+            "capabilities" => Success(request.Id, new CapabilityResult(true, _snapshots.IsAvailable, false)),
+            "snapshot_manifest" => SnapshotManifest(request.Id),
+            "snapshot_page" => SnapshotPage(request),
             _ => Error(request.Id, "unknown_method"),
         };
+    }
+
+    private BridgeResponse SnapshotManifest(string requestId)
+    {
+        var manifest = _snapshots.GetManifest();
+        return manifest is null
+            ? Error(requestId, "domain_read_unavailable")
+            : Success(requestId, manifest);
+    }
+
+    private BridgeResponse SnapshotPage(BridgeRequest request)
+    {
+        if (!request.Parameters.HasValue || request.Parameters.Value.ValueKind != JsonValueKind.Object)
+        {
+            return Error(request.Id, "invalid_parameters");
+        }
+        var parameters = request.Parameters.Value.Deserialize<SnapshotPageRequest>(JsonOptions);
+        if (parameters is null
+            || string.IsNullOrWhiteSpace(parameters.SnapshotId)
+            || string.IsNullOrWhiteSpace(parameters.EntityKind))
+        {
+            return Error(request.Id, "invalid_parameters");
+        }
+        return _snapshots.TryGetPage(parameters, out var page, out var error)
+            ? Success(request.Id, page!)
+            : Error(request.Id, error);
     }
 
     private bool Authenticate(string suppliedToken)

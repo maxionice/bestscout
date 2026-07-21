@@ -11,7 +11,7 @@ mod profile;
 
 pub use bridge::{
     BridgeCapabilities, BridgeClient, BridgeDescriptor, BridgeError, BridgeHealth, BridgeProbe,
-    probe_bridge,
+    SnapshotEntityCounts, SnapshotEntityKind, SnapshotManifest, SnapshotPageCounts, probe_bridge,
 };
 pub use discovery::{FmInstallation, FmProcess, LiveEnvironment, discover_environment};
 pub use fingerprint::{

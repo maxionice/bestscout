@@ -10,9 +10,20 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
+use bestscout_core::{
+    CURRENT_SCHEMA_VERSION, Club, Competition, DatabaseSnapshot, Player, SnapshotSource, Staff,
+    validate_snapshot,
+};
+
 const PROTOCOL_VERSION: u32 = 1;
-const MAXIMUM_RESPONSE_BYTES: u64 = 1024 * 1024;
+const MAXIMUM_RESPONSE_BYTES: u64 = 16 * 1024 * 1024;
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(2);
+const MAXIMUM_PAGE_SIZE: u32 = 5_000;
+const MAXIMUM_TOTAL_PAGES: u32 = 2_000;
+const MAXIMUM_PLAYERS: u32 = 500_000;
+const MAXIMUM_STAFF: u32 = 250_000;
+const MAXIMUM_CLUBS: u32 = 50_000;
+const MAXIMUM_COMPETITIONS: u32 = 20_000;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BridgeDescriptor {
@@ -43,12 +54,65 @@ pub struct BridgeProbe {
     pub capabilities: BridgeCapabilities,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SnapshotEntityKind {
+    Players,
+    Staff,
+    Clubs,
+    Competitions,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SnapshotEntityCounts {
+    pub players: u32,
+    pub staff: u32,
+    pub clubs: u32,
+    pub competitions: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SnapshotPageCounts {
+    pub players: u32,
+    pub staff: u32,
+    pub clubs: u32,
+    pub competitions: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SnapshotManifest {
+    pub snapshot_id: String,
+    pub schema_version: u32,
+    pub generated_at_utc: String,
+    pub page_size: u32,
+    pub counts: SnapshotEntityCounts,
+    pub pages: SnapshotPageCounts,
+}
+
+#[derive(Debug, Serialize)]
+struct SnapshotPageRequest<'a> {
+    snapshot_id: &'a str,
+    entity_kind: SnapshotEntityKind,
+    page_index: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct SnapshotPage {
+    snapshot_id: String,
+    entity_kind: SnapshotEntityKind,
+    page_index: u32,
+    page_count: u32,
+    items: Vec<Value>,
+}
+
 #[derive(Debug, Serialize)]
 struct BridgeRequest<'a> {
     protocol_version: u32,
     id: &'a str,
     method: &'a str,
     token: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parameters: Option<&'a Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -84,8 +148,18 @@ pub enum BridgeError {
     Rejected(String),
     #[error("bridge response has no result")]
     MissingResult,
+    #[error("bridge response exceeded the 16 MiB safety limit")]
+    ResponseTooLarge,
     #[error("descriptor PID {descriptor} does not match bridge PID {response}")]
     PidMismatch { descriptor: u32, response: u32 },
+    #[error("bridge domain reading is not available")]
+    DomainReadUnavailable,
+    #[error("bridge snapshot manifest is invalid: {0}")]
+    InvalidManifest(String),
+    #[error("bridge snapshot page is invalid: {0}")]
+    InvalidPage(String),
+    #[error("live snapshot failed canonical validation with {0} issue(s)")]
+    InvalidSnapshot(usize),
 }
 
 pub struct BridgeClient {
@@ -126,7 +200,7 @@ impl BridgeClient {
     }
 
     pub fn health(&self) -> Result<BridgeHealth, BridgeError> {
-        let health: BridgeHealth = self.request("health")?;
+        let health: BridgeHealth = self.request("health", None)?;
         if health.pid != self.descriptor.pid {
             return Err(BridgeError::PidMismatch {
                 descriptor: self.descriptor.pid,
@@ -137,10 +211,115 @@ impl BridgeClient {
     }
 
     pub fn capabilities(&self) -> Result<BridgeCapabilities, BridgeError> {
-        self.request("capabilities")
+        self.request("capabilities", None)
     }
 
-    fn request<T: for<'de> Deserialize<'de>>(&self, method: &str) -> Result<T, BridgeError> {
+    pub fn snapshot_manifest(&self) -> Result<SnapshotManifest, BridgeError> {
+        let manifest = self.request("snapshot_manifest", None)?;
+        validate_manifest(&manifest)?;
+        Ok(manifest)
+    }
+
+    pub fn read_snapshot(&self) -> Result<DatabaseSnapshot, BridgeError> {
+        self.health()?;
+        if !self.capabilities()?.domain_read {
+            return Err(BridgeError::DomainReadUnavailable);
+        }
+        let manifest = self.snapshot_manifest()?;
+        let players = self.collect_pages::<Player>(
+            &manifest,
+            SnapshotEntityKind::Players,
+            manifest.counts.players,
+            manifest.pages.players,
+        )?;
+        let staff = self.collect_pages::<Staff>(
+            &manifest,
+            SnapshotEntityKind::Staff,
+            manifest.counts.staff,
+            manifest.pages.staff,
+        )?;
+        let clubs = self.collect_pages::<Club>(
+            &manifest,
+            SnapshotEntityKind::Clubs,
+            manifest.counts.clubs,
+            manifest.pages.clubs,
+        )?;
+        let competitions = self.collect_pages::<Competition>(
+            &manifest,
+            SnapshotEntityKind::Competitions,
+            manifest.counts.competitions,
+            manifest.pages.competitions,
+        )?;
+        let snapshot = DatabaseSnapshot {
+            schema_version: manifest.schema_version,
+            source: SnapshotSource::Live,
+            players,
+            staff,
+            clubs,
+            competitions,
+        };
+        let report = validate_snapshot(&snapshot);
+        if !report.valid {
+            return Err(BridgeError::InvalidSnapshot(report.issues.len()));
+        }
+        Ok(snapshot)
+    }
+
+    fn collect_pages<T: for<'de> Deserialize<'de>>(
+        &self,
+        manifest: &SnapshotManifest,
+        entity_kind: SnapshotEntityKind,
+        entity_count: u32,
+        page_count: u32,
+    ) -> Result<Vec<T>, BridgeError> {
+        let mut items = Vec::with_capacity(entity_count as usize);
+        for page_index in 0..page_count {
+            let parameters = serde_json::to_value(SnapshotPageRequest {
+                snapshot_id: &manifest.snapshot_id,
+                entity_kind,
+                page_index,
+            })
+            .map_err(BridgeError::EncodeRequest)?;
+            let page: SnapshotPage = self.request("snapshot_page", Some(&parameters))?;
+            if page.snapshot_id != manifest.snapshot_id
+                || page.entity_kind != entity_kind
+                || page.page_index != page_index
+                || page.page_count != page_count
+            {
+                return Err(BridgeError::InvalidPage(
+                    "snapshot identity or page metadata changed during transfer".to_owned(),
+                ));
+            }
+            if page.items.len() > manifest.page_size as usize {
+                return Err(BridgeError::InvalidPage(format!(
+                    "page {page_index} contains more than {} items",
+                    manifest.page_size
+                )));
+            }
+            let remaining = entity_count as usize - items.len();
+            let expected = remaining.min(manifest.page_size as usize);
+            if page.items.len() != expected {
+                return Err(BridgeError::InvalidPage(format!(
+                    "page {page_index} contains {} items, expected {expected}",
+                    page.items.len()
+                )));
+            }
+            items.extend(page.items);
+        }
+        if items.len() != entity_count as usize {
+            return Err(BridgeError::InvalidPage(format!(
+                "received {} items, expected {entity_count}",
+                items.len()
+            )));
+        }
+        serde_json::from_value(Value::Array(items)).map_err(BridgeError::InvalidResponse)
+    }
+
+    fn request<T: for<'de> Deserialize<'de>>(
+        &self,
+        method: &str,
+        parameters: Option<&Value>,
+    ) -> Result<T, BridgeError> {
         let request_id = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap_or_default()
@@ -161,6 +340,7 @@ impl BridgeClient {
             id: &request_id,
             method,
             token: &self.descriptor.token,
+            parameters,
         };
         serde_json::to_writer(&mut stream, &request).map_err(BridgeError::EncodeRequest)?;
         stream.write_all(b"\n").map_err(BridgeError::Transport)?;
@@ -171,6 +351,9 @@ impl BridgeClient {
             .take(MAXIMUM_RESPONSE_BYTES)
             .read_line(&mut response_line)
             .map_err(BridgeError::Transport)?;
+        if !response_line.ends_with('\n') {
+            return Err(BridgeError::ResponseTooLarge);
+        }
         let response: BridgeResponse =
             serde_json::from_str(&response_line).map_err(BridgeError::InvalidResponse)?;
         if response.protocol_version != PROTOCOL_VERSION || response.id != request_id {
@@ -184,6 +367,71 @@ impl BridgeClient {
         serde_json::from_value(response.result.ok_or(BridgeError::MissingResult)?)
             .map_err(BridgeError::InvalidResponse)
     }
+}
+
+fn validate_manifest(manifest: &SnapshotManifest) -> Result<(), BridgeError> {
+    if manifest.snapshot_id.is_empty() || manifest.snapshot_id.len() > 128 {
+        return Err(BridgeError::InvalidManifest(
+            "snapshot_id must contain between 1 and 128 bytes".to_owned(),
+        ));
+    }
+    if manifest.schema_version != CURRENT_SCHEMA_VERSION {
+        return Err(BridgeError::InvalidManifest(format!(
+            "unsupported schema version {}",
+            manifest.schema_version
+        )));
+    }
+    if !(1..=MAXIMUM_PAGE_SIZE).contains(&manifest.page_size) {
+        return Err(BridgeError::InvalidManifest(format!(
+            "page_size must be between 1 and {MAXIMUM_PAGE_SIZE}"
+        )));
+    }
+    let mut total_pages = 0_u32;
+    for (kind, count, pages, limit) in [
+        (
+            "players",
+            manifest.counts.players,
+            manifest.pages.players,
+            MAXIMUM_PLAYERS,
+        ),
+        (
+            "staff",
+            manifest.counts.staff,
+            manifest.pages.staff,
+            MAXIMUM_STAFF,
+        ),
+        (
+            "clubs",
+            manifest.counts.clubs,
+            manifest.pages.clubs,
+            MAXIMUM_CLUBS,
+        ),
+        (
+            "competitions",
+            manifest.counts.competitions,
+            manifest.pages.competitions,
+            MAXIMUM_COMPETITIONS,
+        ),
+    ] {
+        if count > limit {
+            return Err(BridgeError::InvalidManifest(format!(
+                "{kind} count {count} exceeds safety limit {limit}"
+            )));
+        }
+        let expected_pages = count.div_ceil(manifest.page_size);
+        if pages != expected_pages {
+            return Err(BridgeError::InvalidManifest(format!(
+                "{kind} declares {pages} pages, expected {expected_pages}"
+            )));
+        }
+        total_pages = total_pages.saturating_add(pages);
+    }
+    if total_pages > MAXIMUM_TOTAL_PAGES {
+        return Err(BridgeError::InvalidManifest(format!(
+            "snapshot declares {total_pages} pages, exceeding safety limit {MAXIMUM_TOTAL_PAGES}"
+        )));
+    }
+    Ok(())
 }
 
 pub fn probe_bridge(root: &Path) -> Result<BridgeProbe, BridgeError> {
@@ -272,5 +520,114 @@ mod tests {
         let result = BridgeClient::from_descriptor(&path);
         fs::remove_file(path).unwrap();
         assert!(matches!(result, Err(BridgeError::UnsupportedProtocol(99))));
+    }
+
+    #[test]
+    fn reads_and_validates_a_paginated_canonical_snapshot() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let pid = 4243;
+        let fixture = bestscout_core::synthetic_snapshot();
+        let served_fixture = fixture.clone();
+        let server = thread::spawn(move || {
+            for _ in 0..8 {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut line = String::new();
+                BufReader::new(stream.try_clone().unwrap())
+                    .read_line(&mut line)
+                    .unwrap();
+                let request: Value = serde_json::from_str(&line).unwrap();
+                let result = match request["method"].as_str().unwrap() {
+                    "health" => serde_json::json!({
+                        "bridge_version": "0.2.0", "pid": pid, "read_only": true
+                    }),
+                    "capabilities" => serde_json::json!({
+                        "health": true, "domain_read": true, "domain_write": false
+                    }),
+                    "snapshot_manifest" => serde_json::json!({
+                        "snapshot_id": "fixture-1",
+                        "schema_version": 1,
+                        "generated_at_utc": "2026-07-21T20:00:00Z",
+                        "page_size": 1,
+                        "counts": {"players": 2, "staff": 1, "clubs": 1, "competitions": 1},
+                        "pages": {"players": 2, "staff": 1, "clubs": 1, "competitions": 1}
+                    }),
+                    "snapshot_page" => {
+                        let parameters = &request["parameters"];
+                        assert_eq!(parameters["snapshot_id"], "fixture-1");
+                        let entity_kind = parameters["entity_kind"].as_str().unwrap();
+                        let page_index = parameters["page_index"].as_u64().unwrap() as usize;
+                        let all_items = match entity_kind {
+                            "players" => serde_json::to_value(&served_fixture.players).unwrap(),
+                            "staff" => serde_json::to_value(&served_fixture.staff).unwrap(),
+                            "clubs" => serde_json::to_value(&served_fixture.clubs).unwrap(),
+                            "competitions" => {
+                                serde_json::to_value(&served_fixture.competitions).unwrap()
+                            }
+                            other => panic!("unexpected entity kind {other}"),
+                        };
+                        let all_items = all_items.as_array().unwrap();
+                        serde_json::json!({
+                            "snapshot_id": "fixture-1",
+                            "entity_kind": entity_kind,
+                            "page_index": page_index,
+                            "page_count": all_items.len(),
+                            "items": [all_items[page_index].clone()]
+                        })
+                    }
+                    method => panic!("unexpected method {method}"),
+                };
+                writeln!(
+                    stream,
+                    "{}",
+                    serde_json::json!({
+                        "protocol_version": 1,
+                        "id": request["id"],
+                        "ok": true,
+                        "result": result,
+                        "error": null
+                    })
+                )
+                .unwrap();
+            }
+        });
+
+        let path = temporary_descriptor(port, pid);
+        let client = BridgeClient::from_descriptor(&path).unwrap();
+        let snapshot = client.read_snapshot().unwrap();
+        fs::remove_file(path).unwrap();
+        server.join().unwrap();
+
+        assert_eq!(snapshot.source, SnapshotSource::Live);
+        assert_eq!(snapshot.players, fixture.players);
+        assert_eq!(snapshot.staff, fixture.staff);
+        assert_eq!(snapshot.clubs, fixture.clubs);
+        assert_eq!(snapshot.competitions, fixture.competitions);
+    }
+
+    #[test]
+    fn rejects_manifest_counts_that_exceed_the_safety_limit() {
+        let manifest = SnapshotManifest {
+            snapshot_id: "too-large".to_owned(),
+            schema_version: CURRENT_SCHEMA_VERSION,
+            generated_at_utc: "2026-07-21T20:00:00Z".to_owned(),
+            page_size: 1_000,
+            counts: SnapshotEntityCounts {
+                players: MAXIMUM_PLAYERS + 1,
+                staff: 0,
+                clubs: 0,
+                competitions: 0,
+            },
+            pages: SnapshotPageCounts {
+                players: (MAXIMUM_PLAYERS + 1).div_ceil(1_000),
+                staff: 0,
+                clubs: 0,
+                competitions: 0,
+            },
+        };
+        assert!(matches!(
+            validate_manifest(&manifest),
+            Err(BridgeError::InvalidManifest(_))
+        ));
     }
 }
