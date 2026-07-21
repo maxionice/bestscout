@@ -5,7 +5,8 @@
 - [x] Rust workspace and Tauri desktop shell
 - [x] Canonical player model and explainable scoring engine
 - [x] CSV parser with locale-aware aliases
-- [ ] Compatibility fingerprint command for Proton/FM26
+- [x] Compatibility fingerprint command for Proton/FM26
+- [x] Versioned capability profiles and read-only process-map inspection
 - [ ] Synthetic fixture generator
 
 ## 0.2 — Scout
@@ -19,10 +20,12 @@
 
 ## 0.3 — Live reader
 
-- [ ] Detect FM26 under Steam/Proton
-- [ ] Versioned executable fingerprints and signatures
+- [x] Detect FM26 under Steam/Proton
+- [x] Versioned executable, GameAssembly and IL2CPP metadata fingerprints
+- [x] Reject unknown or partial fingerprint matches
+- [ ] Resolve validated FM26 domain roots
 - [ ] Read players, staff, clubs and competitions
-- [ ] Reject unsupported builds safely
+- [x] Reject unsupported builds safely
 
 ## 0.5 — Core editor
 

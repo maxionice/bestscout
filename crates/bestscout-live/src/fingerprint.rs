@@ -14,6 +14,13 @@ pub struct ExecutableFingerprint {
     pub size: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BuildFingerprint {
+    pub executable: ExecutableFingerprint,
+    pub game_assembly: ExecutableFingerprint,
+    pub global_metadata: ExecutableFingerprint,
+}
+
 #[derive(Debug, Error)]
 pub enum FingerprintError {
     #[error("cannot open executable: {0}")]
