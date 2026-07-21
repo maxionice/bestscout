@@ -8,15 +8,17 @@ public sealed class Plugin : BasePlugin
 {
     public const string PluginId = "io.github.maxionice.bestscout.bridge";
     public const string PluginName = "BestScout Bridge";
-    public const string PluginVersion = "0.1.0";
+    public const string PluginVersion = "0.2.0";
 
     private BridgeServer? _server;
+    private DomainSnapshotStore? _snapshots;
 
     public override void Load()
     {
         try
         {
-            _server = new BridgeServer(Paths.ConfigPath, Log);
+            _snapshots = new DomainSnapshotStore();
+            _server = new BridgeServer(Paths.ConfigPath, Log, _snapshots);
             _server.Start();
             Log.LogInfo("BestScout Bridge is listening on loopback.");
         }
@@ -25,6 +27,7 @@ public sealed class Plugin : BasePlugin
             Log.LogError($"BestScout Bridge failed to start: {error}");
             _server?.Dispose();
             _server = null;
+            _snapshots = null;
         }
     }
 
@@ -32,6 +35,8 @@ public sealed class Plugin : BasePlugin
     {
         _server?.Dispose();
         _server = null;
+        _snapshots?.Clear();
+        _snapshots = null;
         return true;
     }
 }

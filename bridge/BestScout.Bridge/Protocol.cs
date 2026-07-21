@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace BestScout.Bridge;
@@ -13,7 +14,8 @@ internal sealed record BridgeRequest(
     [property: JsonPropertyName("protocol_version")] int ProtocolVersion,
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("method")] string Method,
-    [property: JsonPropertyName("token")] string Token);
+    [property: JsonPropertyName("token")] string Token,
+    [property: JsonPropertyName("parameters")] JsonElement? Parameters);
 
 internal sealed record BridgeResponse(
     [property: JsonPropertyName("protocol_version")] int ProtocolVersion,
@@ -31,3 +33,35 @@ internal sealed record CapabilityResult(
     [property: JsonPropertyName("health")] bool Health,
     [property: JsonPropertyName("domain_read")] bool DomainRead,
     [property: JsonPropertyName("domain_write")] bool DomainWrite);
+
+internal sealed record SnapshotPageRequest(
+    [property: JsonPropertyName("snapshot_id")] string SnapshotId,
+    [property: JsonPropertyName("entity_kind")] string EntityKind,
+    [property: JsonPropertyName("page_index")] int PageIndex);
+
+internal sealed record DomainEntityCounts(
+    [property: JsonPropertyName("players")] int Players,
+    [property: JsonPropertyName("staff")] int Staff,
+    [property: JsonPropertyName("clubs")] int Clubs,
+    [property: JsonPropertyName("competitions")] int Competitions);
+
+internal sealed record DomainPageCounts(
+    [property: JsonPropertyName("players")] int Players,
+    [property: JsonPropertyName("staff")] int Staff,
+    [property: JsonPropertyName("clubs")] int Clubs,
+    [property: JsonPropertyName("competitions")] int Competitions);
+
+internal sealed record DomainSnapshotManifest(
+    [property: JsonPropertyName("snapshot_id")] string SnapshotId,
+    [property: JsonPropertyName("schema_version")] int SchemaVersion,
+    [property: JsonPropertyName("generated_at_utc")] DateTimeOffset GeneratedAtUtc,
+    [property: JsonPropertyName("page_size")] int PageSize,
+    [property: JsonPropertyName("counts")] DomainEntityCounts Counts,
+    [property: JsonPropertyName("pages")] DomainPageCounts Pages);
+
+internal sealed record DomainSnapshotPage(
+    [property: JsonPropertyName("snapshot_id")] string SnapshotId,
+    [property: JsonPropertyName("entity_kind")] string EntityKind,
+    [property: JsonPropertyName("page_index")] int PageIndex,
+    [property: JsonPropertyName("page_count")] int PageCount,
+    [property: JsonPropertyName("items")] IReadOnlyList<JsonElement> Items);

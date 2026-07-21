@@ -119,6 +119,7 @@ dependencies = [
 name = "bestscout-live"
 version = "0.1.0"
 dependencies = [
+ "bestscout-core",
  "dirs",
  "serde",
  "serde_json",

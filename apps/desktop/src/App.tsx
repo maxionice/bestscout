@@ -183,6 +183,26 @@ export default function App() {
     }
   }
 
+  async function loadLiveData() {
+    setIsDetecting(true);
+    try {
+      const environment = await invoke<LiveEnvironment>("detect_fm26");
+      setLiveEnvironment(environment);
+      if (!environment.reader_allowed) {
+        setStatus(`${environment.message} · Domänen-Reader noch sicher gesperrt`);
+        return;
+      }
+      const liveSnapshot = await invoke<DatabaseSnapshot>("load_live_snapshot");
+      setSnapshot(liveSnapshot);
+      setPlayers(liveSnapshot.players);
+      setStatus(`${liveSnapshot.players.length.toLocaleString("de-DE")} Live-Spieler sicher übernommen`);
+    } catch (error) {
+      setStatus(`Live-Daten konnten nicht geladen werden: ${String(error)}`);
+    } finally {
+      setIsDetecting(false);
+    }
+  }
+
   function toggleShortlist(id: string) {
     setShortlistDocument((current) => {
       const existing = current.entries.some((entry) => entry.player_id === id);
@@ -342,7 +362,7 @@ export default function App() {
           <div className="top-actions">
             <input ref={input} type="file" accept=".csv,.txt" hidden onChange={(event) => importFile(event.target.files?.[0])} />
             <Button variant="secondary" onPress={() => input.current?.click()}><FileUp size={16} /> CSV importieren</Button>
-            <Button isDisabled={isDetecting} onPress={detectGame}><Database size={16} /> Live-Daten laden</Button>
+            <Button isDisabled={isDetecting} onPress={loadLiveData}>{isDetecting ? <RefreshCw className="spin" size={16} /> : <Database size={16} />} {isDetecting ? "Live-Daten werden geprüft …" : "Live-Daten laden"}</Button>
           </div>
         </header>
 
