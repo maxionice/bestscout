@@ -49,6 +49,29 @@ describe("BestScout desktop", () => {
     expect(screen.getByRole("button", { name: "U21-Talente" })).toBeTruthy();
   });
 
+  it("shows complete player, staff, club and competition entity tables", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Datenbank" }));
+
+    expect(screen.getByRole("heading", { name: "Entitätsdatenbank" })).toBeTruthy();
+    expect(screen.getByRole("grid", { name: "Spielerdaten" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "PROFESSIONALITÄT" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "VERTRAGSVEREIN-ID" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "VERLETZT" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Staff/ }));
+    expect(screen.getByRole("grid", { name: "Staffdaten" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "TAKTIKWISSEN" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Vereine/ }));
+    expect(screen.getByRole("grid", { name: "Vereinsdaten" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "TRANSFERBUDGET" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Wettbewerbe/ }));
+    expect(screen.getByRole("grid", { name: "Wettbewerbsdaten" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "TITELVERTEIDIGER" })).toBeTruthy();
+  });
+
   it("switches between FM26 phases and recalculates the selected role", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Spielersuche" }));

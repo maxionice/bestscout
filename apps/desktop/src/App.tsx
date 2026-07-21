@@ -4,11 +4,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   Activity, BarChart3, Building2, CheckCircle2, ChevronDown, CircleOff, Database,
-  FileUp, Filter, Fingerprint, LayoutDashboard, LockKeyhole, RefreshCw, Search,
+  FileUp, Filter, Fingerprint, LayoutDashboard, LockKeyhole, RefreshCw, Search, TableProperties,
   ShieldCheck, Star, Trophy, UserRoundCog, Users, Zap, Minus, Square, X,
 } from "lucide-react";
 import { demoPlayers } from "./demo";
 import { ComparisonWorkspace } from "./ComparisonWorkspace";
+import { DatabaseWorkspace } from "./DatabaseWorkspace";
 import { RoleExplorer } from "./RoleExplorer";
 import { ShortlistWorkspace } from "./ShortlistWorkspace";
 import { SquadAnalysisWorkspace } from "./SquadAnalysisWorkspace";
@@ -20,12 +21,12 @@ import {
   playerColumns, type SavedPlayerView,
 } from "./view-preferences";
 import type {
-  DatabaseSnapshot, ImportResult, LiveEnvironment, Player, PlayerQueryResult, PlayerQueryRow,
+  DatabaseSnapshot, GameDate, ImportResult, LiveEnvironment, Player, PlayerQueryResult, PlayerQueryRow,
   RolePhase, RoleProfile, SearchHit,
 } from "./types";
 
 const nav = [
-  [LayoutDashboard, "Übersicht"], [Search, "Spielersuche"], [Users, "Kaderanalyse"],
+  [LayoutDashboard, "Übersicht"], [TableProperties, "Datenbank"], [Search, "Spielersuche"], [Users, "Kaderanalyse"],
   [Star, "Shortlist"], [BarChart3, "Vergleich"], [Activity, "Live-Spiel"],
 ] as const;
 
@@ -270,6 +271,31 @@ export default function App() {
         const rating = Math.round(row.role_score?.score ?? 0);
         return <div className="rating" title={`${row.role_score?.coverage ?? 0}% Datenabdeckung`}><span>{rating}</span><i><b style={{ width: `${rating}%` }} /></i><small>{Math.round(row.role_score?.coverage ?? 0)}%</small></div>;
       }
+      case "id": return player.id;
+      case "date_of_birth": return formatGameDate(player.details?.date_of_birth);
+      case "reputation": return player.details?.reputation ?? "–";
+      case "international_reputation": return player.details?.international_reputation ?? "–";
+      case "consistency": return player.details?.consistency ?? "–";
+      case "important_matches": return player.details?.important_matches ?? "–";
+      case "injury_proneness": return player.details?.injury_proneness ?? "–";
+      case "versatility": return player.details?.versatility ?? "–";
+      case "professionalism": return player.details?.professionalism ?? "–";
+      case "ambition": return player.details?.ambition ?? "–";
+      case "contract_starts": return formatGameDate(player.details?.contract?.starts_on);
+      case "contract_expires": return formatGameDate(player.details?.contract?.expires_on);
+      case "contract_club_id": return player.details?.contract?.club_id ?? "–";
+      case "contract_type": return player.details?.contract?.contract_type ?? "–";
+      case "contract_wage": return player.details?.contract?.wage == null ? "–" : `${money.format(player.details.contract.wage)} / W.`;
+      case "release_clause": return player.details?.contract?.release_clause == null ? "–" : money.format(player.details.contract.release_clause);
+      case "squad_status": return player.details?.contract?.squad_status ?? "–";
+      case "player_status": return player.details?.status ? Object.entries(player.details.status).filter(([, active]) => active).map(([status]) => status).join(", ") || "Verfügbar" : "–";
+      case "transfer_listed": return formatBoolean(player.details?.status?.transfer_listed);
+      case "loan_listed": return formatBoolean(player.details?.status?.loan_listed);
+      case "injured": return formatBoolean(player.details?.status?.injured);
+      case "suspended": return formatBoolean(player.details?.status?.suspended);
+      case "unavailable": return formatBoolean(player.details?.status?.unavailable);
+      case "tags": return player.details?.tags.join(", ") || "–";
+      case "note": return player.details?.note ?? "–";
       default: {
         const attribute = columnId.startsWith("attribute:") ? columnId.slice("attribute:".length) : "";
         const value = player.attributes[attribute];
@@ -337,6 +363,8 @@ export default function App() {
             hits={searchHits}
             isSearching={isSearching}
           />
+        ) : active === "Datenbank" ? (
+          <DatabaseWorkspace players={players} snapshot={snapshot} />
         ) : active === "Kaderanalyse" ? (
           <SquadAnalysisWorkspace players={players} />
         ) : active === "Shortlist" ? (
@@ -529,10 +557,32 @@ function fallbackSnapshot(players: Player[]): DatabaseSnapshot {
     schema_version: 1,
     source: "synthetic",
     players,
-    staff: [],
-    clubs: [],
-    competitions: [],
+    staff: [{
+      id: "staff-lina", name: "Lina Taktik", age: 41, club: "SV Nordhafen", nationality: "Österreich",
+      roles: ["assistant_manager", "coach"], current_ability: 145, potential_ability: 155, reputation: 5100,
+      attributes: { tactical_knowledge: 17, motivating: 16, man_management: 15 },
+      contract: { club_id: "club-nordhafen", expires_on: { year: 2028, month: 6, day: 30 }, contract_type: "full_time", wage: 12_000 },
+    }],
+    clubs: [{
+      id: "club-nordhafen", name: "Sportverein Nordhafen", short_name: "SV Nordhafen", nation: "Deutschland",
+      competition: "Nordliga", reputation: 4800, professional_status: "professional", stadium: "Hafenpark",
+      stadium_capacity: 24_500, average_attendance: 19_300,
+      finances: { balance: 18_000_000, transfer_budget: 6_500_000, wage_budget: 450_000, debt: 2_000_000 },
+      facilities: { training: 15, youth: 16, youth_recruitment: 14, junior_coaching: 15 },
+    }],
+    competitions: [{
+      id: "competition-nordliga", name: "Nordliga", short_name: "NL", nation: "Deutschland",
+      reputation: 6000, current_champion: "SV Nordhafen", level: 1,
+    }],
   };
+}
+
+function formatGameDate(date: GameDate | null | undefined) {
+  return date ? `${String(date.day).padStart(2, "0")}.${String(date.month).padStart(2, "0")}.${date.year}` : "–";
+}
+
+function formatBoolean(value: boolean | null | undefined) {
+  return value == null ? "–" : value ? "Ja" : "Nein";
 }
 
 function localSearch(snapshot: DatabaseSnapshot, query: string): SearchHit[] {
