@@ -1,0 +1,12 @@
+/target
+node_modules
+dist
+*.tsbuildinfo
+apps/desktop/src-tauri/gen/schemas/
+*.log
+.idea
+.vscode
+.DS_Store
+*.AppImage
+*.deb
+*.rpm

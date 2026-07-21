@@ -1,0 +1,12 @@
+{
+  "name": "bestscout",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/desktop"],
+  "scripts": {
+    "dev": "npm run dev --workspace @bestscout/desktop",
+    "build": "npm run build --workspace @bestscout/desktop",
+    "test": "cargo test --workspace && npm run test --workspace @bestscout/desktop",
+    "tauri": "npm run tauri --workspace @bestscout/desktop"
+  }
+}
