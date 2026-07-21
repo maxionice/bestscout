@@ -16,7 +16,7 @@
 - [x] HeroUI global-search workspace and advanced player filter surface
 - [ ] Complete player, staff and club tables
 - [ ] Saved views and custom columns
-- [ ] All FM26 roles and duties
+- [x] All FM26 in/out-of-possession role attribute profiles
 - [ ] Multi-player comparison and radar charts
 - [ ] Squad planning, contract and wage analysis
 - [ ] Shortlist import/export and notes

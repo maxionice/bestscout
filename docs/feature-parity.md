@@ -9,7 +9,7 @@ build. Read and write capabilities are tracked separately.
 - [ ] Global player, staff, club and competition search
 - [ ] Current and potential ability, reputation and hidden attributes
 - [ ] Advanced filters, custom columns and saved views
-- [ ] Ratings for every supported position, role and duty
+- [ ] Ratings for every supported position and FM26 in/out-of-possession role
 - [ ] Peak-attribute projection and development probability
 - [ ] Wonderkid, bargain, free-agent and expiring-contract lists
 - [ ] Player comparison, similar-player search and replacement suggestions

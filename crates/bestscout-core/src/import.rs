@@ -128,34 +128,50 @@ fn attribute_for(header: &str) -> Option<Attribute> {
     use Attribute::*;
     Some(match header {
         "acceleration" | "antritt" => Acceleration,
+        "aerialreach" | "lufthoheit" => AerialReach,
         "aggression" | "aggressivitat" => Aggression,
         "agility" | "beweglichkeit" => Agility,
         "anticipation" | "antizipation" => Anticipation,
         "balance" => Balance,
         "bravery" | "mut" => Bravery,
+        "commandofarea" | "strafraumbeherrschung" => CommandOfArea,
+        "communication" | "kommunikation" => Communication,
         "composure" | "nervenstarke" => Composure,
         "concentration" | "konzentration" => Concentration,
+        "corners" | "ecken" => Corners,
         "crossing" | "flanken" => Crossing,
         "decisions" | "entscheidungen" => Decisions,
         "determination" | "zielstrebigkeit" => Determination,
         "dribbling" => Dribbling,
+        "eccentricity" | "exzentrizitat" => Eccentricity,
         "finishing" | "abschluss" => Finishing,
         "firsttouch" | "ballannahme" => FirstTouch,
         "flair" | "kreativitat" => Flair,
+        "freekicktaking" | "freekicks" | "freistoss" => FreeKickTaking,
+        "handling" | "fangsicherheit" => Handling,
         "heading" | "kopfballtechnik" => Heading,
         "jumpingreach" | "sprungkraft" => JumpingReach,
+        "kicking" | "abstosse" => Kicking,
         "leadership" | "fuhrungsqualitaten" => Leadership,
         "longshots" | "weitschusse" => LongShots,
+        "longthrows" | "weiteeinwurfe" => LongThrows,
         "marking" | "deckung" => Marking,
+        "naturalfitness" | "grundfitness" => NaturalFitness,
         "offtheball" | "ohneball" => OffTheBall,
+        "oneonones" | "einsgegeneins" => OneOnOnes,
         "pace" | "schnelligkeit" => Pace,
         "passing" | "passen" => Passing,
+        "penaltytaking" | "penalties" | "elfmeter" => PenaltyTaking,
         "positioning" | "stellungsspiel" => Positioning,
+        "punchingtendency" | "fausten" => PunchingTendency,
+        "reflexes" | "reflexe" => Reflexes,
+        "rushingouttendency" | "herauslaufen" => RushingOutTendency,
         "stamina" | "ausdauer" => Stamina,
         "strength" | "kraft" => Strength,
         "tackling" | "zweikampfe" => Tackling,
         "teamwork" => Teamwork,
         "technique" | "technik" => Technique,
+        "throwing" | "abwurf" => Throwing,
         "vision" | "ubersicht" => Vision,
         "workrate" | "einsatzfreude" => WorkRate,
         _ => return None,
@@ -242,5 +258,15 @@ mod tests {
         assert_eq!(result.players[0].age, Some(19));
         assert_eq!(result.players[0].attribute(Attribute::Passing), Some(17));
         assert_eq!(result.players[0].value, Some(12_500_000.0));
+    }
+
+    #[test]
+    fn imports_goalkeeping_and_set_piece_attributes() {
+        let csv = "UID;Name;Reflexe;Strafraumbeherrschung;Ecken;Grundfitness\n8;Mira Beispiel;18;16;7;15\n";
+        let player = &import_players(csv).unwrap().players[0];
+        assert_eq!(player.attribute(Attribute::Reflexes), Some(18));
+        assert_eq!(player.attribute(Attribute::CommandOfArea), Some(16));
+        assert_eq!(player.attribute(Attribute::Corners), Some(7));
+        assert_eq!(player.attribute(Attribute::NaturalFitness), Some(15));
     }
 }

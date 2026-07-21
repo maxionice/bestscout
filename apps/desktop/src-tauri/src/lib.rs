@@ -45,6 +45,11 @@ fn validate_snapshot(
     bestscout_core::validate_snapshot(&snapshot)
 }
 
+#[tauri::command]
+fn list_roles() -> Vec<bestscout_core::RoleProfile> {
+    bestscout_core::builtin_roles().to_vec()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -55,7 +60,8 @@ pub fn run() {
             search_database,
             query_players,
             load_synthetic_snapshot,
-            validate_snapshot
+            validate_snapshot,
+            list_roles
         ])
         .run(tauri::generate_context!())
         .expect("failed to run BestScout");

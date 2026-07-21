@@ -6,69 +6,101 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub enum Attribute {
     Acceleration,
+    AerialReach,
     Aggression,
     Agility,
     Anticipation,
     Balance,
     Bravery,
+    CommandOfArea,
+    Communication,
     Composure,
     Concentration,
+    Corners,
     Crossing,
     Decisions,
     Determination,
     Dribbling,
+    Eccentricity,
     Finishing,
     FirstTouch,
     Flair,
+    FreeKickTaking,
+    Handling,
     Heading,
     JumpingReach,
+    Kicking,
     Leadership,
     LongShots,
+    LongThrows,
     Marking,
+    NaturalFitness,
     OffTheBall,
+    OneOnOnes,
     Pace,
     Passing,
+    PenaltyTaking,
     Positioning,
+    PunchingTendency,
+    Reflexes,
+    RushingOutTendency,
     Stamina,
     Strength,
     Tackling,
     Teamwork,
     Technique,
+    Throwing,
     Vision,
     WorkRate,
 }
 
 impl Attribute {
-    pub const ALL: [Self; 31] = [
+    pub const ALL: [Self; 47] = [
         Self::Acceleration,
+        Self::AerialReach,
         Self::Aggression,
         Self::Agility,
         Self::Anticipation,
         Self::Balance,
         Self::Bravery,
+        Self::CommandOfArea,
+        Self::Communication,
         Self::Composure,
         Self::Concentration,
+        Self::Corners,
         Self::Crossing,
         Self::Decisions,
         Self::Determination,
         Self::Dribbling,
+        Self::Eccentricity,
         Self::Finishing,
         Self::FirstTouch,
         Self::Flair,
+        Self::FreeKickTaking,
+        Self::Handling,
         Self::Heading,
         Self::JumpingReach,
+        Self::Kicking,
         Self::Leadership,
         Self::LongShots,
+        Self::LongThrows,
         Self::Marking,
+        Self::NaturalFitness,
         Self::OffTheBall,
+        Self::OneOnOnes,
         Self::Pace,
         Self::Passing,
+        Self::PenaltyTaking,
         Self::Positioning,
+        Self::PunchingTendency,
+        Self::Reflexes,
+        Self::RushingOutTendency,
         Self::Stamina,
         Self::Strength,
         Self::Tackling,
         Self::Teamwork,
         Self::Technique,
+        Self::Throwing,
         Self::Vision,
         Self::WorkRate,
     ];
@@ -341,6 +373,8 @@ pub struct DatabaseSnapshot {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use super::*;
 
     #[test]
@@ -360,5 +394,14 @@ mod tests {
         assert_eq!(details.reputation, Some(4200));
         assert!(!details.status.injured);
         assert!(details.contract.is_none());
+    }
+
+    #[test]
+    fn exposes_every_outfield_and_goalkeeping_attribute_once() {
+        assert_eq!(Attribute::ALL.len(), 47);
+        assert_eq!(
+            Attribute::ALL.into_iter().collect::<BTreeSet<_>>().len(),
+            47
+        );
     }
 }
