@@ -31,6 +31,7 @@ and editing tools while remaining local, transparent and safe.
 - Squad depth, age, contract, wage and succession-risk analysis
 - Persistent shortlists with favourites, tags, notes and JSON/CSV/HTML exchange
 - Fully populated HeroUI player table with accessible shortlist actions
+- Complete searchable HeroUI tables for every player, staff, club and competition field
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.

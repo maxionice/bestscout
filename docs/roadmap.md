@@ -15,7 +15,7 @@
 - [x] Composable player query protocol and deterministic global search
 - [x] HeroUI global-search workspace and advanced player filter surface
 - [x] Two-phase HeroUI role explorer and dynamic backend rankings
-- [ ] Complete player, staff and club tables
+- [x] Complete player, staff, club and competition tables
 - [x] Saved views and custom columns
 - [x] All FM26 in/out-of-possession role attribute profiles
 - [x] Multi-player comparison, role-weighted radar charts and similar-player search

@@ -63,6 +63,7 @@ export type Staff = {
   potential_ability: number | null;
   reputation: number | null;
   attributes: Record<string, number>;
+  contract?: Contract | null;
 };
 
 export type Club = {
@@ -72,6 +73,22 @@ export type Club = {
   nation: string | null;
   competition: string | null;
   reputation: number | null;
+  professional_status?: string | null;
+  stadium?: string | null;
+  stadium_capacity?: number | null;
+  average_attendance?: number | null;
+  finances?: {
+    balance: number | null;
+    transfer_budget: number | null;
+    wage_budget: number | null;
+    debt: number | null;
+  };
+  facilities?: {
+    training: number | null;
+    youth: number | null;
+    youth_recruitment: number | null;
+    junior_coaching: number | null;
+  };
 };
 
 export type Competition = {
@@ -80,6 +97,8 @@ export type Competition = {
   short_name: string | null;
   nation: string | null;
   reputation: number | null;
+  current_champion?: string | null;
+  level?: number | null;
 };
 
 export type DatabaseSnapshot = {
