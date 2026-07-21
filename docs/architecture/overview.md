@@ -22,6 +22,9 @@ build compatibility, target identity and range checks. The writer records origin
 bytes/values, applies the change, reads it back and commits the journal only after
 verification.
 
+The adapter-independent transaction and persistence design is specified in the
+[editor architecture](editor.md).
+
 ## Canonical snapshots and queries
 
 All adapters produce a schema-versioned `DatabaseSnapshot` containing players,

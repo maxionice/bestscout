@@ -1,4 +1,9 @@
+mod editor_store;
+
 use bestscout_core::ImportResult;
+use tauri::Manager;
+
+use editor_store::EditorStore;
 
 #[tauri::command]
 fn parse_csv(contents: String) -> Result<ImportResult, String> {
@@ -33,6 +38,58 @@ async fn load_live_snapshot() -> Result<bestscout_core::DatabaseSnapshot, String
     })
     .await
     .map_err(|error| format!("Live-Snapshot-Aufgabe fehlgeschlagen: {error}"))?
+}
+
+#[tauri::command]
+async fn apply_snapshot_transaction(
+    store: tauri::State<'_, EditorStore>,
+    journal_id: String,
+    snapshot: bestscout_core::DatabaseSnapshot,
+    transaction: bestscout_core::EditTransaction,
+) -> Result<bestscout_core::AppliedTransaction, String> {
+    let store = store.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || store.apply(&journal_id, &snapshot, &transaction))
+        .await
+        .map_err(|error| format!("Editor-Aufgabe fehlgeschlagen: {error}"))?
+}
+
+#[tauri::command]
+async fn undo_snapshot_transaction(
+    store: tauri::State<'_, EditorStore>,
+    journal_id: String,
+    snapshot: bestscout_core::DatabaseSnapshot,
+    transaction_id: String,
+    undo_id: String,
+    created_at_utc: String,
+) -> Result<bestscout_core::AppliedTransaction, String> {
+    let store = store.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        store.undo(
+            &journal_id,
+            &snapshot,
+            &transaction_id,
+            &undo_id,
+            &created_at_utc,
+        )
+    })
+    .await
+    .map_err(|error| format!("Editor-Undo-Aufgabe fehlgeschlagen: {error}"))?
+}
+
+#[tauri::command]
+fn editor_history(
+    store: tauri::State<'_, EditorStore>,
+    journal_id: String,
+) -> Result<bestscout_core::TransactionJournal, String> {
+    store.history(&journal_id)
+}
+
+#[tauri::command]
+fn restore_snapshot_backup(
+    store: tauri::State<'_, EditorStore>,
+    snapshot_hash: String,
+) -> Result<bestscout_core::DatabaseSnapshot, String> {
+    store.restore(&snapshot_hash)
 }
 
 #[tauri::command]
@@ -120,10 +177,19 @@ fn import_shortlist(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            let root = app.path().app_data_dir()?.join("editor");
+            app.manage(EditorStore::new(root));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             parse_csv,
             detect_fm26,
             load_live_snapshot,
+            apply_snapshot_transaction,
+            undo_snapshot_transaction,
+            editor_history,
+            restore_snapshot_backup,
             inspect_fm26_process,
             search_database,
             query_players,

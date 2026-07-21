@@ -33,6 +33,8 @@ and editing tools while remaining local, transparent and safe.
 - Persistent shortlists with favourites, tags, notes and JSON/CSV/HTML exchange
 - Fully populated HeroUI player table with accessible shortlist actions
 - Complete searchable HeroUI tables for every player, staff, club and competition field
+- Atomic canonical edit transactions with exact preview conflicts, private backups,
+  a hash-chained journal, read-back verification and exact undo
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.
@@ -57,9 +59,10 @@ cargo run -p bestscout-live --bin bestscout-diagnose
 
 ## Safety
 
-Unknown Football Manager builds will always be read-only. Future editor writes
-must be validated, journaled and reversible. Do not report sensitive save data in
-public issues; see [SECURITY.md](SECURITY.md).
+Unknown Football Manager builds will always be read-only. The canonical editor
+engine is validated, journaled and reversible, but live writes remain unavailable
+until a field-level FM26 adapter passes the same gates. Do not report sensitive
+save data in public issues; see [SECURITY.md](SECURITY.md).
 
 ## License
 
