@@ -33,6 +33,12 @@ cargo test --workspace
 npm run tauri -- dev
 ```
 
+Diagnose the local FM26/Proton environment without starting the UI:
+
+```bash
+cargo run -p bestscout-live --bin bestscout-diagnose
+```
+
 ## Safety
 
 Unknown Football Manager builds will always be read-only. Future editor writes

@@ -1,5 +1,9 @@
 [workspace]
-members = ["crates/bestscout-core", "apps/desktop/src-tauri"]
+members = [
+    "crates/bestscout-core",
+    "crates/bestscout-live",
+    "apps/desktop/src-tauri",
+]
 resolver = "2"
 
 [workspace.package]
