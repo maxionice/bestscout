@@ -23,6 +23,7 @@ and editing tools while remaining local, transparent and safe.
 - Validated global search and composable player-query engine
 - HeroUI global-search workspace and advanced player filters
 - Custom frameless Linux title bar with native window controls
+- All 47 player attributes and 86 FM26 in/out-of-possession role profiles
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.

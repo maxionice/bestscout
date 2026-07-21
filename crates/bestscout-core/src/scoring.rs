@@ -8,7 +8,31 @@ use crate::{Attribute, Player};
 pub struct RoleProfile {
     pub id: String,
     pub name: String,
+    pub phase: RolePhase,
+    pub family: RoleFamily,
     pub weights: BTreeMap<Attribute, f64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RolePhase {
+    InPossession,
+    OutOfPossession,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RoleFamily {
+    Goalkeeper,
+    CentreBack,
+    FullBack,
+    WingBack,
+    DefensiveMidfield,
+    CentralMidfield,
+    AttackingMidfield,
+    WideMidfield,
+    Winger,
+    Forward,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -66,87 +90,6 @@ pub fn score_player(player: &Player, role: &RoleProfile) -> ScoreBreakdown {
     }
 }
 
-fn role(id: &str, name: &str, weights: &[(Attribute, f64)]) -> RoleProfile {
-    RoleProfile {
-        id: id.into(),
-        name: name.into(),
-        weights: weights.iter().copied().collect(),
-    }
-}
-
-pub fn builtin_roles() -> Vec<RoleProfile> {
-    use Attribute::*;
-    vec![
-        role(
-            "ball_playing_defender",
-            "Ball Playing Defender",
-            &[
-                (Marking, 1.0),
-                (Tackling, 1.0),
-                (Positioning, 1.0),
-                (Anticipation, 1.0),
-                (Concentration, 0.8),
-                (Composure, 0.9),
-                (Passing, 0.8),
-                (Technique, 0.6),
-                (Heading, 0.7),
-                (JumpingReach, 0.7),
-                (Strength, 0.6),
-                (Pace, 0.5),
-            ],
-        ),
-        role(
-            "deep_lying_playmaker",
-            "Deep Lying Playmaker",
-            &[
-                (Passing, 1.0),
-                (Vision, 1.0),
-                (Decisions, 1.0),
-                (FirstTouch, 0.9),
-                (Technique, 0.9),
-                (Composure, 0.8),
-                (Teamwork, 0.6),
-                (Positioning, 0.5),
-                (Anticipation, 0.6),
-                (OffTheBall, 0.4),
-            ],
-        ),
-        role(
-            "inside_forward",
-            "Inside Forward",
-            &[
-                (Dribbling, 1.0),
-                (Finishing, 1.0),
-                (OffTheBall, 1.0),
-                (Acceleration, 0.9),
-                (Pace, 0.9),
-                (Technique, 0.8),
-                (FirstTouch, 0.7),
-                (Flair, 0.7),
-                (Composure, 0.7),
-                (Decisions, 0.6),
-            ],
-        ),
-        role(
-            "pressing_forward",
-            "Pressing Forward",
-            &[
-                (WorkRate, 1.0),
-                (Teamwork, 0.9),
-                (Stamina, 0.9),
-                (Aggression, 0.9),
-                (OffTheBall, 0.8),
-                (Anticipation, 0.7),
-                (Pace, 0.7),
-                (Acceleration, 0.7),
-                (Finishing, 0.6),
-                (Strength, 0.5),
-                (Decisions, 0.5),
-            ],
-        ),
-    ]
-}
-
 fn round2(value: f64) -> f64 {
     (value * 100.0).round() / 100.0
 }
@@ -173,11 +116,15 @@ mod tests {
             attributes: [(Passing, 20), (Vision, 10)].into_iter().collect(),
             details: Default::default(),
         };
-        let profile = role(
-            "playmaker",
-            "Playmaker",
-            &[(Passing, 1.0), (Vision, 1.0), (Technique, 1.0)],
-        );
+        let profile = RoleProfile {
+            id: "playmaker".into(),
+            name: "Playmaker".into(),
+            phase: RolePhase::InPossession,
+            family: RoleFamily::CentralMidfield,
+            weights: [(Passing, 1.0), (Vision, 1.0), (Technique, 1.0)]
+                .into_iter()
+                .collect(),
+        };
         let result = score_player(&player, &profile);
         assert_eq!(result.score, 75.0);
         assert_eq!(result.coverage, 66.67);

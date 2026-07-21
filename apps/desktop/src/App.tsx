@@ -18,6 +18,7 @@ const nav = [
 ] as const;
 
 const money = new Intl.NumberFormat("de-DE", { notation: "compact", style: "currency", currency: "EUR", maximumFractionDigits: 1 });
+const totalPlayerAttributes = 47;
 
 function score(player: Player) {
   const keys = ["passing", "vision", "decisions", "first_touch", "technique", "composure"];
@@ -200,7 +201,7 @@ export default function App() {
           <Metric label="Spieler im Datensatz" value={players.length.toLocaleString("de-DE")} detail="Aktueller Import" />
           <Metric label="U21-Talente" value={players.filter((p) => (p.age ?? 99) <= 21).length.toString()} detail="Potenzialanalyse" accent />
           <Metric label="Auf Shortlist" value={shortlist.size.toString()} detail="Lokale Auswahl" />
-          <Metric label="Datenabdeckung" value={`${Math.round(players.reduce((sum, p) => sum + Object.keys(p.attributes).length, 0) / Math.max(players.length, 1) / 30 * 100)}%`} detail="Attribute erkannt" />
+          <Metric label="Datenabdeckung" value={`${Math.round(players.reduce((sum, p) => sum + Object.keys(p.attributes).length, 0) / Math.max(players.length, 1) / totalPlayerAttributes * 100)}%`} detail="47 FM26-Attribute" />
         </section>
 
         {active === "Live-Spiel" ? (

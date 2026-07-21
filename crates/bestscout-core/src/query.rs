@@ -343,7 +343,7 @@ pub fn query_players(players: &[Player], query: &PlayerQuery) -> PlayerQueryResu
     let role = query
         .role_id
         .as_deref()
-        .and_then(|id| builtin_roles().into_iter().find(|role| role.id == id));
+        .and_then(|id| builtin_roles().iter().find(|role| role.id == id));
     let mut rows: Vec<_> = players
         .iter()
         .filter(|player| query.filter.matches(player))
