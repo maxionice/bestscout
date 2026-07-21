@@ -1,3 +1,15 @@
+export type GameDate = { year: number; month: number; day: number };
+
+export type Contract = {
+  club_id?: string | null;
+  starts_on?: GameDate | null;
+  expires_on?: GameDate | null;
+  contract_type?: "full_time" | "part_time" | "youth" | "non_contract" | "loan" | "unknown";
+  wage?: number | null;
+  release_clause?: number | null;
+  squad_status?: string | null;
+};
+
 export type Player = {
   id: string;
   name: string;
@@ -12,6 +24,7 @@ export type Player = {
   potential_ability: number | null;
   attributes: Record<string, number>;
   details?: {
+    date_of_birth?: GameDate | null;
     reputation: number | null;
     international_reputation: number | null;
     consistency: number | null;
@@ -20,6 +33,14 @@ export type Player = {
     versatility: number | null;
     professionalism: number | null;
     ambition: number | null;
+    contract?: Contract | null;
+    status?: {
+      transfer_listed: boolean;
+      loan_listed: boolean;
+      injured: boolean;
+      suspended: boolean;
+      unavailable: boolean;
+    };
     tags: string[];
     note: string | null;
   };
@@ -128,6 +149,64 @@ export type SimilarPlayer = {
   similarity: number;
   coverage: number;
   role_score: RoleScore | null;
+};
+
+export type SquadAnalysis = {
+  as_of: GameDate;
+  player_count: number;
+  average_age: number | null;
+  weekly_wage_total: number;
+  annual_wage_total: number;
+  average_weekly_wage: number | null;
+  expiring_within_year: number;
+  age_bands: AnalysisBucket[];
+  contract_windows: AnalysisBucket[];
+  position_groups: PositionGroupAnalysis[];
+  succession_risks: SuccessionRisk[];
+  wage_outliers: WageOutlier[];
+};
+
+export type AnalysisBucket = {
+  id: string;
+  label: string;
+  count: number;
+  weekly_wage: number;
+};
+
+export type PositionGroupAnalysis = {
+  id: string;
+  label: string;
+  count: number;
+  average_age: number | null;
+  average_current_ability: number | null;
+  highest_current_ability: number | null;
+  under_23_count: number;
+  players: SquadPlayerSummary[];
+};
+
+export type SquadPlayerSummary = {
+  id: string;
+  name: string;
+  age: number | null;
+  current_ability: number | null;
+  potential_ability: number | null;
+  weekly_wage: number | null;
+  contract_expires_on: GameDate | null;
+};
+
+export type SuccessionRisk = {
+  position_group_id: string;
+  position_group_label: string;
+  severity: "critical" | "warning" | "watch";
+  reasons: string[];
+};
+
+export type WageOutlier = {
+  player_id: string;
+  player_name: string;
+  weekly_wage: number;
+  share_of_total: number;
+  multiple_of_average: number;
 };
 
 export type LiveEnvironment = {

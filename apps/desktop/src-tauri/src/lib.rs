@@ -69,6 +69,14 @@ fn find_similar_players(
     ))
 }
 
+#[tauri::command]
+fn analyse_squad(
+    players: Vec<bestscout_core::Player>,
+    as_of: bestscout_core::GameDate,
+) -> bestscout_core::SquadAnalysis {
+    bestscout_core::analyse_squad(&players, as_of)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -81,7 +89,8 @@ pub fn run() {
             load_synthetic_snapshot,
             validate_snapshot,
             list_roles,
-            find_similar_players
+            find_similar_players,
+            analyse_squad
         ])
         .run(tauri::generate_context!())
         .expect("failed to run BestScout");

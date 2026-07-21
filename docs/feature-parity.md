@@ -13,7 +13,7 @@ build. Read and write capabilities are tracked separately.
 - [ ] Peak-attribute projection and development probability
 - [ ] Wonderkid, bargain, free-agent and expiring-contract lists
 - [x] Player comparison, similar-player search and replacement suggestions
-- [ ] Squad depth, age, wage, contract and succession analysis
+- [x] Squad depth, age, wage, contract and succession analysis
 - [ ] Shortlists, favourites, tags, notes and CSV/JSON/HTML export
 
 ## Player and staff editing
