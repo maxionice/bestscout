@@ -2,6 +2,7 @@
 members = [
     "crates/bestscout-core",
     "crates/bestscout-live",
+    "crates/bestscout-packaging",
     "apps/desktop/src-tauri",
 ]
 resolver = "2"

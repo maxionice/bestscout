@@ -1,0 +1,16 @@
+[package]
+name = "bestscout-packaging"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+ar = "=0.9.0"
+flate2 = "=1.1.9"
+heck = "0.5.0"
+rpm = { version = "=0.16.0", default-features = false, features = ["gzip-compression"] }
+serde_json.workspace = true
+tar = "=0.4.44"
+walkdir = "=2.5.0"

@@ -1,4 +1,4 @@
-# Linux release acceptance — 2026-07-22
+# Linux release acceptance — 2026-07-23
 
 This record covers the package-set, Steam Deck and signed-publication gates. It
 does not claim FM26 live-adapter or native Steam Deck hardware acceptance.
@@ -19,6 +19,9 @@ does not claim FM26 live-adapter or native Steam Deck hardware acceptance.
   manifest. A regression fixture covers a populated output directory.
 - The Linux bundle CI job calls the same local packaging entrypoint rather than
   maintaining a second build recipe; release metadata validation enforces this.
+- Native builds pin the timestamp, timezone and locale to the source commit.
+  AppImage consumes `SOURCE_DATE_EPOCH`; bounded DEB and RPM normalization removes
+  current archive/build timestamps before signature and checksum verification.
 - The tag workflow creates a draft before uploads, validates and checksums the
   complete set, generates SLSA provenance with the commit-pinned
   `actions/attest@v4.2.0`, verifies every subject and publishes only at the final
@@ -56,6 +59,20 @@ The Flatpak build directory additionally passed `appstreamcli validate --no-net`
 `desktop-file-validate` and a read-only sandbox probe. The probe exposed the
 expected `FLATPAK_ID=io.github.maxionice.bestscout` and only five processes in
 its private `/proc` namespace.
+
+Two complete native-package builds from the same commit were then run with
+`SOURCE_DATE_EPOCH=1784757997`, `TZ=UTC` and `LC_ALL=C`. All three independently
+copied outputs compared byte for byte with `cmp`:
+
+| Reproducible native artifact | Bytes | SHA-256 in both builds |
+| --- | ---: | --- |
+| `BestScout_0.1.0_amd64.AppImage` | 108,104,184 | `897d954bc2819e04c995d1d73e3a8ce16253db0b993c43b7ea1cd859e4564960` |
+| `BestScout_0.1.0_amd64.deb` | 5,087,892 | `ef6015672b0a23fe0b40e7f6188a7fe1e07e2f366b5dfbde8b2486622de93cde` |
+| `BestScout-0.1.0-1.x86_64.rpm` | 5,111,182 | `50f4e5b7187c6df049f538643a2834696f1ae1fac2c32860840fa6671d68b290` |
+
+This closes the native byte-reproducibility check only. The signed tag workflow,
+published artifacts and cross-distribution installation remain separate runtime
+gates below.
 
 ## Remaining acceptance gates
 
