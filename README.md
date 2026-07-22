@@ -77,6 +77,9 @@ See [the roadmap](docs/roadmap.md) and
 The exact resumable development state is recorded in
 [the current handoff](docs/handoff.md).
 
+User documentation: [English](docs/user-guide.en.md) ·
+[Deutsch](docs/user-guide.de.md)
+
 ## Development
 
 Requirements: Node.js 22+, Rust 1.85+ and the
