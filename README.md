@@ -89,7 +89,7 @@ User documentation: [English](docs/user-guide.en.md) ·
 
 ## Development
 
-Requirements: Node.js 22+, Rust 1.85+ and the
+Requirements: Node.js 22+, the repository-pinned Rust 1.97.1 toolchain and the
 [Tauri 2 Linux prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ```bash

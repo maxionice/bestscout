@@ -38,6 +38,10 @@ by this invocation. The `NO_STRIP=1` environment setting is intentional: it
 avoids incompatibility between linuxdeploy's bundled `strip` and modern ELF RELR
 sections on rolling Linux distributions.
 
+The `linux-bundles` CI job invokes this same script directly. Release-metadata
+validation locks that entrypoint in place, preventing CI and documented local
+packaging from silently diverging.
+
 To build the offline Flatpak after the native binary exists:
 
 ```bash

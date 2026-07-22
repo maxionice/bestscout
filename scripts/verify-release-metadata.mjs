@@ -22,6 +22,7 @@ const bridgeProject = text("bridge/BestScout.Bridge/BestScout.Bridge.csproj");
 const flatpakManifest = text("packaging/flatpak/io.github.maxionice.bestscout.yml");
 const flatpakMetadata = text("packaging/flatpak/io.github.maxionice.bestscout.metainfo.xml");
 const desktopEntry = text("packaging/flatpak/io.github.maxionice.bestscout.desktop");
+const ciWorkflow = text(".github/workflows/ci.yml");
 const releaseWorkflow = text(".github/workflows/release.yml");
 const localBuildScript = text("scripts/build-linux-packages.sh");
 const deckLauncher = text("packaging/steam-deck/launch-bestscout.sh");
@@ -133,6 +134,9 @@ if (releaseWorkflow.includes("release-artifacts/* --clobber")) {
 }
 if (!localBuildScript.includes("--write-checksums --native-only")) {
   fail("the local native build must exclude pre-existing optional release artifacts");
+}
+if (!ciWorkflow.includes("run: scripts/build-linux-packages.sh")) {
+  fail("Linux bundle CI must exercise the canonical local package entrypoint");
 }
 const attestAt = releaseWorkflow.indexOf(attestAction);
 const publishAt = releaseWorkflow.indexOf('gh release edit "$GITHUB_REF_NAME" --draft=false');

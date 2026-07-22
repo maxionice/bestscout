@@ -57,9 +57,5 @@ jobs:
         with:
           toolchain: 1.97.1
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-      - run: npm ci
-      - name: Build native Linux bundles
-        env:
-          NO_STRIP: "1"
-        run: npm run tauri --workspace @bestscout/desktop -- build --bundles appimage,deb,rpm
-      - run: node scripts/verify-linux-bundles.mjs
+      - name: Build and verify native Linux bundles through the release entrypoint
+        run: scripts/build-linux-packages.sh
