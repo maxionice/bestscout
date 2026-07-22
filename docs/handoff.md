@@ -13,6 +13,7 @@ bewusst offen.
 - Öffentliches Repository: `https://github.com/maxionice/bestscout`
 - Stabiler `main`: `cb2191b225145098e285d733ebab57d0dca1423e`
 - Letzter Merge: PR #24, vollständiges Transfer Center
+- RPM-Metadaten-Härtung: `e9f40c31f117e6705a969d028f605ca783e4bbcf`
 
 Der aktuelle Stack ist absichtlich linear:
 
@@ -124,9 +125,15 @@ bytegleich zur aktuellen nativen AppImage sein.
 Zwei vollständige Native-Paketläufe des Commits
 `c9dc9907324489fe9b48a9698425b843f84809d1` mit dessen abgeleitetem
 `SOURCE_DATE_EPOCH=1784760638`, UTC und C-Locale ergaben bytegleiche AppImage-,
-DEB- und RPM-Dateien. Das RPM bewahrt dabei Tauri's automatisch ermittelte GTK-
-und WebKitGTK-Laufzeitabhängigkeiten. Die unabhängigen Kopien bestanden jeweils
-`cmp`; die belegten SHA-256-Werte stehen in der
+DEB- und RPM-Dateien. Die nachgelagerte Härtung
+`e9f40c31f117e6705a969d028f605ca783e4bbcf` verschärft die unverändert
+bytegleichen RPMs zusätzlich: Der Normalisierer übernimmt und verifiziert alle
+acht von Tauri erzeugten Abhängigkeitsklassen (`Requires`, `Provides`,
+`Recommends`, `Conflicts`, `Obsoletes`, `Suggests`, `Enhances`, `Supplements`),
+während nur die von der RPM-Bibliothek deterministisch neu erzeugten
+`rpmlib(...)`- und Selbst-Provides aus dem Vergleich ausgenommen werden. Die
+unabhängigen Kopien bestanden jeweils `cmp`; die belegten SHA-256-Werte stehen
+in der
 [`Linux-Release-Abnahme`](acceptance/linux-release.md). Damit ist die native
 Byte-Reproduzierbarkeit nachgewiesen. Das übergeordnete 1.0-Gate bleibt bis zum
 realen signierten Tag-Workflow und zur Installationsabnahme offen.
