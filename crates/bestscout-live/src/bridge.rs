@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs,
     io::{self, BufRead, BufReader, Read, Write},
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
@@ -24,6 +25,9 @@ const MAXIMUM_PLAYERS: u32 = 500_000;
 const MAXIMUM_STAFF: u32 = 250_000;
 const MAXIMUM_CLUBS: u32 = 50_000;
 const MAXIMUM_COMPETITIONS: u32 = 20_000;
+const MAXIMUM_REFERENCE_TYPES: usize = 8;
+const MAXIMUM_PROPERTIES_PER_REFERENCE: u32 = 10_000;
+const MAXIMUM_TOTAL_REFERENCE_PROPERTIES: u32 = 20_000;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BridgeDescriptor {
@@ -88,6 +92,39 @@ pub struct DomainRootStatus {
     pub interop_subsystem_count: u32,
     pub database_factory_available: bool,
     pub reference_metadata: DomainReferenceMetadata,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReferenceCatalogState {
+    WaitingForGame,
+    CatalogReady,
+    CatalogFailed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReferencePropertyMetadata {
+    pub property_id: u32,
+    pub description: String,
+    pub binding_kind: String,
+    pub reference_id: u32,
+    pub value_type: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReferenceTypeCatalog {
+    pub name: String,
+    pub property_count: u32,
+    pub properties: Vec<ReferencePropertyMetadata>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReferenceCatalogStatus {
+    pub schema_version: u32,
+    pub generated_at_utc: String,
+    pub state: ReferenceCatalogState,
+    pub references: Vec<ReferenceTypeCatalog>,
     pub error: Option<String>,
 }
 
@@ -195,6 +232,8 @@ pub enum BridgeError {
     InvalidManifest(String),
     #[error("bridge domain-root status is invalid: {0}")]
     InvalidDomainRoots(String),
+    #[error("bridge reference catalog is invalid: {0}")]
+    InvalidReferenceCatalog(String),
     #[error("bridge snapshot page is invalid: {0}")]
     InvalidPage(String),
     #[error("live snapshot failed canonical validation with {0} issue(s)")]
@@ -257,6 +296,12 @@ impl BridgeClient {
         let status = self.request("domain_roots", None)?;
         validate_domain_roots(&status)?;
         Ok(status)
+    }
+
+    pub fn reference_catalog(&self) -> Result<ReferenceCatalogStatus, BridgeError> {
+        let catalog = self.request("reference_catalog", None)?;
+        validate_reference_catalog(&catalog)?;
+        Ok(catalog)
     }
 
     pub fn snapshot_manifest(&self) -> Result<SnapshotManifest, BridgeError> {
@@ -541,6 +586,112 @@ fn validate_domain_roots(status: &DomainRootStatus) -> Result<(), BridgeError> {
     Ok(())
 }
 
+fn validate_reference_catalog(catalog: &ReferenceCatalogStatus) -> Result<(), BridgeError> {
+    if catalog.schema_version != 1
+        || catalog.generated_at_utc.is_empty()
+        || catalog.generated_at_utc.len() > 128
+        || catalog
+            .error
+            .as_ref()
+            .is_some_and(|error| error.len() > 512)
+    {
+        return Err(BridgeError::InvalidReferenceCatalog(
+            "catalog metadata exceeds protocol bounds".to_owned(),
+        ));
+    }
+
+    match catalog.state {
+        ReferenceCatalogState::WaitingForGame => {
+            if !catalog.references.is_empty() || catalog.error.is_some() {
+                return Err(BridgeError::InvalidReferenceCatalog(
+                    "waiting catalog must not expose references or an error".to_owned(),
+                ));
+            }
+            return Ok(());
+        }
+        ReferenceCatalogState::CatalogFailed => {
+            if !catalog.references.is_empty() || catalog.error.as_ref().is_none_or(String::is_empty)
+            {
+                return Err(BridgeError::InvalidReferenceCatalog(
+                    "failed catalog must expose only a bounded error".to_owned(),
+                ));
+            }
+            return Ok(());
+        }
+        ReferenceCatalogState::CatalogReady if catalog.error.is_some() => {
+            return Err(BridgeError::InvalidReferenceCatalog(
+                "ready catalog must not expose an error".to_owned(),
+            ));
+        }
+        ReferenceCatalogState::CatalogReady => {}
+    }
+
+    if catalog.references.len() != MAXIMUM_REFERENCE_TYPES {
+        return Err(BridgeError::InvalidReferenceCatalog(format!(
+            "ready catalog must contain {MAXIMUM_REFERENCE_TYPES} reference types"
+        )));
+    }
+    let expected_names = HashSet::from([
+        "game",
+        "person",
+        "club",
+        "competition",
+        "person_search",
+        "person_summary",
+        "club_summary",
+        "competition_summary",
+    ]);
+    let mut names = HashSet::new();
+    let mut total_properties = 0_u32;
+    for reference in &catalog.references {
+        if !names.insert(reference.name.as_str()) {
+            return Err(BridgeError::InvalidReferenceCatalog(format!(
+                "reference type {} occurs more than once",
+                reference.name
+            )));
+        }
+        if reference.property_count == 0
+            || reference.property_count > MAXIMUM_PROPERTIES_PER_REFERENCE
+            || reference.property_count as usize != reference.properties.len()
+        {
+            return Err(BridgeError::InvalidReferenceCatalog(format!(
+                "reference type {} has inconsistent or excessive property counts",
+                reference.name
+            )));
+        }
+        total_properties = total_properties.saturating_add(reference.property_count);
+        let mut property_ids = HashSet::new();
+        for property in &reference.properties {
+            if !property_ids.insert(property.property_id)
+                || property.description.is_empty()
+                || property.description.len() > 1_024
+                || property.binding_kind.is_empty()
+                || property.binding_kind.len() > 128
+                || property
+                    .value_type
+                    .as_ref()
+                    .is_some_and(|value_type| value_type.len() > 512)
+            {
+                return Err(BridgeError::InvalidReferenceCatalog(format!(
+                    "reference type {} contains invalid property metadata",
+                    reference.name
+                )));
+            }
+        }
+    }
+    if names != expected_names {
+        return Err(BridgeError::InvalidReferenceCatalog(
+            "ready catalog contains an unexpected reference type set".to_owned(),
+        ));
+    }
+    if total_properties > MAXIMUM_TOTAL_REFERENCE_PROPERTIES {
+        return Err(BridgeError::InvalidReferenceCatalog(format!(
+            "catalog contains {total_properties} properties, exceeding safety limit {MAXIMUM_TOTAL_REFERENCE_PROPERTIES}"
+        )));
+    }
+    Ok(())
+}
+
 pub fn probe_bridge(root: &Path) -> Result<BridgeProbe, BridgeError> {
     let client = BridgeClient::from_installation(root)?;
     let health = client.health()?;
@@ -767,6 +918,112 @@ mod tests {
         server.join().unwrap();
 
         assert_eq!(status.state, DomainRootState::WaitingForGame);
+    }
+
+    fn ready_reference_catalog() -> ReferenceCatalogStatus {
+        ReferenceCatalogStatus {
+            schema_version: 1,
+            generated_at_utc: "2026-07-22T04:00:00Z".to_owned(),
+            state: ReferenceCatalogState::CatalogReady,
+            references: [
+                "game",
+                "person",
+                "club",
+                "competition",
+                "person_search",
+                "person_summary",
+                "club_summary",
+                "competition_summary",
+            ]
+            .into_iter()
+            .enumerate()
+            .map(|(index, name)| ReferenceTypeCatalog {
+                name: name.to_owned(),
+                property_count: 1,
+                properties: vec![ReferencePropertyMetadata {
+                    property_id: index as u32 + 1,
+                    description: format!("{name}.name"),
+                    binding_kind: "Value".to_owned(),
+                    reference_id: 0,
+                    value_type: Some("System.String".to_owned()),
+                }],
+            })
+            .collect(),
+            error: None,
+        }
+    }
+
+    #[test]
+    fn validates_reference_catalog_states_and_unique_metadata() {
+        let mut catalog = ready_reference_catalog();
+        validate_reference_catalog(&catalog).unwrap();
+
+        catalog.references[1].name = "game".to_owned();
+        assert!(matches!(
+            validate_reference_catalog(&catalog),
+            Err(BridgeError::InvalidReferenceCatalog(_))
+        ));
+
+        catalog = ready_reference_catalog();
+        let duplicate_property = catalog.references[0].properties[0].clone();
+        catalog.references[0].properties.push(duplicate_property);
+        catalog.references[0].property_count = 2;
+        assert!(matches!(
+            validate_reference_catalog(&catalog),
+            Err(BridgeError::InvalidReferenceCatalog(_))
+        ));
+
+        catalog = ReferenceCatalogStatus {
+            schema_version: 1,
+            generated_at_utc: "2026-07-22T04:00:00Z".to_owned(),
+            state: ReferenceCatalogState::CatalogFailed,
+            references: Vec::new(),
+            error: Some("probe failed".to_owned()),
+        };
+        validate_reference_catalog(&catalog).unwrap();
+        catalog.error = None;
+        assert!(matches!(
+            validate_reference_catalog(&catalog),
+            Err(BridgeError::InvalidReferenceCatalog(_))
+        ));
+    }
+
+    #[test]
+    fn requests_an_authenticated_reference_catalog() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let served = ready_reference_catalog();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut line = String::new();
+            BufReader::new(stream.try_clone().unwrap())
+                .read_line(&mut line)
+                .unwrap();
+            let request: Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(request["method"], "reference_catalog");
+            assert_eq!(request["token"], "test-token");
+            writeln!(
+                stream,
+                "{}",
+                serde_json::json!({
+                    "protocol_version": 1,
+                    "id": request["id"],
+                    "ok": true,
+                    "result": served,
+                    "error": null
+                })
+            )
+            .unwrap();
+        });
+
+        let path = temporary_descriptor(port, 4245);
+        let client = BridgeClient::from_descriptor(&path).unwrap();
+        let catalog = client.reference_catalog().unwrap();
+        fs::remove_file(path).unwrap();
+        server.join().unwrap();
+
+        assert_eq!(catalog.state, ReferenceCatalogState::CatalogReady);
+        assert_eq!(catalog.references.len(), MAXIMUM_REFERENCE_TYPES);
     }
 
     #[test]

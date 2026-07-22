@@ -177,7 +177,7 @@ describe("BestScout desktop", () => {
       }],
       processes: [{ pid: 77, command: "fm.exe" }],
       bridge: {
-        health: { bridge_version: "0.3.0", pid: 77, read_only: true },
+        health: { bridge_version: "0.4.0", pid: 77, read_only: true },
         capabilities: { health: true, domain_read: false, domain_write: false },
         domain_roots: {
           schema_version: 1, checked_at_utc: "2026-07-22T02:00:00Z", state: "roots_resolved",
@@ -197,7 +197,7 @@ describe("BestScout desktop", () => {
         bridge_path: "/game/BepInEx/plugins/BestScout/BestScout.Bridge.dll",
         manifest_path: "/game/BepInEx/plugins/BestScout/bestscout-install.json",
         manifest: {
-          schema_version: 1, bridge_version: "0.3.0", profile_id: "fm26-steam-23583635",
+          schema_version: 1, bridge_version: "0.4.0", profile_id: "fm26-steam-23583635",
           bridge_filename: "BestScout.Bridge.dll", sha256: "a".repeat(64), size: 1024,
           installed_at_unix_seconds: 1,
         },
@@ -220,7 +220,7 @@ describe("BestScout desktop", () => {
 
     cleanup();
     render(<LiveWorkspace environment={{ ...environment, processes: [], bridge: null, process_access: null }} isDetecting={false} onDetect={() => undefined} />);
-    expect(screen.getByText("Bridge 0.3.0 installiert · FM26 starten")).toBeTruthy();
+    expect(screen.getByText("Bridge 0.4.0 installiert · FM26 starten")).toBeTruthy();
 
     cleanup();
     render(<LiveWorkspace environment={{ ...environment, runtime_sandbox: "flatpak", processes: [], bridge: null, process_access: null, process_inspection_allowed: false }} isDetecting={false} onDetect={() => undefined} />);

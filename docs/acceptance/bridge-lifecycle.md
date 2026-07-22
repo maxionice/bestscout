@@ -4,7 +4,7 @@ Date: 2026-07-21
 
 Profile: `fm26-steam-23583635`
 
-Bridge: `0.3.0`
+Bridge originally tested: `0.3.0`; current candidate: `0.4.0`
 
 ## Automated evidence
 
@@ -32,3 +32,9 @@ second status check still reported `not_installed`, and
 
 No plugin was copied, injected, updated or removed during this acceptance. The
 positive in-game domain-root acceptance remains pending until a normal FM restart.
+
+The same negative acceptance was repeated on 2026-07-22 with candidate `0.4.0`
+and artifact SHA-256
+`6e00672924f73f76c7450764e7eb875c43a3e6ac315710790404503a30cb8c5d`.
+The lifecycle command again named PID `1517254`, returned exit code 1, and a
+post-check proved that the BestScout plugin directory was still absent.

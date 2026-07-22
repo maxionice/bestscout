@@ -8,7 +8,7 @@ public sealed class Plugin : BasePlugin
 {
     public const string PluginId = "io.github.maxionice.bestscout.bridge";
     public const string PluginName = "BestScout Bridge";
-    public const string PluginVersion = "0.3.0";
+    public const string PluginVersion = "0.4.0";
 
     private BridgeServer? _server;
     private DomainSnapshotStore? _snapshots;
