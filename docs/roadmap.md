@@ -41,7 +41,8 @@
 
 - [x] Transaction journal, private backups, conflict detection and exact undo
 - [x] HeroUI v3 editor workspace with preview, history, restore and undo
-- [ ] Players, contracts, injuries and bans
+- [x] Canonical player fitness, morale, injury and ban analysis/editing workspace
+- [ ] Live player, contract, injury and ban field adapter acceptance
 - [ ] Clubs, finance and facilities
 - [x] Preset manager and validated, filtered mass edit
 - [ ] Immediate and future transfers

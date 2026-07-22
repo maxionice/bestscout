@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{DatabaseSnapshot, GameDate};
+use crate::{DatabaseSnapshot, GameDate, Player};
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
@@ -45,6 +45,19 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
             ),
         );
     }
+    if snapshot
+        .game_date
+        .is_some_and(|date| GameDate::new(date.year, date.month, date.day) != Some(date))
+    {
+        issue(
+            &mut issues,
+            "invalid_date",
+            "snapshot",
+            "root",
+            "game_date",
+            "game date is not a valid calendar date",
+        );
+    }
 
     validate_unique_ids(
         &mut issues,
@@ -71,6 +84,11 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
     );
 
     let club_ids: HashSet<_> = snapshot.clubs.iter().map(|club| club.id.as_str()).collect();
+    let competition_ids: HashSet<_> = snapshot
+        .competitions
+        .iter()
+        .map(|competition| competition.id.as_str())
+        .collect();
     for player in &snapshot.players {
         if player.name.trim().is_empty() {
             issue(
@@ -163,6 +181,7 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
                 );
             }
         }
+        validate_player_availability(&mut issues, player, &competition_ids);
         if let Some(contract) = &player.details.contract {
             validate_contract(
                 &mut issues,
@@ -327,6 +346,214 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
             .iter()
             .all(|issue| issue.severity != IssueSeverity::Error),
         issues,
+    }
+}
+
+fn validate_player_availability(
+    issues: &mut Vec<SnapshotIssue>,
+    player: &Player,
+    competition_ids: &HashSet<&str>,
+) {
+    for (field, value) in [
+        (
+            "details.fitness.condition",
+            player.details.fitness.condition,
+        ),
+        (
+            "details.fitness.match_fitness",
+            player.details.fitness.match_fitness,
+        ),
+        ("details.fitness.fatigue", player.details.fitness.fatigue),
+        (
+            "details.fitness.jadedness",
+            player.details.fitness.jadedness,
+        ),
+    ] {
+        if value.is_some_and(|value| value > 100) {
+            issue(
+                issues,
+                "fitness_out_of_range",
+                "player",
+                &player.id,
+                field,
+                "fitness percentage must be between 0 and 100",
+            );
+        }
+    }
+    for (field, value) in [
+        ("details.morale", player.details.morale),
+        ("details.happiness", player.details.happiness),
+    ] {
+        if value.is_some_and(|value| !(1..=20).contains(&value)) {
+            issue(
+                issues,
+                "wellbeing_out_of_range",
+                "player",
+                &player.id,
+                field,
+                "morale and happiness must be between 1 and 20",
+            );
+        }
+    }
+
+    if player.details.injuries.len() > 64 {
+        issue(
+            issues,
+            "too_many_injuries",
+            "player",
+            &player.id,
+            "details.injuries",
+            "a player may contain at most 64 injury records",
+        );
+    }
+    let mut injury_ids = HashSet::new();
+    for (index, injury) in player.details.injuries.iter().enumerate() {
+        let prefix = format!("details.injuries.{index}");
+        if injury.id.trim().is_empty()
+            || injury.id.len() > 128
+            || !injury_ids.insert(injury.id.as_str())
+        {
+            issue(
+                issues,
+                "invalid_injury_id",
+                "player",
+                &player.id,
+                format!("{prefix}.id"),
+                "injury ID must be non-empty, bounded and unique per player",
+            );
+        }
+        if injury.name.trim().is_empty() || injury.name.len() > 256 {
+            issue(
+                issues,
+                "invalid_injury_name",
+                "player",
+                &player.id,
+                format!("{prefix}.name"),
+                "injury name must be non-empty and at most 256 bytes",
+            );
+        }
+        validate_date_range(
+            issues,
+            "player",
+            &player.id,
+            &prefix,
+            ("started_on", injury.started_on),
+            ("expected_return", injury.expected_return),
+        );
+        if injury.days_remaining.is_some_and(|days| days > 3_650) {
+            issue(
+                issues,
+                "injury_duration_out_of_range",
+                "player",
+                &player.id,
+                format!("{prefix}.days_remaining"),
+                "injury duration may not exceed 3650 days",
+            );
+        }
+    }
+
+    if player.details.bans.len() > 64 {
+        issue(
+            issues,
+            "too_many_bans",
+            "player",
+            &player.id,
+            "details.bans",
+            "a player may contain at most 64 ban records",
+        );
+    }
+    let mut ban_ids = HashSet::new();
+    for (index, ban) in player.details.bans.iter().enumerate() {
+        let prefix = format!("details.bans.{index}");
+        if ban.id.trim().is_empty() || ban.id.len() > 128 || !ban_ids.insert(ban.id.as_str()) {
+            issue(
+                issues,
+                "invalid_ban_id",
+                "player",
+                &player.id,
+                format!("{prefix}.id"),
+                "ban ID must be non-empty, bounded and unique per player",
+            );
+        }
+        if ban.reason.trim().is_empty() || ban.reason.len() > 256 {
+            issue(
+                issues,
+                "invalid_ban_reason",
+                "player",
+                &player.id,
+                format!("{prefix}.reason"),
+                "ban reason must be non-empty and at most 256 bytes",
+            );
+        }
+        if ban
+            .competition_id
+            .as_deref()
+            .is_some_and(|id| !competition_ids.contains(id))
+        {
+            issue(
+                issues,
+                "unknown_competition_reference",
+                "player",
+                &player.id,
+                format!("{prefix}.competition_id"),
+                "ban references a competition that is not in the snapshot",
+            );
+        }
+        validate_date_range(
+            issues,
+            "player",
+            &player.id,
+            &prefix,
+            ("starts_on", ban.starts_on),
+            ("ends_on", ban.ends_on),
+        );
+        if ban.matches_remaining.is_some_and(|matches| matches > 1_000) {
+            issue(
+                issues,
+                "ban_length_out_of_range",
+                "player",
+                &player.id,
+                format!("{prefix}.matches_remaining"),
+                "ban length may not exceed 1000 matches",
+            );
+        }
+    }
+}
+
+fn validate_date_range(
+    issues: &mut Vec<SnapshotIssue>,
+    entity_kind: &str,
+    entity_id: &str,
+    prefix: &str,
+    start: (&str, Option<GameDate>),
+    end: (&str, Option<GameDate>),
+) {
+    let (start_field, starts_on) = start;
+    let (end_field, ends_on) = end;
+    for (field, date) in [(start_field, starts_on), (end_field, ends_on)] {
+        if date.is_some_and(|date| GameDate::new(date.year, date.month, date.day) != Some(date)) {
+            issue(
+                issues,
+                "invalid_date",
+                entity_kind,
+                entity_id,
+                format!("{prefix}.{field}"),
+                "date is not a valid calendar date",
+            );
+        }
+    }
+    if starts_on
+        .zip(ends_on)
+        .is_some_and(|(start, end)| start > end)
+    {
+        issue(
+            issues,
+            "invalid_date_range",
+            entity_kind,
+            entity_id,
+            format!("{prefix}.{end_field}"),
+            "end date must not be before start date",
+        );
     }
 }
 

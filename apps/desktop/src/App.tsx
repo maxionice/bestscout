@@ -5,8 +5,9 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   Activity, BarChart3, Building2, CheckCircle2, ChevronDown, CircleOff, Database,
   FileUp, Filter, Fingerprint, LayoutDashboard, LockKeyhole, RefreshCw, Search, TableProperties,
-  ShieldCheck, Star, Trophy, UserRoundCog, Users, Zap, Minus, Square, X, PencilLine, Sparkles, Snowflake,
+  ShieldCheck, Star, Trophy, UserRoundCog, Users, Zap, Minus, Square, X, PencilLine, Sparkles, Snowflake, HeartPulse,
 } from "lucide-react";
+import { AvailabilityWorkspace } from "./AvailabilityWorkspace";
 import { demoPlayers } from "./demo";
 import { ComparisonWorkspace } from "./ComparisonWorkspace";
 import { DatabaseWorkspace } from "./DatabaseWorkspace";
@@ -30,7 +31,7 @@ import type {
 
 const nav = [
   [LayoutDashboard, "Übersicht"], [Sparkles, "Scout-Intel"], [TableProperties, "Datenbank"], [Search, "Spielersuche"], [Users, "Kaderanalyse"],
-  [Star, "Shortlist"], [BarChart3, "Vergleich"], [PencilLine, "Editor"], [Snowflake, "Freezer"], [Activity, "Live-Spiel"],
+  [Star, "Shortlist"], [BarChart3, "Vergleich"], [HeartPulse, "Verfügbarkeit"], [PencilLine, "Editor"], [Snowflake, "Freezer"], [Activity, "Live-Spiel"],
 ] as const;
 
 const money = new Intl.NumberFormat("de-DE", { notation: "compact", style: "currency", currency: "EUR", maximumFractionDigits: 1 });
@@ -78,7 +79,7 @@ export default function App() {
   const visibleColumnDefinitions = playerColumns.filter((column) => column.locked || visibleColumns.includes(column.id));
   const [filtered, setFiltered] = useState<PlayerQueryRow[]>(() => locallyRatedRows(demoPlayers, previewRoles[0]));
   const activeFilterCount = Number(u21Only) + Number(freeAgentsOnly) + Number(minPotential > 0) + Number(maxValueMillions > 0);
-  const metricPlayers = (active === "Editor" || active === "Freezer") && snapshot ? snapshot.players : players;
+  const metricPlayers = (active === "Editor" || active === "Freezer" || active === "Verfügbarkeit") && snapshot ? snapshot.players : players;
 
   useEffect(() => {
     let cancelled = false;
@@ -324,6 +325,14 @@ export default function App() {
       case "injured": return formatBoolean(player.details?.status?.injured);
       case "suspended": return formatBoolean(player.details?.status?.suspended);
       case "unavailable": return formatBoolean(player.details?.status?.unavailable);
+      case "condition": return player.details?.fitness?.condition ?? "–";
+      case "match_fitness": return player.details?.fitness?.match_fitness ?? "–";
+      case "fatigue": return player.details?.fitness?.fatigue ?? "–";
+      case "jadedness": return player.details?.fitness?.jadedness ?? "–";
+      case "morale": return player.details?.morale ?? "–";
+      case "happiness": return player.details?.happiness ?? "–";
+      case "active_injuries": return player.details?.injuries?.map((injury) => injury.name).join(", ") || "–";
+      case "active_bans": return player.details?.bans?.map((ban) => ban.reason).join(", ") || "–";
       case "tags": return player.details?.tags.join(", ") || "–";
       case "note": return player.details?.note ?? "–";
       default: {
@@ -377,7 +386,7 @@ export default function App() {
         </header>
 
         <section className="metrics" aria-label="Datenübersicht">
-          <Metric label="Spieler im Datensatz" value={metricPlayers.length.toLocaleString("de-DE")} detail={active === "Editor" || active === "Freezer" ? "Editor-Arbeitskopie" : "Aktueller Import"} />
+          <Metric label="Spieler im Datensatz" value={metricPlayers.length.toLocaleString("de-DE")} detail={active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" ? "Editor-Arbeitskopie" : "Aktueller Import"} />
           <Metric label="U21-Talente" value={metricPlayers.filter((p) => (p.age ?? 99) <= 21).length.toString()} detail="Potenzialanalyse" accent />
           <Metric label="Auf Shortlist" value={shortlist.size.toString()} detail="Lokale Auswahl" />
           <Metric label="Datenabdeckung" value={`${Math.round(metricPlayers.reduce((sum, p) => sum + Object.keys(p.attributes).length, 0) / Math.max(metricPlayers.length, 1) / totalPlayerAttributes * 100)}%`} detail="47 FM26-Attribute" />
@@ -399,6 +408,8 @@ export default function App() {
           <DatabaseWorkspace players={players} snapshot={snapshot} />
         ) : active === "Kaderanalyse" ? (
           <SquadAnalysisWorkspace players={players} />
+        ) : active === "Verfügbarkeit" ? (
+          <AvailabilityWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
         ) : active === "Editor" ? (
           <EditorWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
         ) : active === "Freezer" ? (
@@ -592,6 +603,7 @@ function fallbackSnapshot(players: Player[]): DatabaseSnapshot {
   return {
     schema_version: 1,
     source: "synthetic",
+    game_date: { year: 2026, month: 7, day: 22 },
     players,
     staff: [{
       id: "staff-lina", name: "Lina Taktik", age: 41, club: "SV Nordhafen", nationality: "Österreich",

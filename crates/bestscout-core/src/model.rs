@@ -189,6 +189,90 @@ pub struct PlayerStatus {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(default)]
+pub struct PlayerFitness {
+    pub condition: Option<u8>,
+    pub match_fitness: Option<u8>,
+    pub fatigue: Option<u8>,
+    pub jadedness: Option<u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum InjurySeverity {
+    Minor,
+    Moderate,
+    Serious,
+    Severe,
+    CareerThreatening,
+    #[default]
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum InjuryTreatment {
+    None,
+    Physio,
+    Rehabilitation,
+    Specialist,
+    Surgery,
+    #[default]
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlayerInjury {
+    pub id: String,
+    pub name: String,
+    pub body_area: Option<String>,
+    pub severity: InjurySeverity,
+    pub started_on: Option<GameDate>,
+    pub expected_return: Option<GameDate>,
+    pub days_remaining: Option<u16>,
+    pub recurring: bool,
+    pub treatment: InjuryTreatment,
+}
+
+impl PlayerInjury {
+    pub fn is_active_on(&self, date: GameDate) -> bool {
+        self.started_on.is_none_or(|started| started <= date)
+            && self.days_remaining.is_none_or(|days| days > 0)
+            && self.expected_return.is_none_or(|expected| expected >= date)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum BanScope {
+    Domestic,
+    Continental,
+    International,
+    AllCompetitions,
+    #[default]
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlayerBan {
+    pub id: String,
+    pub reason: String,
+    pub competition_id: Option<String>,
+    pub scope: BanScope,
+    pub starts_on: Option<GameDate>,
+    pub ends_on: Option<GameDate>,
+    pub matches_remaining: Option<u16>,
+}
+
+impl PlayerBan {
+    pub fn is_active_on(&self, date: GameDate) -> bool {
+        self.starts_on.is_none_or(|starts| starts <= date)
+            && self.matches_remaining.is_none_or(|matches| matches > 0)
+            && self.ends_on.is_none_or(|ends| ends >= date)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct PlayerDetails {
     pub date_of_birth: Option<GameDate>,
     pub reputation: Option<u16>,
@@ -200,6 +284,11 @@ pub struct PlayerDetails {
     pub professionalism: Option<u8>,
     pub ambition: Option<u8>,
     pub contract: Option<Contract>,
+    pub fitness: PlayerFitness,
+    pub morale: Option<u8>,
+    pub happiness: Option<u8>,
+    pub injuries: Vec<PlayerInjury>,
+    pub bans: Vec<PlayerBan>,
     pub status: PlayerStatus,
     pub tags: Vec<String>,
     pub note: Option<String>,
@@ -365,6 +454,8 @@ pub enum SnapshotSource {
 pub struct DatabaseSnapshot {
     pub schema_version: u32,
     pub source: SnapshotSource,
+    #[serde(default)]
+    pub game_date: Option<GameDate>,
     pub players: Vec<Player>,
     pub staff: Vec<Staff>,
     pub clubs: Vec<Club>,
@@ -394,6 +485,9 @@ mod tests {
         assert_eq!(details.reputation, Some(4200));
         assert!(!details.status.injured);
         assert!(details.contract.is_none());
+        assert!(details.fitness.condition.is_none());
+        assert!(details.injuries.is_empty());
+        assert!(details.bans.is_empty());
     }
 
     #[test]

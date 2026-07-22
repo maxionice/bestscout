@@ -34,6 +34,16 @@ export type Player = {
     professionalism: number | null;
     ambition: number | null;
     contract?: Contract | null;
+    fitness?: {
+      condition: number | null;
+      match_fitness: number | null;
+      fatigue: number | null;
+      jadedness: number | null;
+    };
+    morale?: number | null;
+    happiness?: number | null;
+    injuries?: PlayerInjury[];
+    bans?: PlayerBan[];
     status?: {
       transfer_listed: boolean;
       loan_listed: boolean;
@@ -44,6 +54,33 @@ export type Player = {
     tags: string[];
     note: string | null;
   };
+};
+
+export type InjurySeverity = "minor" | "moderate" | "serious" | "severe" | "career_threatening" | "unknown";
+export type InjuryTreatment = "none" | "physio" | "rehabilitation" | "specialist" | "surgery" | "unknown";
+
+export type PlayerInjury = {
+  id: string;
+  name: string;
+  body_area: string | null;
+  severity: InjurySeverity;
+  started_on: GameDate | null;
+  expected_return: GameDate | null;
+  days_remaining: number | null;
+  recurring: boolean;
+  treatment: InjuryTreatment;
+};
+
+export type BanScope = "domestic" | "continental" | "international" | "all_competitions" | "unknown";
+
+export type PlayerBan = {
+  id: string;
+  reason: string;
+  competition_id: string | null;
+  scope: BanScope;
+  starts_on: GameDate | null;
+  ends_on: GameDate | null;
+  matches_remaining: number | null;
 };
 
 export type ImportResult = {
@@ -104,6 +141,7 @@ export type Competition = {
 export type DatabaseSnapshot = {
   schema_version: number;
   source: "synthetic" | "csv" | "live" | "save_game";
+  game_date?: GameDate | null;
   players: Player[];
   staff: Staff[];
   clubs: Club[];
@@ -218,6 +256,85 @@ export type PreparedFreezeCorrection = {
   report: FreezeReport;
   transaction: EditTransaction | null;
   preview: AppliedTransaction | null;
+};
+
+export type AvailabilityCriteria = {
+  as_of: GameDate;
+  low_condition_below: number;
+  low_match_fitness_below: number;
+  high_fatigue_above: number;
+  high_jadedness_above: number;
+  low_morale_below: number;
+  low_happiness_below: number;
+};
+
+export type AvailabilityState = "available" | "managed" | "doubtful" | "unavailable";
+
+export type AvailabilityIssueKind =
+  | "injury"
+  | "ban"
+  | "unavailable_flag"
+  | "low_condition"
+  | "low_match_fitness"
+  | "high_fatigue"
+  | "high_jadedness"
+  | "low_morale"
+  | "unhappy";
+
+export type AvailabilityIssue = {
+  kind: AvailabilityIssueKind;
+  impact: AvailabilityState;
+  detail: string;
+};
+
+export type PlayerAvailability = {
+  player_id: string;
+  player_name: string;
+  club: string | null;
+  state: AvailabilityState;
+  score: number;
+  condition: number | null;
+  match_fitness: number | null;
+  fatigue: number | null;
+  jadedness: number | null;
+  morale: number | null;
+  happiness: number | null;
+  active_injuries: PlayerInjury[];
+  active_bans: PlayerBan[];
+  issues: AvailabilityIssue[];
+};
+
+export type AvailabilityReport = {
+  schema_version: 1;
+  as_of: GameDate;
+  snapshot_hash: string;
+  total_players: number;
+  available_count: number;
+  managed_count: number;
+  doubtful_count: number;
+  unavailable_count: number;
+  players: PlayerAvailability[];
+};
+
+export type AvailabilityAction =
+  | "restore_condition"
+  | "clear_injuries"
+  | "clear_bans"
+  | "stabilize_morale"
+  | "make_match_ready";
+
+export type AvailabilityActionRequest = {
+  transaction_id: string;
+  created_at_utc: string;
+  player_ids: string[];
+  action: AvailabilityAction;
+};
+
+export type PreparedAvailabilityAction = {
+  action: AvailabilityAction;
+  affected_player_count: number;
+  transaction: EditTransaction;
+  preview: AppliedTransaction;
 };
 
 export type JournalChange = {

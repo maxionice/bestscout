@@ -3,7 +3,7 @@ import type { RolePhase } from "./types";
 export type PlayerColumnDefinition = {
   id: string;
   label: string;
-  category: "Basis" | "Technik" | "Mental" | "Physis" | "Torwart";
+  category: "Basis" | "Medizin" | "Technik" | "Mental" | "Physis" | "Torwart";
   attribute?: string;
   locked?: boolean;
   defaultVisible?: boolean;
@@ -45,6 +45,14 @@ const coreColumns: PlayerColumnDefinition[] = [
   { id: "injured", label: "Verletzt", category: "Basis" },
   { id: "suspended", label: "Gesperrt", category: "Basis" },
   { id: "unavailable", label: "Nicht verfügbar", category: "Basis" },
+  { id: "condition", label: "Kondition", category: "Medizin" },
+  { id: "match_fitness", label: "Matchfitness", category: "Medizin" },
+  { id: "fatigue", label: "Ermüdung", category: "Medizin" },
+  { id: "jadedness", label: "Überspieltheit", category: "Medizin" },
+  { id: "morale", label: "Moral", category: "Medizin" },
+  { id: "happiness", label: "Zufriedenheit", category: "Medizin" },
+  { id: "active_injuries", label: "Aktive Verletzungen", category: "Medizin" },
+  { id: "active_bans", label: "Aktive Sperren", category: "Medizin" },
   { id: "tags", label: "Tags", category: "Basis" },
   { id: "note", label: "Notiz", category: "Basis" },
 ];
