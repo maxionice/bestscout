@@ -506,7 +506,12 @@ fn validate_swap_contract(
         .into_iter()
         .flatten()
         .all(|value| value.is_finite() && (0.0..=1_000_000_000_000.0).contains(&value));
-    if !valid_type || contract.starts_on != Some(starts_on) || !valid_expiry || !valid_money {
+    if !valid_type
+        || contract.starts_on != Some(starts_on)
+        || !valid_expiry
+        || !valid_money
+        || !crate::validation::contract_terms_are_valid(contract)
+    {
         return Err(TransferError::InvalidSwapContract);
     }
     Ok(())
@@ -1033,6 +1038,37 @@ mod tests {
                         swap_player_id: "player-milo".into(),
                         player_contract: invalid_contract,
                         swap_player_contract: contract,
+                    },
+                },
+            ),
+            Err(TransferError::InvalidSwapContract)
+        ));
+
+        let mut invalid_terms = target_contract(
+            GameDate::new(2026, 7, 22).unwrap(),
+            GameDate::new(2030, 6, 30).unwrap(),
+            40_000.0,
+        );
+        invalid_terms.bonuses.push(crate::ContractBonus {
+            id: String::new(),
+            kind: crate::ContractBonusKind::SigningOnFee,
+            amount: 1_000.0,
+        });
+        assert!(matches!(
+            prepare_transfer_action(
+                &snapshot,
+                &TransferActionRequest {
+                    transaction_id: "swap-invalid-terms".into(),
+                    created_at_utc: "2026-07-22T12:00:00Z".into(),
+                    command: TransferCommand::SwapNow {
+                        player_id: "player-ada".into(),
+                        swap_player_id: "player-milo".into(),
+                        player_contract: invalid_terms,
+                        swap_player_contract: target_contract(
+                            GameDate::new(2026, 7, 22).unwrap(),
+                            GameDate::new(2030, 6, 30).unwrap(),
+                            40_000.0,
+                        ),
                     },
                 },
             ),

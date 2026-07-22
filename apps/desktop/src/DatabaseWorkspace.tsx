@@ -53,6 +53,8 @@ const staffGridColumns: GridColumn[] = [
   { id: "contract_type", label: "Vertragsart" },
   { id: "wage", label: "Gehalt" }, { id: "release_clause", label: "Ausstiegsklausel" },
   { id: "squad_status", label: "Kaderstatus" },
+  { id: "contract_bonuses", label: "Vertragsboni" },
+  { id: "contract_clauses", label: "Vertragsklauseln" },
   { id: "date_of_birth", label: "Geburtsdatum" },
   { id: "languages", label: "Sprachen" },
   { id: "responsibilities", label: "Verantwortungen" },
@@ -236,6 +238,8 @@ function playerCell(player: Player, columnId: string, snapshot: DatabaseSnapshot
     case "contract_wage": return player.details?.contract?.wage == null ? "–" : `${money.format(player.details.contract.wage)} / W.`;
     case "release_clause": return formatMoney(player.details?.contract?.release_clause);
     case "squad_status": return display(player.details?.contract?.squad_status);
+    case "contract_bonuses": return player.details?.contract?.bonuses?.map((item) => `${roleLabel(item.kind)}: ${money.format(item.amount)}`).join(", ") || "–";
+    case "contract_clauses": return player.details?.contract?.clauses?.map((item) => `${roleLabel(item.kind)}: ${contractClauseValue(item.value)}`).join(", ") || "–";
     case "future_transfer_kind": return display(player.details?.future_transfer?.kind);
     case "future_transfer_destination": return entityName(snapshot, "club", player.details?.future_transfer?.to_club_id);
     case "future_transfer_date": return formatGameDate(player.details?.future_transfer?.effective_on);
@@ -287,6 +291,8 @@ function staffRow(staff: Staff, snapshot: DatabaseSnapshot | null): GridRow {
     wage: staff.contract?.wage == null ? "–" : `${money.format(staff.contract.wage)} / W.`,
     release_clause: formatMoney(staff.contract?.release_clause),
     squad_status: display(staff.contract?.squad_status),
+    contract_bonuses: staff.contract?.bonuses?.map((item) => `${roleLabel(item.kind)}: ${money.format(item.amount)}`).join(", ") || "–",
+    contract_clauses: staff.contract?.clauses?.map((item) => `${roleLabel(item.kind)}: ${contractClauseValue(item.value)}`).join(", ") || "–",
     date_of_birth: formatGameDate(staff.details?.date_of_birth),
     languages: staff.details?.languages?.map((item) => `${item.language} ${item.speaking}/10`).join(", ") || "–",
     responsibilities: staff.details?.responsibilities?.map(roleLabel).join(" · ") || "–",
@@ -405,6 +411,12 @@ function roleLabel(role: string) {
 function appearanceLabel(value: string | null | undefined) {
   if (!value || value === "unknown") return "–";
   return ({ black: "Schwarz", brown: "Braun", blond: "Blond", red: "Rot", grey: "Grau", white: "Weiß", other: "Andere", bald: "Glatze", short: "Kurz", medium: "Mittel", long: "Lang" } as Record<string, string>)[value] ?? value;
+}
+
+function contractClauseValue(value: NonNullable<Contract["clauses"]>[number]["value"]) {
+  if (value.kind === "money") return money.format(value.value);
+  if (value.kind === "percentage") return `${value.value}%`;
+  return String(value.value);
 }
 
 function professionalStatusLabel(status: string | null | undefined) {

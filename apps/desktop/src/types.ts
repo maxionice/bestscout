@@ -1,5 +1,26 @@
 export type GameDate = { year: number; month: number; day: number };
 
+export type ContractBonusKind =
+  | "signing_on_fee" | "loyalty_bonus" | "appearance_fee" | "unused_substitute_fee"
+  | "goal_bonus" | "assist_bonus" | "clean_sheet_bonus" | "international_cap_bonus"
+  | "team_of_year_bonus" | "promotion_bonus";
+
+export type ContractBonus = { id: string; kind: ContractBonusKind; amount: number };
+
+export type ContractClauseKind =
+  | "minimum_fee_release" | "foreign_club_minimum_fee_release" | "relegation_release"
+  | "non_promotion_release" | "sell_on_fee_percentage" | "sell_on_profit_percentage"
+  | "yearly_wage_rise_percentage" | "promotion_wage_rise_percentage"
+  | "relegation_wage_drop_percentage" | "optional_contract_extension_years"
+  | "automatic_extension_appearances";
+
+export type ContractClauseValue =
+  | { kind: "money"; value: number }
+  | { kind: "percentage"; value: number }
+  | { kind: "count"; value: number };
+
+export type ContractClause = { id: string; kind: ContractClauseKind; value: ContractClauseValue };
+
 export type Contract = {
   club_id?: string | null;
   starts_on?: GameDate | null;
@@ -8,6 +29,8 @@ export type Contract = {
   wage?: number | null;
   release_clause?: number | null;
   squad_status?: string | null;
+  bonuses?: ContractBonus[];
+  clauses?: ContractClause[];
 };
 
 export type TransferKind = "permanent" | "loan" | "free_transfer" | "swap";

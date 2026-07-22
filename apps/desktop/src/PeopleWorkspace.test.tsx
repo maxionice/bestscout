@@ -35,6 +35,8 @@ describe("People & Registration Center", () => {
       wage: 25_000,
       release_clause: null,
       squad_status: null,
+      bonuses: [{ id: "staff-lina-loyalty", kind: "loyalty_bonus", amount: 5_000 }],
+      clauses: [{ id: "staff-lina-extension", kind: "optional_contract_extension_years", value: { kind: "count", value: 1 } }],
     };
     const transaction = peopleTransaction("staff", "staff-lina", "roles", ["scout"], edited.staff[0].roles);
     const prepare = vi.fn(async (_snapshot: DatabaseSnapshot, request: PeopleActionRequest) => prepared(request.command, transaction, edited));
@@ -64,6 +66,8 @@ describe("People & Registration Center", () => {
           wage: 25_000,
           release_clause: null,
           squad_status: null,
+          bonuses: [{ id: "staff-lina-loyalty", kind: "loyalty_bonus", amount: 5_000 }],
+          clauses: [{ id: "staff-lina-extension", kind: "optional_contract_extension_years", value: { kind: "count", value: 1 } }],
         },
       },
     });
@@ -324,6 +328,8 @@ function peopleSnapshot(): DatabaseSnapshot {
         wage: 25_000,
         release_clause: null,
         squad_status: null,
+        bonuses: [{ id: "staff-lina-loyalty", kind: "loyalty_bonus", amount: 5_000 }],
+        clauses: [{ id: "staff-lina-extension", kind: "optional_contract_extension_years", value: { kind: "count", value: 1 } }],
       },
       details: {
         date_of_birth: { year: 1985, month: 3, day: 14 },

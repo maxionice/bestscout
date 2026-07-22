@@ -78,7 +78,8 @@ typisierte Befehle gegen genau einen kanonischen Snapshot. Vor der Vorschau
 werden Referenzen und Domäneninvarianten vollständig geprüft.
 
 - **Verfügbarkeit** umfasst Fitness, Kondition, Moral, Verletzungen und Sperren.
-- **Transfers** umfasst sofortige, künftige, Leih- und gegenseitige Tauschrouten.
+- **Transfers** umfasst sofortige, künftige, Leih- und gegenseitige Tauschrouten
+  sowie typisierte Vertragsboni und Geld-, Prozent- oder Zählklauseln.
 - **People** umfasst Spieler-/Staff-Identität, weitere Nationalitäten,
   Erscheinungsdaten, bevorzugte Spielzüge, Staff-Zuweisungen, Sprachen,
   Qualifikationen, Registrierungen und Beziehungen. Ethnizität wird nur aus

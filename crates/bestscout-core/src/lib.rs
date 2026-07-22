@@ -57,7 +57,8 @@ pub use intelligence::{
 pub use model::{
     Attribute, BanScope, Club, ClubBranding, ClubFacilities, ClubFinances, ClubKit, ClubKitKind,
     ClubRelationship, ClubRelationshipKind, Competition, CompetitionFixture, CompetitionStage,
-    CompetitionStageKind, CompetitionStanding, Contract, ContractType, DatabaseSnapshot,
+    CompetitionStageKind, CompetitionStanding, Contract, ContractBonus, ContractBonusKind,
+    ContractClause, ContractClauseKind, ContractClauseValue, ContractType, DatabaseSnapshot,
     FixtureStatus, Foot, FutureTransfer, GameDate, HairColour, HairLength, HiddenAttribute,
     InjurySeverity, InjuryTreatment, LanguageSkill, PersonAppearance, PersonRelationship, Player,
     PlayerBan, PlayerDetails, PlayerFitness, PlayerInjury, PlayerRegistration, PlayerStatus,

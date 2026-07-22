@@ -58,6 +58,8 @@ and editing tools while remaining local, transparent and safe.
   availability, a full HeroUI medical workspace and journaled correction actions
 - Canonical immediate, future, loan and reciprocal swap transfers with validated
   routes, two-sided destination contracts and a journaled HeroUI Transfer Center
+- Typed contract bonuses and release, sell-on, wage-change and extension clauses
+  with value-category validation and backward-compatible defaults
 - Canonical staff assignments, profile data, languages, qualifications,
   competition registrations and typed relationships with a journaled HeroUI
   People & Registration Center

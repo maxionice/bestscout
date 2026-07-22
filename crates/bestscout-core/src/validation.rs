@@ -250,17 +250,7 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
             );
         }
         if let Some(contract) = &player.details.contract {
-            validate_contract(
-                &mut issues,
-                "player",
-                &player.id,
-                contract.club_id.as_deref(),
-                contract.starts_on,
-                contract.expires_on,
-                contract.wage,
-                contract.release_clause,
-                &club_ids,
-            );
+            validate_contract(&mut issues, "player", &player.id, contract, &club_ids);
         }
     }
 
@@ -414,17 +404,7 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
             }
         }
         if let Some(contract) = &staff.contract {
-            validate_contract(
-                &mut issues,
-                "staff",
-                &staff.id,
-                contract.club_id.as_deref(),
-                contract.starts_on,
-                contract.expires_on,
-                contract.wage,
-                contract.release_clause,
-                &club_ids,
-            );
+            validate_contract(&mut issues, "staff", &staff.id, contract, &club_ids);
         }
     }
 
@@ -1976,19 +1956,18 @@ fn validate_date_range(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn validate_contract(
     issues: &mut Vec<SnapshotIssue>,
     entity_kind: &str,
     entity_id: &str,
-    club_id: Option<&str>,
-    starts_on: Option<GameDate>,
-    expires_on: Option<GameDate>,
-    wage: Option<f64>,
-    release_clause: Option<f64>,
+    contract: &crate::Contract,
     club_ids: &HashSet<&str>,
 ) {
-    if club_id.is_some_and(|club_id| !club_ids.contains(club_id)) {
+    if contract
+        .club_id
+        .as_deref()
+        .is_some_and(|club_id| !club_ids.contains(club_id))
+    {
         issue(
             issues,
             "unknown_club_reference",
@@ -1999,8 +1978,8 @@ fn validate_contract(
         );
     }
     for (field, date) in [
-        ("contract.starts_on", starts_on),
-        ("contract.expires_on", expires_on),
+        ("contract.starts_on", contract.starts_on),
+        ("contract.expires_on", contract.expires_on),
     ] {
         if date.is_some_and(|date| GameDate::new(date.year, date.month, date.day) != Some(date)) {
             issue(
@@ -2013,8 +1992,9 @@ fn validate_contract(
             );
         }
     }
-    if starts_on
-        .zip(expires_on)
+    if contract
+        .starts_on
+        .zip(contract.expires_on)
         .is_some_and(|(start, expiry)| start > expiry)
     {
         issue(
@@ -2026,14 +2006,288 @@ fn validate_contract(
             "contract expiry must not be before its start date",
         );
     }
-    validate_nonnegative_money(issues, entity_kind, entity_id, "contract.wage", wage);
+    validate_nonnegative_money(
+        issues,
+        entity_kind,
+        entity_id,
+        "contract.wage",
+        contract.wage,
+    );
     validate_nonnegative_money(
         issues,
         entity_kind,
         entity_id,
         "contract.release_clause",
-        release_clause,
+        contract.release_clause,
     );
+    validate_contract_terms(issues, entity_kind, entity_id, contract);
+}
+
+fn validate_contract_terms(
+    issues: &mut Vec<SnapshotIssue>,
+    entity_kind: &str,
+    entity_id: &str,
+    contract: &crate::Contract,
+) {
+    if contract.bonuses.len() > 32 {
+        issue(
+            issues,
+            "too_many_contract_bonuses",
+            entity_kind,
+            entity_id,
+            "contract.bonuses",
+            "a contract may have at most 32 bonuses",
+        );
+    }
+    if contract.clauses.len() > 32 {
+        issue(
+            issues,
+            "too_many_contract_clauses",
+            entity_kind,
+            entity_id,
+            "contract.clauses",
+            "a contract may have at most 32 clauses",
+        );
+    }
+
+    let mut bonus_ids = HashSet::new();
+    let mut bonus_kinds = HashSet::new();
+    for (index, bonus) in contract.bonuses.iter().enumerate() {
+        if bonus.id.trim().is_empty()
+            || bonus.id.len() > 128
+            || !bonus_ids.insert(bonus.id.as_str())
+        {
+            issue(
+                issues,
+                "invalid_contract_bonus_id",
+                entity_kind,
+                entity_id,
+                format!("contract.bonuses.{index}.id"),
+                "contract bonus IDs must be non-empty, bounded and unique",
+            );
+        }
+        if !bonus_kinds.insert(bonus.kind) {
+            issue(
+                issues,
+                "duplicate_contract_bonus_kind",
+                entity_kind,
+                entity_id,
+                format!("contract.bonuses.{index}.kind"),
+                "each contract bonus kind may appear only once",
+            );
+        }
+        let amount_path = format!("contract.bonuses.{index}.amount");
+        validate_nonnegative_money(
+            issues,
+            entity_kind,
+            entity_id,
+            &amount_path,
+            Some(bonus.amount),
+        );
+        if bonus.amount > 1_000_000_000_000.0 {
+            issue(
+                issues,
+                "contract_term_money_out_of_range",
+                entity_kind,
+                entity_id,
+                amount_path,
+                "contract term money must not exceed one trillion",
+            );
+        }
+    }
+
+    let mut clause_ids = HashSet::new();
+    let mut clause_kinds = HashSet::new();
+    for (index, clause) in contract.clauses.iter().enumerate() {
+        if clause.id.trim().is_empty()
+            || clause.id.len() > 128
+            || !clause_ids.insert(clause.id.as_str())
+        {
+            issue(
+                issues,
+                "invalid_contract_clause_id",
+                entity_kind,
+                entity_id,
+                format!("contract.clauses.{index}.id"),
+                "contract clause IDs must be non-empty, bounded and unique",
+            );
+        }
+        if !clause_kinds.insert(clause.kind) {
+            issue(
+                issues,
+                "duplicate_contract_clause_kind",
+                entity_kind,
+                entity_id,
+                format!("contract.clauses.{index}.kind"),
+                "each contract clause kind may appear only once",
+            );
+        }
+        validate_contract_clause_value(issues, entity_kind, entity_id, index, clause);
+    }
+    if let (Some(legacy), Some(crate::ContractClauseValue::Money(typed))) = (
+        contract.release_clause,
+        contract
+            .clauses
+            .iter()
+            .find(|clause| clause.kind == crate::ContractClauseKind::MinimumFeeRelease)
+            .map(|clause| &clause.value),
+    ) && legacy != *typed
+    {
+        issue(
+            issues,
+            "contract_release_clause_mismatch",
+            entity_kind,
+            entity_id,
+            "contract.release_clause",
+            "legacy and typed minimum-fee release values must match",
+        );
+    }
+}
+
+fn validate_contract_clause_value(
+    issues: &mut Vec<SnapshotIssue>,
+    entity_kind: &str,
+    entity_id: &str,
+    index: usize,
+    clause: &crate::ContractClause,
+) {
+    use crate::{ContractClauseKind as Kind, ContractClauseValue as Value};
+
+    let matches_kind = matches!(
+        (clause.kind, &clause.value),
+        (
+            Kind::MinimumFeeRelease
+                | Kind::ForeignClubMinimumFeeRelease
+                | Kind::RelegationRelease
+                | Kind::NonPromotionRelease,
+            Value::Money(_)
+        ) | (
+            Kind::SellOnFeePercentage
+                | Kind::SellOnProfitPercentage
+                | Kind::YearlyWageRisePercentage
+                | Kind::PromotionWageRisePercentage
+                | Kind::RelegationWageDropPercentage,
+            Value::Percentage(_)
+        ) | (
+            Kind::OptionalContractExtensionYears | Kind::AutomaticExtensionAppearances,
+            Value::Count(_)
+        )
+    );
+    if !matches_kind {
+        issue(
+            issues,
+            "contract_clause_value_mismatch",
+            entity_kind,
+            entity_id,
+            format!("contract.clauses.{index}.value"),
+            "contract clause value type does not match its clause kind",
+        );
+        return;
+    }
+
+    match clause.value {
+        Value::Money(amount) => {
+            let value_path = format!("contract.clauses.{index}.value");
+            validate_nonnegative_money(issues, entity_kind, entity_id, &value_path, Some(amount));
+            if amount > 1_000_000_000_000.0 {
+                issue(
+                    issues,
+                    "contract_term_money_out_of_range",
+                    entity_kind,
+                    entity_id,
+                    value_path,
+                    "contract term money must not exceed one trillion",
+                );
+            }
+        }
+        Value::Percentage(percentage) if percentage > 100 => issue(
+            issues,
+            "contract_clause_percentage_out_of_range",
+            entity_kind,
+            entity_id,
+            format!("contract.clauses.{index}.value"),
+            "contract clause percentage must be between zero and 100",
+        ),
+        Value::Count(count)
+            if count == 0
+                || (clause.kind == Kind::OptionalContractExtensionYears && count > 5)
+                || (clause.kind == Kind::AutomaticExtensionAppearances && count > 1_000) =>
+        {
+            issue(
+                issues,
+                "contract_clause_count_out_of_range",
+                entity_kind,
+                entity_id,
+                format!("contract.clauses.{index}.value"),
+                "extension years must be 1-5 and appearance triggers must be 1-1000",
+            )
+        }
+        _ => {}
+    }
+}
+
+pub(crate) fn contract_terms_are_valid(contract: &crate::Contract) -> bool {
+    use crate::{ContractClauseKind as Kind, ContractClauseValue as Value};
+
+    if contract.bonuses.len() > 32 || contract.clauses.len() > 32 {
+        return false;
+    }
+    let mut bonus_ids = HashSet::new();
+    let mut bonus_kinds = HashSet::new();
+    if contract.bonuses.iter().any(|bonus| {
+        bonus.id.trim().is_empty()
+            || bonus.id.len() > 128
+            || !bonus_ids.insert(bonus.id.as_str())
+            || !bonus_kinds.insert(bonus.kind)
+            || !bonus.amount.is_finite()
+            || !(0.0..=1_000_000_000_000.0).contains(&bonus.amount)
+    }) {
+        return false;
+    }
+
+    let mut clause_ids = HashSet::new();
+    let mut clause_kinds = HashSet::new();
+    let clauses_valid = contract.clauses.iter().all(|clause| {
+        let identity_valid = !clause.id.trim().is_empty()
+            && clause.id.len() <= 128
+            && clause_ids.insert(clause.id.as_str())
+            && clause_kinds.insert(clause.kind);
+        let value_valid = match (clause.kind, &clause.value) {
+            (
+                Kind::MinimumFeeRelease
+                | Kind::ForeignClubMinimumFeeRelease
+                | Kind::RelegationRelease
+                | Kind::NonPromotionRelease,
+                Value::Money(amount),
+            ) => amount.is_finite() && (0.0..=1_000_000_000_000.0).contains(amount),
+            (
+                Kind::SellOnFeePercentage
+                | Kind::SellOnProfitPercentage
+                | Kind::YearlyWageRisePercentage
+                | Kind::PromotionWageRisePercentage
+                | Kind::RelegationWageDropPercentage,
+                Value::Percentage(percentage),
+            ) => *percentage <= 100,
+            (Kind::OptionalContractExtensionYears, Value::Count(count)) => (1..=5).contains(count),
+            (Kind::AutomaticExtensionAppearances, Value::Count(count)) => {
+                (1..=1_000).contains(count)
+            }
+            _ => false,
+        };
+        identity_valid && value_valid
+    });
+    let release_values_match = match (
+        contract.release_clause,
+        contract
+            .clauses
+            .iter()
+            .find(|clause| clause.kind == Kind::MinimumFeeRelease)
+            .map(|clause| &clause.value),
+    ) {
+        (Some(legacy), Some(Value::Money(typed))) => legacy == *typed,
+        _ => true,
+    };
+    clauses_valid && release_values_match
 }
 
 fn validate_abilities(
@@ -2310,6 +2564,47 @@ mod tests {
             "invalid_ethnicity",
             "invalid_preferred_move_id",
             "invalid_preferred_move_name",
+        ] {
+            assert!(
+                report.issues.iter().any(|issue| issue.code == code),
+                "missing expected issue code {code}: {:?}",
+                report.issues
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_contract_bonuses_and_typed_clauses() {
+        let mut snapshot = synthetic_snapshot();
+        let contract = snapshot.players[0].details.contract.as_mut().unwrap();
+        let duplicate_bonus = contract.bonuses[0].clone();
+        contract.bonuses[0].amount = 1_000_000_000_001.0;
+        contract.bonuses.push(duplicate_bonus);
+        contract.clauses.push(crate::ContractClause {
+            id: "mismatched-clause".into(),
+            kind: crate::ContractClauseKind::ForeignClubMinimumFeeRelease,
+            value: crate::ContractClauseValue::Percentage(20),
+        });
+        contract.clauses.push(crate::ContractClause {
+            id: "minimum-release".into(),
+            kind: crate::ContractClauseKind::MinimumFeeRelease,
+            value: crate::ContractClauseValue::Money(1.0),
+        });
+        contract.clauses.push(crate::ContractClause {
+            id: "empty-extension".into(),
+            kind: crate::ContractClauseKind::OptionalContractExtensionYears,
+            value: crate::ContractClauseValue::Count(0),
+        });
+
+        let report = validate_snapshot(&snapshot);
+        assert!(!report.valid);
+        for code in [
+            "contract_term_money_out_of_range",
+            "invalid_contract_bonus_id",
+            "duplicate_contract_bonus_kind",
+            "contract_clause_value_mismatch",
+            "contract_clause_count_out_of_range",
+            "contract_release_clause_mismatch",
         ] {
             assert!(
                 report.issues.iter().any(|issue| issue.code == code),

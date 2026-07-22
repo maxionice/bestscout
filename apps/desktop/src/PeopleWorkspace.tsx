@@ -320,8 +320,10 @@ export function PeopleWorkspace({
           expires_on: parseDate(staffContractEnd, "Vertragsende"),
           contract_type: "full_time",
           wage: staffWage,
-          release_clause: null,
-          squad_status: null,
+          release_clause: selectedStaff.contract?.release_clause ?? null,
+          squad_status: selectedStaff.contract?.squad_status ?? null,
+          bonuses: selectedStaff.contract?.bonuses ?? [],
+          clauses: selectedStaff.contract?.clauses ?? [],
         };
       }
       void prepare({

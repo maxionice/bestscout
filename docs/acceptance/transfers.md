@@ -8,6 +8,7 @@
 - Future permanent, loan and free-transfer planning
 - Due-date-controlled completion and explicit cancellation
 - Reciprocal immediate and future player swaps with two target contracts
+- Typed contract bonuses and money/percentage/count clauses with legacy defaults
 - Atomic two-player swap arrangement, cancellation and due completion
 - Complete database columns and generic JSON editor access
 - Dark HeroUI v3 Transfer Center in the custom frameless shell
@@ -16,6 +17,8 @@
 ## Automated acceptance
 
 - Future agreements validate every nested reference, date and financial bound.
+- Contract terms reject duplicate IDs/kinds, wrong value categories, excessive
+  list sizes and out-of-range money, percentage or count values.
 - An agreement with a mismatched origin is rejected.
 - A same-club immediate move is rejected.
 - Invalid loan terms fail whole-snapshot preview validation.
@@ -39,6 +42,8 @@
   reject the complete swap without a partial mutation.
 - UI tests require a destination and swap partner and send both target contracts
   for immediate and due future swaps.
+- UI tests verify that common bonuses and clauses are included in the exact
+  destination contract and independently available for both swap sides.
 
 ## Remaining acceptance gates
 

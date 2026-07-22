@@ -47,6 +47,8 @@ const coreColumns: PlayerColumnDefinition[] = [
   { id: "contract_wage", label: "Vertragsgehalt", category: "Basis" },
   { id: "release_clause", label: "Ausstiegsklausel", category: "Basis" },
   { id: "squad_status", label: "Kaderstatus", category: "Basis" },
+  { id: "contract_bonuses", label: "Vertragsboni", category: "Basis" },
+  { id: "contract_clauses", label: "Vertragsklauseln", category: "Basis" },
   { id: "future_transfer_kind", label: "Transferart", category: "Transfer" },
   { id: "future_transfer_destination", label: "Transferziel-ID", category: "Transfer" },
   { id: "future_transfer_date", label: "Transferdatum", category: "Transfer" },
