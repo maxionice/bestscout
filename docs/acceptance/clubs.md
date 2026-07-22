@@ -47,7 +47,7 @@ bestanden. Native Sichtprüfung, GitHub-CI und FM26-Live-Adapter bleiben offen.
 - [x] `npm test --workspace @bestscout/desktop`
 - [x] `npm run build --workspace @bestscout/desktop`
 - [x] `scripts/build-linux-packages.sh`
-- [ ] GitHub-Actions-Checks auf dem veröffentlichten PR vollständig grün
+- [x] GitHub-Actions-Checks auf dem veröffentlichten Produktcommit vollständig grün
 
 Verifizierte Paket-Hashes dieses Branches:
 
