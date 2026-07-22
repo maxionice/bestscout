@@ -785,6 +785,7 @@ pub(crate) fn is_editable_field(kind: EditEntityKind, field: &str) -> bool {
                 | "short_name"
                 | "nation"
                 | "competition"
+                | "competition_id"
                 | "reputation"
                 | "professional_status"
                 | "stadium"

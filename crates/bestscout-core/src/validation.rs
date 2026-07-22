@@ -407,6 +407,102 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
                 "club name must not be empty",
             );
         }
+        if club.name.chars().count() > 128 {
+            issue(
+                &mut issues,
+                "club_name_too_long",
+                "club",
+                &club.id,
+                "name",
+                "club name must not exceed 128 characters",
+            );
+        }
+        for (field, value, maximum) in [
+            ("short_name", club.short_name.as_deref(), 32),
+            ("nation", club.nation.as_deref(), 64),
+            ("stadium", club.stadium.as_deref(), 128),
+        ] {
+            if value.is_some_and(|value| value.trim().is_empty() || value.chars().count() > maximum)
+            {
+                issue(
+                    &mut issues,
+                    "invalid_club_text",
+                    "club",
+                    &club.id,
+                    field,
+                    format!("club {field} must be non-empty and at most {maximum} characters"),
+                );
+            }
+        }
+        if let Some(competition_id) = club.competition_id.as_deref() {
+            match snapshot
+                .competitions
+                .iter()
+                .find(|competition| competition.id == competition_id)
+            {
+                None => issue(
+                    &mut issues,
+                    "unknown_competition_reference",
+                    "club",
+                    &club.id,
+                    "competition_id",
+                    "club competition must reference a competition in the snapshot",
+                ),
+                Some(competition)
+                    if club.competition.as_deref() != Some(competition.name.as_str()) =>
+                {
+                    issue(
+                        &mut issues,
+                        "club_competition_name_mismatch",
+                        "club",
+                        &club.id,
+                        "competition",
+                        "club competition name must match its referenced competition",
+                    );
+                }
+                Some(_) => {}
+            }
+        }
+        if club.professional_status.as_deref().is_some_and(|status| {
+            !matches!(status, "professional" | "semi_professional" | "amateur")
+        }) {
+            issue(
+                &mut issues,
+                "invalid_professional_status",
+                "club",
+                &club.id,
+                "professional_status",
+                "professional status must be professional, semi_professional or amateur",
+            );
+        }
+        if club
+            .stadium_capacity
+            .is_some_and(|capacity| capacity == 0 || capacity > 2_000_000)
+        {
+            issue(
+                &mut issues,
+                "stadium_capacity_out_of_range",
+                "club",
+                &club.id,
+                "stadium_capacity",
+                "stadium capacity must be between 1 and 2000000",
+            );
+        }
+        if club.average_attendance.is_some_and(|attendance| {
+            attendance > 2_000_000
+                || club
+                    .stadium_capacity
+                    .is_some_and(|capacity| attendance > capacity)
+        }) {
+            issue(
+                &mut issues,
+                "attendance_out_of_range",
+                "club",
+                &club.id,
+                "average_attendance",
+                "average attendance must not exceed stadium capacity or 2000000",
+            );
+        }
         validate_reputation(&mut issues, "club", &club.id, "reputation", club.reputation);
         validate_finite_money(
             &mut issues,
@@ -1379,6 +1475,37 @@ mod tests {
             "level_out_of_range",
         ] {
             assert!(report.issues.iter().any(|issue| issue.code == code));
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_club_references_text_status_capacity_and_attendance() {
+        let mut snapshot = synthetic_snapshot();
+        snapshot.clubs[0].name = "x".repeat(129);
+        snapshot.clubs[0].short_name = Some(String::new());
+        snapshot.clubs[0].competition_id = Some("missing-competition".into());
+        snapshot.clubs[0].professional_status = Some("galactic".into());
+        snapshot.clubs[0].stadium_capacity = Some(10_000);
+        snapshot.clubs[0].average_attendance = Some(10_001);
+        snapshot.clubs[1].competition = Some("Falscher Name".into());
+        snapshot.clubs[1].stadium_capacity = Some(0);
+
+        let report = validate_snapshot(&snapshot);
+        assert!(!report.valid);
+        for code in [
+            "club_name_too_long",
+            "invalid_club_text",
+            "unknown_competition_reference",
+            "club_competition_name_mismatch",
+            "invalid_professional_status",
+            "stadium_capacity_out_of_range",
+            "attendance_out_of_range",
+        ] {
+            assert!(
+                report.issues.iter().any(|issue| issue.code == code),
+                "missing expected issue code {code}: {:?}",
+                report.issues
+            );
         }
     }
 

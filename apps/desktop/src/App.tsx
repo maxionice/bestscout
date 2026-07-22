@@ -10,6 +10,7 @@ import {
 import { AvailabilityWorkspace } from "./AvailabilityWorkspace";
 import { demoPlayers } from "./demo";
 import { ComparisonWorkspace } from "./ComparisonWorkspace";
+import { ClubWorkspace } from "./ClubWorkspace";
 import { DatabaseWorkspace } from "./DatabaseWorkspace";
 import { EditorWorkspace } from "./EditorWorkspace";
 import { FreezerWorkspace } from "./FreezerWorkspace";
@@ -33,7 +34,7 @@ import type {
 
 const nav = [
   [LayoutDashboard, "Übersicht"], [Sparkles, "Scout-Intel"], [TableProperties, "Datenbank"], [Search, "Spielersuche"], [Users, "Kaderanalyse"],
-  [Star, "Shortlist"], [BarChart3, "Vergleich"], [HeartPulse, "Verfügbarkeit"], [ArrowRightLeft, "Transfers"], [UserRoundCog, "People"], [PencilLine, "Editor"], [Snowflake, "Freezer"], [Activity, "Live-Spiel"],
+  [Star, "Shortlist"], [BarChart3, "Vergleich"], [HeartPulse, "Verfügbarkeit"], [ArrowRightLeft, "Transfers"], [UserRoundCog, "People"], [Building2, "Club-Zentrale"], [PencilLine, "Editor"], [Snowflake, "Freezer"], [Activity, "Live-Spiel"],
 ] as const;
 
 const money = new Intl.NumberFormat("de-DE", { notation: "compact", style: "currency", currency: "EUR", maximumFractionDigits: 1 });
@@ -81,7 +82,7 @@ export default function App() {
   const visibleColumnDefinitions = playerColumns.filter((column) => column.locked || visibleColumns.includes(column.id));
   const [filtered, setFiltered] = useState<PlayerQueryRow[]>(() => locallyRatedRows(demoPlayers, previewRoles[0]));
   const activeFilterCount = Number(u21Only) + Number(freeAgentsOnly) + Number(minPotential > 0) + Number(maxValueMillions > 0);
-  const metricPlayers = (active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers" || active === "People") && snapshot ? snapshot.players : players;
+  const metricPlayers = (active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers" || active === "People" || active === "Club-Zentrale") && snapshot ? snapshot.players : players;
 
   useEffect(() => {
     let cancelled = false;
@@ -396,7 +397,7 @@ export default function App() {
         </header>
 
         <section className="metrics" aria-label="Datenübersicht">
-          <Metric label="Spieler im Datensatz" value={metricPlayers.length.toLocaleString("de-DE")} detail={active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers" || active === "People" ? "Editor-Arbeitskopie" : "Aktueller Import"} />
+          <Metric label="Spieler im Datensatz" value={metricPlayers.length.toLocaleString("de-DE")} detail={active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers" || active === "People" || active === "Club-Zentrale" ? "Editor-Arbeitskopie" : "Aktueller Import"} />
           <Metric label="U21-Talente" value={metricPlayers.filter((p) => (p.age ?? 99) <= 21).length.toString()} detail="Potenzialanalyse" accent />
           <Metric label="Auf Shortlist" value={shortlist.size.toString()} detail="Lokale Auswahl" />
           <Metric label="Datenabdeckung" value={`${Math.round(metricPlayers.reduce((sum, p) => sum + Object.keys(p.attributes).length, 0) / Math.max(metricPlayers.length, 1) / totalPlayerAttributes * 100)}%`} detail="47 FM26-Attribute" />
@@ -424,6 +425,8 @@ export default function App() {
           <TransferWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
         ) : active === "People" ? (
           <PeopleWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
+        ) : active === "Club-Zentrale" ? (
+          <ClubWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
         ) : active === "Editor" ? (
           <EditorWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
         ) : active === "Freezer" ? (
@@ -627,13 +630,13 @@ function fallbackSnapshot(players: Player[]): DatabaseSnapshot {
     }],
     clubs: [{
       id: "club-nordhafen", name: "Sportverein Nordhafen", short_name: "SV Nordhafen", nation: "Deutschland",
-      competition: "Nordliga", reputation: 4800, professional_status: "professional", stadium: "Hafenpark",
+      competition: "Nordliga", competition_id: "competition-nordliga", reputation: 4800, professional_status: "professional", stadium: "Hafenpark",
       stadium_capacity: 24_500, average_attendance: 19_300,
       finances: { balance: 18_000_000, transfer_budget: 6_500_000, wage_budget: 450_000, debt: 2_000_000 },
       facilities: { training: 15, youth: 16, youth_recruitment: 14, junior_coaching: 15 },
     }, {
       id: "club-suedstadt", name: "Fußballclub Südstadt", short_name: "FC Südstadt", nation: "Deutschland",
-      competition: "Nordliga", reputation: 4200, professional_status: "professional", stadium: "Südstadt-Arena",
+      competition: "Nordliga", competition_id: "competition-nordliga", reputation: 4200, professional_status: "professional", stadium: "Südstadt-Arena",
       stadium_capacity: 18_500, average_attendance: 13_800,
       finances: { balance: 11_000_000, transfer_budget: 4_000_000, wage_budget: 320_000, debt: 1_000_000 },
       facilities: { training: 13, youth: 12, youth_recruitment: 11, junior_coaching: 12 },

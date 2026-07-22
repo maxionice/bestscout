@@ -131,10 +131,11 @@ const basicFields: Record<EditEntityKind, EditorField[]> = {
   club: [
     field("name", "Name", "Identität", "string"), field("short_name", "Kurzname", "Identität", "string", true),
     field("nation", "Nation", "Identität", "string", true), field("competition", "Wettbewerb", "Identität", "string", true),
+    field("competition_id", "Wettbewerb-ID", "Identität", "string", true),
     field("reputation", "Reputation", "Vereinsprofil", "integer", true, 0, 10_000),
     field("professional_status", "Profistatus", "Vereinsprofil", "string", true),
     field("stadium", "Stadion", "Vereinsprofil", "string", true),
-    field("stadium_capacity", "Stadionkapazität", "Vereinsprofil", "integer", true, 0),
+    field("stadium_capacity", "Stadionkapazität", "Vereinsprofil", "integer", true, 1),
     field("average_attendance", "Zuschauerschnitt", "Vereinsprofil", "integer", true, 0),
     field("finances.balance", "Kontostand", "Finanzen", "number", true),
     field("finances.transfer_budget", "Transferbudget", "Finanzen", "number", true, 0),
