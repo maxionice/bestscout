@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EditorWorkspace, type EditorGateway } from "./EditorWorkspace";
 import { demoPlayers } from "./demo";
-import type { AppliedTransaction, DatabaseSnapshot, EditTransaction, JournalEntry } from "./types";
+import type { AppliedTransaction, DatabaseSnapshot, EditTransaction, JournalEntry, MassEditRequest } from "./types";
 
 afterEach(cleanup);
 
@@ -58,6 +58,61 @@ describe("transactional editor workspace", () => {
     expect(screen.getByRole("alert").textContent).toContain("Höchstwert: 200");
     expect(gateway.preview).not.toHaveBeenCalled();
   });
+
+  it("prepares and commits a preset for multiple explicitly selected targets", async () => {
+    const onSnapshotChange = vi.fn();
+    const prepareMassEdit = vi.fn(async (_snapshot: DatabaseSnapshot, request: MassEditRequest) => {
+      const transaction: EditTransaction = {
+        schema_version: 1,
+        id: request.transaction_id,
+        created_at_utc: request.created_at_utc,
+        reason: request.reason,
+        operations: request.entity_ids.flatMap((entityId) => request.preset.changes.map((change) => ({
+          entity_kind: request.preset.entity_kind,
+          entity_id: entityId,
+          field: change.field,
+          expected_before: { mode: "exact" as const, value: false },
+          after: change.strategy.kind === "set" ? change.strategy.value : false,
+        }))),
+      };
+      return { transaction, preview: applied(transaction) };
+    });
+    const apply = vi.fn(async (_journalId: string, _snapshot: DatabaseSnapshot, transaction: EditTransaction) => applied(transaction));
+    const gateway = gatewayWith({ prepareMassEdit, apply });
+
+    render(<EditorWorkspace snapshot={snapshot} onSnapshotChange={onSnapshotChange} gateway={gateway} />);
+    fireEvent.click(screen.getByRole("button", { name: /Presets & Masse/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ziel Noah Hartmann" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ziel Mateo Silva" }));
+    fireEvent.click(screen.getByRole("button", { name: "Massen-Vorschau validieren" }));
+
+    await waitFor(() => expect(prepareMassEdit).toHaveBeenCalledTimes(1));
+    const request = prepareMassEdit.mock.calls[0][1];
+    expect(request.entity_ids).toEqual(["101", "102"]);
+    expect(request.preset).toMatchObject({ id: "builtin-player-transfer-list", entity_kind: "player" });
+    expect(await screen.findByText("2 Änderungen vollständig gültig")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Alles atomar committen" }));
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
+    expect(apply.mock.calls[0][2].operations).toHaveLength(2);
+    expect(onSnapshotChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("builds a reusable custom preset from multiple typed rules", () => {
+    render(<EditorWorkspace snapshot={snapshot} onSnapshotChange={() => undefined} gateway={gatewayWith()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Presets & Masse/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Name des neuen Presets" }), { target: { value: "Entwicklungsprofil" } });
+    fireEvent.click(screen.getByRole("button", { name: "Potenzial (PA)" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Preset-Wert" }), { target: { value: "180" } });
+    fireEvent.click(screen.getByRole("button", { name: "Regel hinzufügen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Aktuelle Fähigkeit (CA)" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Preset-Wert" }), { target: { value: "150" } });
+    fireEvent.click(screen.getByRole("button", { name: "Regel hinzufügen" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Preset mit 2 Regeln speichern" }));
+    expect(screen.getAllByText("Entwicklungsprofil")).toHaveLength(2);
+    expect(screen.getAllByText("2 Regeln").length).toBeGreaterThan(0);
+  });
 });
 
 function gatewayWith(overrides: Partial<EditorGateway> = {}): EditorGateway {
@@ -67,6 +122,7 @@ function gatewayWith(overrides: Partial<EditorGateway> = {}): EditorGateway {
     history: vi.fn(async () => ({ schema_version: 1 as const, entries: [] })),
     undo: vi.fn(async () => { throw new Error("not used"); }),
     restore: vi.fn(async () => snapshot),
+    prepareMassEdit: vi.fn(async () => { throw new Error("not used"); }),
     ...overrides,
   };
 }

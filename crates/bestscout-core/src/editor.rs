@@ -49,6 +49,45 @@ pub struct EditTransaction {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum PresetStrategy {
+    Set { value: Value },
+    AddNumber { delta: f64 },
+    ScaleNumber { factor: f64 },
+    ClampNumber { minimum: f64, maximum: f64 },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PresetChange {
+    pub field: String,
+    pub strategy: PresetStrategy,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EditorPreset {
+    pub schema_version: u32,
+    pub id: String,
+    pub name: String,
+    pub entity_kind: EditEntityKind,
+    pub changes: Vec<PresetChange>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MassEditRequest {
+    pub transaction_id: String,
+    pub created_at_utc: String,
+    pub reason: Option<String>,
+    pub entity_ids: Vec<String>,
+    pub preset: EditorPreset,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PreparedMassEdit {
+    pub transaction: EditTransaction,
+    pub preview: AppliedTransaction,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct JournalChange {
     pub entity_kind: EditEntityKind,
     pub entity_id: String,
@@ -160,6 +199,12 @@ pub enum TransactionError {
     InvalidMetadata,
     #[error("transaction must contain between 1 and {MAXIMUM_OPERATIONS} operations")]
     InvalidOperationCount,
+    #[error("editor preset metadata, targets or changes are invalid")]
+    InvalidPreset,
+    #[error("preset does not change any selected value")]
+    NoChanges,
+    #[error("preset strategy requires a finite numeric value in field {0}")]
+    NumericStrategyRequired(String),
     #[error("every edit operation must include the exact value shown in its preview")]
     MissingExpectation,
     #[error("transaction contains the same entity field more than once")]
@@ -203,6 +248,60 @@ pub fn apply_transaction(
     transaction: &EditTransaction,
 ) -> Result<AppliedTransaction, TransactionError> {
     apply_transaction_internal(snapshot, transaction, None)
+}
+
+pub fn prepare_mass_edit(
+    snapshot: &DatabaseSnapshot,
+    request: &MassEditRequest,
+) -> Result<PreparedMassEdit, TransactionError> {
+    validate_preset(request)?;
+    let operation_count = request
+        .entity_ids
+        .len()
+        .checked_mul(request.preset.changes.len())
+        .ok_or(TransactionError::InvalidOperationCount)?;
+    if operation_count == 0 || operation_count > MAXIMUM_OPERATIONS {
+        return Err(TransactionError::InvalidOperationCount);
+    }
+    let mut operations = Vec::with_capacity(operation_count);
+    for entity_id in &request.entity_ids {
+        let entity = entity_value(snapshot, request.preset.entity_kind, entity_id)?;
+        for change in &request.preset.changes {
+            let before = value_at_path(&entity, &change.field)
+                .cloned()
+                .or_else(|| is_attribute_path(&change.field).then_some(Value::Null))
+                .ok_or_else(|| TransactionError::FieldNotFound(change.field.clone()))?;
+            let after = apply_preset_strategy(&before, &change.field, &change.strategy)?;
+            if before == after {
+                continue;
+            }
+            operations.push(EditOperation {
+                entity_kind: request.preset.entity_kind,
+                entity_id: entity_id.clone(),
+                field: change.field.clone(),
+                expected_before: FieldExpectation::Exact(before),
+                after,
+            });
+        }
+    }
+    if operations.is_empty() {
+        return Err(TransactionError::NoChanges);
+    }
+    let transaction = EditTransaction {
+        schema_version: EDITOR_SCHEMA_VERSION,
+        id: request.transaction_id.clone(),
+        created_at_utc: request.created_at_utc.clone(),
+        reason: request
+            .reason
+            .clone()
+            .or_else(|| Some(format!("Preset {}", request.preset.name))),
+        operations,
+    };
+    let preview = apply_transaction(snapshot, &transaction)?;
+    Ok(PreparedMassEdit {
+        transaction,
+        preview,
+    })
 }
 
 pub fn undo_transaction(
@@ -365,6 +464,116 @@ fn validate_transaction(transaction: &EditTransaction) -> Result<(), Transaction
         }
     }
     Ok(())
+}
+
+fn validate_preset(request: &MassEditRequest) -> Result<(), TransactionError> {
+    let preset = &request.preset;
+    if preset.schema_version != EDITOR_SCHEMA_VERSION
+        || preset.id.trim().is_empty()
+        || preset.id.len() > MAXIMUM_IDENTIFIER_BYTES
+        || preset.name.trim().is_empty()
+        || preset.name.len() > MAXIMUM_REASON_BYTES
+        || request.entity_ids.is_empty()
+        || request.transaction_id.trim().is_empty()
+        || request.created_at_utc.trim().is_empty()
+        || preset.changes.is_empty()
+    {
+        return Err(TransactionError::InvalidPreset);
+    }
+    let unique_entities: HashSet<_> = request.entity_ids.iter().collect();
+    let unique_fields: HashSet<_> = preset.changes.iter().map(|change| &change.field).collect();
+    if unique_entities.len() != request.entity_ids.len()
+        || unique_fields.len() != preset.changes.len()
+        || preset.changes.iter().any(|change| {
+            !is_editable_field(preset.entity_kind, &change.field)
+                || match &change.strategy {
+                    PresetStrategy::Set { .. } => false,
+                    PresetStrategy::AddNumber { delta } => !delta.is_finite(),
+                    PresetStrategy::ScaleNumber { factor } => !factor.is_finite(),
+                    PresetStrategy::ClampNumber { minimum, maximum } => {
+                        !minimum.is_finite() || !maximum.is_finite() || minimum > maximum
+                    }
+                }
+        })
+    {
+        return Err(TransactionError::InvalidPreset);
+    }
+    Ok(())
+}
+
+fn entity_value(
+    snapshot: &DatabaseSnapshot,
+    kind: EditEntityKind,
+    entity_id: &str,
+) -> Result<Value, TransactionError> {
+    let value = match kind {
+        EditEntityKind::Player => snapshot
+            .players
+            .iter()
+            .find(|entity| entity.id == entity_id)
+            .map(serde_json::to_value),
+        EditEntityKind::Staff => snapshot
+            .staff
+            .iter()
+            .find(|entity| entity.id == entity_id)
+            .map(serde_json::to_value),
+        EditEntityKind::Club => snapshot
+            .clubs
+            .iter()
+            .find(|entity| entity.id == entity_id)
+            .map(serde_json::to_value),
+        EditEntityKind::Competition => snapshot
+            .competitions
+            .iter()
+            .find(|entity| entity.id == entity_id)
+            .map(serde_json::to_value),
+    };
+    value
+        .ok_or_else(|| TransactionError::EntityNotFound {
+            entity_kind: kind,
+            entity_id: entity_id.to_owned(),
+        })?
+        .map_err(TransactionError::SnapshotSerialization)
+}
+
+fn apply_preset_strategy(
+    before: &Value,
+    field: &str,
+    strategy: &PresetStrategy,
+) -> Result<Value, TransactionError> {
+    match strategy {
+        PresetStrategy::Set { value } => Ok(value.clone()),
+        PresetStrategy::AddNumber { delta } => numeric_result(before, field, |value| value + delta),
+        PresetStrategy::ScaleNumber { factor } => {
+            numeric_result(before, field, |value| value * factor)
+        }
+        PresetStrategy::ClampNumber { minimum, maximum } => {
+            numeric_result(before, field, |value| value.clamp(*minimum, *maximum))
+        }
+    }
+}
+
+fn numeric_result(
+    before: &Value,
+    field: &str,
+    operation: impl FnOnce(f64) -> f64,
+) -> Result<Value, TransactionError> {
+    let current = before
+        .as_f64()
+        .ok_or_else(|| TransactionError::NumericStrategyRequired(field.to_owned()))?;
+    let result = operation(current);
+    if !result.is_finite() {
+        return Err(TransactionError::NumericStrategyRequired(field.to_owned()));
+    }
+    if before.as_u64().is_some() && result.fract() == 0.0 && result >= 0.0 {
+        return Ok(Value::from(result as u64));
+    }
+    if before.as_i64().is_some() && result.fract() == 0.0 {
+        return Ok(Value::from(result as i64));
+    }
+    serde_json::Number::from_f64(result)
+        .map(Value::Number)
+        .ok_or_else(|| TransactionError::NumericStrategyRequired(field.to_owned()))
 }
 
 fn apply_operation(
@@ -817,6 +1026,93 @@ mod tests {
         assert!(matches!(
             journal.validate(),
             Err(TransactionError::BrokenJournalChain)
+        ));
+    }
+
+    #[test]
+    fn prepares_a_validated_atomic_mass_edit_with_exact_expectations() {
+        let snapshot = synthetic_snapshot();
+        let request = MassEditRequest {
+            transaction_id: "mass-1".to_owned(),
+            created_at_utc: "2026-07-22T01:00:00Z".to_owned(),
+            reason: Some("Training preset".to_owned()),
+            entity_ids: vec!["player-ada".to_owned(), "player-milo".to_owned()],
+            preset: EditorPreset {
+                schema_version: EDITOR_SCHEMA_VERSION,
+                id: "preset-ca".to_owned(),
+                name: "CA plus one".to_owned(),
+                entity_kind: EditEntityKind::Player,
+                changes: vec![PresetChange {
+                    field: "current_ability".to_owned(),
+                    strategy: PresetStrategy::AddNumber { delta: 1.0 },
+                }],
+            },
+        };
+        let prepared = prepare_mass_edit(&snapshot, &request).unwrap();
+        assert_eq!(prepared.transaction.operations.len(), 2);
+        assert!(
+            prepared.transaction.operations.iter().all(|operation| {
+                matches!(operation.expected_before, FieldExpectation::Exact(_))
+            })
+        );
+        assert_eq!(
+            prepared.preview.snapshot.players[0].current_ability,
+            Some(129)
+        );
+        assert_eq!(
+            prepared.preview.snapshot.players[1].current_ability,
+            Some(120)
+        );
+    }
+
+    #[test]
+    fn rejects_non_numeric_strategies_and_the_entire_mass_edit() {
+        let snapshot = synthetic_snapshot();
+        let request = MassEditRequest {
+            transaction_id: "mass-invalid".to_owned(),
+            created_at_utc: "2026-07-22T01:00:00Z".to_owned(),
+            reason: None,
+            entity_ids: vec!["player-ada".to_owned()],
+            preset: EditorPreset {
+                schema_version: EDITOR_SCHEMA_VERSION,
+                id: "preset-name".to_owned(),
+                name: "Invalid number".to_owned(),
+                entity_kind: EditEntityKind::Player,
+                changes: vec![PresetChange {
+                    field: "name".to_owned(),
+                    strategy: PresetStrategy::AddNumber { delta: 1.0 },
+                }],
+            },
+        };
+        assert!(matches!(
+            prepare_mass_edit(&snapshot, &request),
+            Err(TransactionError::NumericStrategyRequired(field)) if field == "name"
+        ));
+        assert_eq!(snapshot.players[0].name, "Ada Beispiel");
+    }
+
+    #[test]
+    fn rejects_a_mass_edit_that_would_only_create_no_op_journal_entries() {
+        let snapshot = synthetic_snapshot();
+        let request = MassEditRequest {
+            transaction_id: "mass-no-op".to_owned(),
+            created_at_utc: "2026-07-22T01:00:00Z".to_owned(),
+            reason: None,
+            entity_ids: vec!["player-ada".to_owned()],
+            preset: EditorPreset {
+                schema_version: EDITOR_SCHEMA_VERSION,
+                id: "preset-same-ca".to_owned(),
+                name: "Same CA".to_owned(),
+                entity_kind: EditEntityKind::Player,
+                changes: vec![PresetChange {
+                    field: "current_ability".to_owned(),
+                    strategy: PresetStrategy::Set { value: json!(128) },
+                }],
+            },
+        };
+        assert!(matches!(
+            prepare_mass_edit(&snapshot, &request),
+            Err(TransactionError::NoChanges)
         ));
     }
 }

@@ -34,6 +34,24 @@ canonical player, staff, club and competition edit fields, including all 47 play
 and 16 staff attributes, and keeps live-write capability visibly separate from
 offline snapshot editing.
 
+## Presets and mass edit
+
+Mass editing reuses the same transaction boundary instead of introducing a
+second write path. A versioned preset targets exactly one entity kind and contains
+one or more unique whitelisted fields. Every rule uses one explicit strategy:
+set a typed value, add or scale a number, or clamp a number to a finite interval.
+Custom presets are stored locally by the desktop client; built-in presets are
+ordinary versioned presets and receive no extra privileges.
+
+The core expands the selected entity IDs and preset rules into at most 5,000
+operations. It reads every current value, drops no-op changes, records an exact
+before-value expectation and runs the complete transaction through canonical
+snapshot validation. A missing entity, absent nested field, non-numeric input,
+duplicate target, stale value or invalid resulting snapshot rejects the entire
+preview. Only the exact prepared transaction can be passed to the existing
+persistent commit command, so mass edits receive the same private before/after
+backups, hash proof, journal and exact undo as a single edit.
+
 ## Future live commit
 
 A build adapter may expose a live commit only after both the local compatibility
