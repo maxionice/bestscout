@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Button, Card, Input, Table, TextField } from "@heroui/react";
 import { Building2, Database, Search, ShieldCheck, Trophy, UserRoundCog, Users } from "lucide-react";
 
-import type { Club, Competition, Contract, DatabaseSnapshot, GameDate, Player, Staff } from "./types";
+import type { Club, Competition, Contract, DatabaseSnapshot, GameDate, PersonRelationship, Player, Staff } from "./types";
 import { playerColumns } from "./view-preferences";
 
 type EntityKind = "players" | "staff" | "clubs" | "competitions";
@@ -49,6 +49,12 @@ const staffGridColumns: GridColumn[] = [
   { id: "contract_type", label: "Vertragsart" },
   { id: "wage", label: "Gehalt" }, { id: "release_clause", label: "Ausstiegsklausel" },
   { id: "squad_status", label: "Kaderstatus" },
+  { id: "date_of_birth", label: "Geburtsdatum" },
+  { id: "languages", label: "Sprachen" },
+  { id: "responsibilities", label: "Verantwortungen" },
+  { id: "qualifications", label: "Qualifikationen" },
+  { id: "relationships", label: "Beziehungen" },
+  { id: "note", label: "Notiz" },
   ...staffAttributeColumns,
 ];
 
@@ -78,11 +84,11 @@ export function DatabaseWorkspace({ players, snapshot }: { players: Player[]; sn
   const configurations = useMemo<Record<EntityKind, GridConfiguration>>(() => ({
     players: {
       label: "Spieler", singular: "Spieler", ariaLabel: "Spielerdaten", icon: Users,
-      columns: playerGridColumns, rows: players.map(playerRow),
+      columns: playerGridColumns, rows: players.map((player) => playerRow(player, snapshot)),
     },
     staff: {
       label: "Staff", singular: "Mitarbeiter", ariaLabel: "Staffdaten", icon: UserRoundCog,
-      columns: staffGridColumns, rows: (snapshot?.staff ?? []).map(staffRow),
+      columns: staffGridColumns, rows: (snapshot?.staff ?? []).map((staff) => staffRow(staff, snapshot)),
     },
     clubs: {
       label: "Vereine", singular: "Verein", ariaLabel: "Vereinsdaten", icon: Building2,
@@ -180,12 +186,12 @@ export function DatabaseWorkspace({ players, snapshot }: { players: Player[]; sn
   );
 }
 
-function playerRow(player: Player): GridRow {
-  const cells = Object.fromEntries(playerGridColumns.map((column) => [column.id, playerCell(player, column.id)]));
+function playerRow(player: Player, snapshot: DatabaseSnapshot | null): GridRow {
+  const cells = Object.fromEntries(playerGridColumns.map((column) => [column.id, playerCell(player, column.id, snapshot)]));
   return { id: player.id, searchText: searchable(player), cells };
 }
 
-function playerCell(player: Player, columnId: string): ReactNode {
+function playerCell(player: Player, columnId: string, snapshot: DatabaseSnapshot | null): ReactNode {
   switch (columnId) {
     case "id": return player.id;
     case "name": return <EntityName name={player.name} subtitle={player.nationality} />;
@@ -215,7 +221,7 @@ function playerCell(player: Player, columnId: string): ReactNode {
     case "release_clause": return formatMoney(player.details?.contract?.release_clause);
     case "squad_status": return display(player.details?.contract?.squad_status);
     case "future_transfer_kind": return display(player.details?.future_transfer?.kind);
-    case "future_transfer_destination": return display(player.details?.future_transfer?.to_club_id);
+    case "future_transfer_destination": return entityName(snapshot, "club", player.details?.future_transfer?.to_club_id);
     case "future_transfer_date": return formatGameDate(player.details?.future_transfer?.effective_on);
     case "future_transfer_fee": return formatMoney(player.details?.future_transfer?.fee);
     case "future_transfer_status": return display(player.details?.future_transfer?.status);
@@ -235,11 +241,14 @@ function playerCell(player: Player, columnId: string): ReactNode {
     case "active_bans": return player.details?.bans?.map((ban) => ban.reason).join(", ") || "–";
     case "tags": return player.details?.tags.join(", ") || "–";
     case "note": return display(player.details?.note);
+    case "languages": return player.details?.languages?.map((item) => `${item.language} ${item.speaking}/10`).join(", ") || "–";
+    case "relationships": return player.details?.relationships?.map((item) => relationshipLabel(snapshot, item)).join(", ") || "–";
+    case "registrations": return player.details?.registrations?.map((item) => `${entityName(snapshot, "competition", item.competition_id)}: ${roleLabel(item.status)}`).join(", ") || "–";
     default: return attribute(player.attributes[columnId.replace("attribute:", "")]);
   }
 }
 
-function staffRow(staff: Staff): GridRow {
+function staffRow(staff: Staff, snapshot: DatabaseSnapshot | null): GridRow {
   const fixed: Record<string, ReactNode> = {
     id: staff.id,
     name: <EntityName name={staff.name} subtitle={staff.nationality} />,
@@ -255,9 +264,32 @@ function staffRow(staff: Staff): GridRow {
     wage: staff.contract?.wage == null ? "–" : `${money.format(staff.contract.wage)} / W.`,
     release_clause: formatMoney(staff.contract?.release_clause),
     squad_status: display(staff.contract?.squad_status),
+    date_of_birth: formatGameDate(staff.details?.date_of_birth),
+    languages: staff.details?.languages?.map((item) => `${item.language} ${item.speaking}/10`).join(", ") || "–",
+    responsibilities: staff.details?.responsibilities?.map(roleLabel).join(" · ") || "–",
+    qualifications: staff.details?.qualifications?.map((item) => `${item.name} L${item.level}`).join(", ") || "–",
+    relationships: staff.details?.relationships?.map((item) => relationshipLabel(snapshot, item)).join(", ") || "–",
+    note: display(staff.details?.note),
   };
   for (const column of staffAttributeColumns) fixed[column.id] = attribute(staff.attributes[column.id.replace("attribute:", "")]);
   return { id: staff.id, searchText: searchable(staff), cells: fixed };
+}
+
+function relationshipLabel(snapshot: DatabaseSnapshot | null, relationship: PersonRelationship) {
+  return `${roleLabel(relationship.kind)}: ${entityName(snapshot, relationship.target_kind, relationship.target_id)} (${relationship.strength})`;
+}
+
+function entityName(
+  snapshot: DatabaseSnapshot | null,
+  kind: "player" | "staff" | "club" | "competition",
+  id: string | null | undefined,
+) {
+  if (!id) return "–";
+  const entities = kind === "player" ? snapshot?.players
+    : kind === "staff" ? snapshot?.staff
+      : kind === "club" ? snapshot?.clubs
+        : snapshot?.competitions;
+  return entities?.find((item) => item.id === id)?.name ?? id;
 }
 
 function clubRow(club: Club): GridRow {

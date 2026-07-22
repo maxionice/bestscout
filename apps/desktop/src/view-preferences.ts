@@ -60,6 +60,9 @@ const coreColumns: PlayerColumnDefinition[] = [
   { id: "active_bans", label: "Aktive Sperren", category: "Medizin" },
   { id: "tags", label: "Tags", category: "Basis" },
   { id: "note", label: "Notiz", category: "Basis" },
+  { id: "languages", label: "Sprachen", category: "Basis" },
+  { id: "relationships", label: "Beziehungen", category: "Basis" },
+  { id: "registrations", label: "Registrierungen", category: "Basis" },
 ];
 
 const attributeGroups: Array<[PlayerColumnDefinition["category"], Array<[string, string]>]> = [

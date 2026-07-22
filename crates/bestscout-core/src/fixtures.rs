@@ -2,8 +2,10 @@ use std::collections::BTreeMap;
 
 use crate::{
     Attribute, Club, ClubFacilities, ClubFinances, Competition, Contract, ContractType,
-    DatabaseSnapshot, Foot, GameDate, Player, PlayerDetails, PlayerFitness, PlayerStatus,
-    SnapshotSource, Staff, StaffAttribute, StaffRole,
+    DatabaseSnapshot, Foot, GameDate, LanguageSkill, PersonRelationship, Player, PlayerDetails,
+    PlayerFitness, PlayerRegistration, PlayerStatus, RegistrationStatus, RelationshipKind,
+    RelationshipTargetKind, SnapshotSource, Staff, StaffAttribute, StaffQualification,
+    StaffResponsibility, StaffRole,
 };
 
 pub fn synthetic_snapshot() -> DatabaseSnapshot {
@@ -55,6 +57,38 @@ pub fn synthetic_snapshot() -> DatabaseSnapshot {
                     happiness: Some(17),
                     injuries: Vec::new(),
                     bans: Vec::new(),
+                    languages: vec![
+                        LanguageSkill {
+                            language: "Deutsch".into(),
+                            speaking: 10,
+                            reading: 10,
+                            writing: 10,
+                        },
+                        LanguageSkill {
+                            language: "Englisch".into(),
+                            speaking: 7,
+                            reading: 8,
+                            writing: 7,
+                        },
+                    ],
+                    relationships: vec![PersonRelationship {
+                        id: "relationship-ada-lina".into(),
+                        kind: RelationshipKind::FavoritePerson,
+                        target_kind: RelationshipTargetKind::Staff,
+                        target_id: "staff-lina".into(),
+                        strength: 65,
+                    }],
+                    registrations: vec![PlayerRegistration {
+                        id: "registration-ada-nordliga".into(),
+                        competition_id: "competition-nordliga".into(),
+                        club_id: "club-nordhafen".into(),
+                        status: RegistrationStatus::Registered,
+                        registered_on: GameDate::new(2026, 7, 1),
+                        expires_on: GameDate::new(2027, 6, 30),
+                        squad_number: Some(8),
+                        homegrown_at_club: true,
+                        homegrown_in_nation: true,
+                    }],
                     status: PlayerStatus::default(),
                     tags: vec!["wonderkid".into()],
                     note: None,
@@ -110,6 +144,42 @@ pub fn synthetic_snapshot() -> DatabaseSnapshot {
                 wage: Some(12_000.0),
                 ..Default::default()
             }),
+            details: crate::StaffDetails {
+                date_of_birth: GameDate::new(1985, 3, 14),
+                languages: vec![
+                    LanguageSkill {
+                        language: "Deutsch".into(),
+                        speaking: 10,
+                        reading: 10,
+                        writing: 10,
+                    },
+                    LanguageSkill {
+                        language: "Englisch".into(),
+                        speaking: 8,
+                        reading: 8,
+                        writing: 7,
+                    },
+                ],
+                relationships: vec![PersonRelationship {
+                    id: "relationship-lina-ada".into(),
+                    kind: RelationshipKind::Mentor,
+                    target_kind: RelationshipTargetKind::Player,
+                    target_id: "player-ada".into(),
+                    strength: 70,
+                }],
+                responsibilities: vec![
+                    StaffResponsibility::TeamTraining,
+                    StaffResponsibility::OppositionInstructions,
+                ],
+                qualifications: vec![StaffQualification {
+                    id: "qualification-lina-continental-pro".into(),
+                    name: "Continental Pro Licence".into(),
+                    level: 5,
+                    awarded_on: GameDate::new(2022, 6, 30),
+                    expires_on: None,
+                }],
+                note: None,
+            },
         }],
         clubs: vec![
             Club {

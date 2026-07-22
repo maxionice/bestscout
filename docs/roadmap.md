@@ -51,7 +51,9 @@
 
 ## 0.7 — Advanced editor
 
-- [ ] Staff, registrations and relationships
+- [x] Canonical staff, registrations, languages, qualifications and relationships
+- [x] HeroUI People & Registration Center with exact preview, journal and undo
+- [ ] Live staff, registration and relationship field adapter acceptance
 - [ ] Competitions, fixtures and stages
 - [x] Canonical attribute freezer, per-field increase policy and change monitor
 - [ ] Automatic live freezer scheduling and read-back acceptance

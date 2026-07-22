@@ -22,6 +22,8 @@
 - A future transfer cannot complete before its in-game effective date.
 - Completion changes club, contract and agreement atomically with exact
   expectations.
+- Immediate and completed club moves clear registrations tied to the previous
+  contract club in the same exact transaction.
 - UI tests require an explicit destination, verify the prepared route and commit
   only through the transfer journal gateway.
 - Cancellation targets only the selected player's existing agreement.
@@ -30,6 +32,8 @@
 - Immediate swaps change both club memberships and both contracts in one exact
   transaction.
 - Future swap arrangement and cancellation update both inverse records together.
+- Immediate and completed swaps clear both players' old registrations; planning
+  and cancellation do not.
 - A future swap cannot complete before its shared effective date.
 - Missing players, same-club partners, invalid target contracts and stale data
   reject the complete swap without a partial mutation.
