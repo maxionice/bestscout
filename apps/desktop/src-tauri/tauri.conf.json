@@ -19,13 +19,26 @@
       "decorations": false,
       "transparent": false
     }],
-    "security": { "csp": null }
+    "security": {
+      "csp": "default-src 'self' customprotocol: asset:; connect-src ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'"
+    }
   },
   "bundle": {
-    "active": false,
-    "targets": "all",
+    "active": true,
+    "targets": ["appimage", "deb", "rpm"],
     "icon": ["icons/icon.png"],
+    "publisher": "BestScout Contributors",
+    "homepage": "https://github.com/maxionice/bestscout",
+    "license": "GPL-3.0-or-later",
+    "licenseFile": "../../../LICENSE",
+    "copyright": "Copyright © 2026 BestScout Contributors",
     "category": "Utility",
-    "shortDescription": "Linux-first scouting and editing suite for Football Manager"
+    "shortDescription": "Linux-first scouting and editing suite for Football Manager",
+    "longDescription": "BestScout is an independent, local-first scouting, squad analysis and guarded editing suite for Football Manager on Linux and Proton.",
+    "linux": {
+      "appimage": { "bundleMediaFramework": false },
+      "deb": { "section": "utils", "priority": "optional" },
+      "rpm": { "epoch": 0, "release": "1" }
+    }
   }
 }

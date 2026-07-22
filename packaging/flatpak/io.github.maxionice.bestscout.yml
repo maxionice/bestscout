@@ -1,0 +1,30 @@
+id: io.github.maxionice.bestscout
+runtime: org.gnome.Platform
+runtime-version: "50"
+sdk: org.gnome.Sdk
+command: bestscout
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --filesystem=home
+modules:
+  - name: bestscout
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 bestscout-desktop /app/bin/bestscout
+      - install -Dm644 io.github.maxionice.bestscout.desktop /app/share/applications/io.github.maxionice.bestscout.desktop
+      - install -Dm644 io.github.maxionice.bestscout.metainfo.xml /app/share/metainfo/io.github.maxionice.bestscout.metainfo.xml
+      - install -Dm644 icon.png /app/share/icons/hicolor/512x512/apps/io.github.maxionice.bestscout.png
+    sources:
+      - type: file
+        path: ../../target/release/bestscout-desktop
+        dest-filename: bestscout-desktop
+      - type: file
+        path: io.github.maxionice.bestscout.desktop
+      - type: file
+        path: io.github.maxionice.bestscout.metainfo.xml
+      - type: file
+        path: ../../apps/desktop/src-tauri/icons/icon.png
+        dest-filename: icon.png

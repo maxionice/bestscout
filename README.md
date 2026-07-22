@@ -45,6 +45,9 @@ and editing tools while remaining local, transparent and safe.
   clamp strategies, bounded server-side preview and atomic commit
 - Explainable development probability and projected CA/attribute peaks with
   configurable Wonderkid, bargain, free-agent and expiring-contract smart lists
+- Reproducible AppImage, DEB and RPM builds with bundle validation and SHA-256
+  manifests
+- Sandboxed Flatpak offline edition with explicit runtime capability gating
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.
@@ -77,6 +80,15 @@ cargo run -p bestscout-live --bin bestscout-bridge -- status \
 The same command supports `install --artifact /path/to/BestScout.Bridge.dll`
 and `uninstall`, but both mutations refuse to run until FM26 has been closed
 normally. See [bridge lifecycle](docs/architecture/bridge-lifecycle.md).
+
+Build native Linux packages and their checksum manifest:
+
+```bash
+scripts/build-linux-packages.sh
+```
+
+See [Linux packaging and releases](docs/release/linux-packaging.md) for package
+support, Flatpak limitations and the tag-driven release process.
 
 ## Safety
 

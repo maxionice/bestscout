@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=BestScout
+Comment=Linux-first scouting and squad analysis for Football Manager
+Exec=bestscout
+Icon=io.github.maxionice.bestscout
+Terminal=false
+Categories=Utility;
+StartupNotify=true
+StartupWMClass=bestscout-desktop

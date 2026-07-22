@@ -162,6 +162,7 @@ describe("BestScout desktop", () => {
 
   it("shows the verified read-only probe for the real game process", () => {
     const environment = {
+      runtime_sandbox: "none",
       installations: [{
         root: "/games/fm26", executable: "/games/fm26/fm.exe", game_assembly: "/games/fm26/GameAssembly.dll",
         global_metadata: "/games/fm26/global-metadata.dat", steam_build_id: "23583635",
@@ -220,5 +221,10 @@ describe("BestScout desktop", () => {
     cleanup();
     render(<LiveWorkspace environment={{ ...environment, processes: [], bridge: null, process_access: null }} isDetecting={false} onDetect={() => undefined} />);
     expect(screen.getByText("Bridge 0.3.0 installiert · FM26 starten")).toBeTruthy();
+
+    cleanup();
+    render(<LiveWorkspace environment={{ ...environment, runtime_sandbox: "flatpak", processes: [], bridge: null, process_access: null, process_inspection_allowed: false }} isDetecting={false} onDetect={() => undefined} />);
+    expect(screen.getByText("Host-Prozesse sind in Flatpak nicht sichtbar")).toBeTruthy();
+    expect(screen.getByText("AppImage, DEB oder RPM für Live-Zugriff verwenden")).toBeTruthy();
   });
 });

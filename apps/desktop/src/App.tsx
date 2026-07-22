@@ -689,6 +689,7 @@ export function LiveWorkspace({ environment, isDetecting, onDetect }: { environm
   const fingerprint = installation?.build_fingerprint;
   const access = environment?.process_access;
   const domainRoots = environment?.bridge?.domain_roots;
+  const flatpak = environment?.runtime_sandbox === "flatpak";
 
   return (
     <div className="live-workspace">
@@ -706,11 +707,11 @@ export function LiveWorkspace({ environment, isDetecting, onDetect }: { environm
 
       <section className="capability-grid" aria-label="Live-Fähigkeiten">
         <Capability title="Build-Profil" enabled={compatibility?.status === "exact"} detail={compatibility?.label ?? "Kein Profil abgeglichen"} />
-        <Capability title="Read-only Probe" enabled={access?.executable_signature_valid ?? false} detail={access ? `PID ${access.inspection.pid} · MZ-Signatur bestätigt` : environment?.process_access_error ?? "Kein lesbarer FM26-Spielprozess"} />
-        <Capability title="In-Game Bridge" enabled={environment?.bridge?.health.read_only ?? false} detail={bridgeDetail(environment)} />
-        <Capability title="Domain-Roots" enabled={domainRoots?.state === "roots_resolved"} detail={domainRootDetail(domainRoots)} />
-        <Capability title="Domänendaten" enabled={environment?.reader_allowed ?? false} detail="Spieler-, Vereins- und Staff-Layout noch gesperrt" />
-        <Capability title="Editor" enabled={environment?.editor_allowed ?? false} detail="Schreiben erst nach validierten Feldprofilen" locked />
+        <Capability title="Read-only Probe" enabled={access?.executable_signature_valid ?? false} detail={flatpak ? "Host-Prozesse sind in Flatpak nicht sichtbar" : access ? `PID ${access.inspection.pid} · MZ-Signatur bestätigt` : environment?.process_access_error ?? "Kein lesbarer FM26-Spielprozess"} />
+        <Capability title="In-Game Bridge" enabled={environment?.bridge?.health.read_only ?? false} detail={flatpak ? "AppImage, DEB oder RPM für Live-Zugriff verwenden" : bridgeDetail(environment)} />
+        <Capability title="Domain-Roots" enabled={domainRoots?.state === "roots_resolved"} detail={flatpak ? "Im Flatpak-Offlinepaket deaktiviert" : domainRootDetail(domainRoots)} />
+        <Capability title="Domänendaten" enabled={environment?.reader_allowed ?? false} detail={flatpak ? "CSV- und lokale Datenanalyse bleiben verfügbar" : "Spieler-, Vereins- und Staff-Layout noch gesperrt"} />
+        <Capability title="Editor" enabled={environment?.editor_allowed ?? false} detail={flatpak ? "Nur sichere lokale Arbeitskopien" : "Schreiben erst nach validierten Feldprofilen"} locked />
       </section>
 
       <Card className="build-card">

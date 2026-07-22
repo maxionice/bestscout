@@ -30,6 +30,7 @@ pub struct FmProcess {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LiveEnvironment {
+    pub runtime_sandbox: RuntimeSandbox,
     pub installations: Vec<FmInstallation>,
     pub processes: Vec<FmProcess>,
     pub bridge: Option<BridgeProbe>,
@@ -42,7 +43,23 @@ pub struct LiveEnvironment {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RuntimeSandbox {
+    None,
+    Flatpak,
+}
+
+pub fn runtime_sandbox() -> RuntimeSandbox {
+    if Path::new("/.flatpak-info").is_file() {
+        RuntimeSandbox::Flatpak
+    } else {
+        RuntimeSandbox::None
+    }
+}
+
 pub fn discover_environment() -> LiveEnvironment {
+    let runtime_sandbox = runtime_sandbox();
     let installations = discover_installations();
     let processes = discover_processes();
     let bridge = installations
@@ -60,8 +77,11 @@ pub fn discover_environment() -> LiveEnvironment {
         .first()
         .and_then(|installation| installation.compatibility.as_ref())
         .map(|report| report.capabilities);
-    let (process_inspection_allowed, reader_allowed, editor_allowed) =
-        resolve_capabilities(capabilities, bridge.as_ref());
+    let (process_inspection_allowed, reader_allowed, editor_allowed) = resolve_capabilities(
+        capabilities,
+        bridge.as_ref(),
+        runtime_sandbox == RuntimeSandbox::Flatpak,
+    );
     let (process_access, process_access_error) = if process_inspection_allowed {
         match processes
             .first()
@@ -77,29 +97,37 @@ pub fn discover_environment() -> LiveEnvironment {
     let process_access_verified = process_access
         .as_ref()
         .is_some_and(|probe| probe.executable_signature_valid);
-    let message = match (
-        installations.is_empty(),
-        processes.is_empty(),
-        process_inspection_allowed,
-        process_access_verified,
-    ) {
-        (true, _, _, _) => "Football Manager 26 installation not found".to_owned(),
-        (false, true, true, _) => {
-            "FM26 build verified; start and load a save for live access".to_owned()
+    let message = if runtime_sandbox == RuntimeSandbox::Flatpak {
+        "Flatpak supports offline scouting; use AppImage, DEB or RPM for safe host FM26 access"
+            .to_owned()
+    } else {
+        match (
+            installations.is_empty(),
+            processes.is_empty(),
+            process_inspection_allowed,
+            process_access_verified,
+        ) {
+            (true, _, _, _) => "Football Manager 26 installation not found".to_owned(),
+            (false, true, true, _) => {
+                "FM26 build verified; start and load a save for live access".to_owned()
+            }
+            (false, true, false, _) => {
+                "FM26 found, but this build is not approved for inspection".to_owned()
+            }
+            (false, false, true, true) => {
+                "FM26 is running with verified read-only process access".to_owned()
+            }
+            (false, false, true, false) => {
+                "FM26 is running, but read-only process access failed".to_owned()
+            }
+            (false, false, false, _) => {
+                "FM26 is running, but its build profile is unknown".to_owned()
+            }
         }
-        (false, true, false, _) => {
-            "FM26 found, but this build is not approved for inspection".to_owned()
-        }
-        (false, false, true, true) => {
-            "FM26 is running with verified read-only process access".to_owned()
-        }
-        (false, false, true, false) => {
-            "FM26 is running, but read-only process access failed".to_owned()
-        }
-        (false, false, false, _) => "FM26 is running, but its build profile is unknown".to_owned(),
     };
 
     LiveEnvironment {
+        runtime_sandbox,
         installations,
         processes,
         bridge,
@@ -116,7 +144,11 @@ pub fn discover_environment() -> LiveEnvironment {
 fn resolve_capabilities(
     profile: Option<Capabilities>,
     bridge: Option<&BridgeProbe>,
+    sandboxed: bool,
 ) -> (bool, bool, bool) {
+    if sandboxed {
+        return (false, false, false);
+    }
     let process_inspection = profile.is_some_and(|value| value.process_inspection);
     let domain_read = profile.is_some_and(|value| value.domain_read)
         && bridge.is_some_and(|probe| probe.capabilities.domain_read);
@@ -273,19 +305,23 @@ mod tests {
     #[test]
     fn domain_access_requires_profile_and_bridge_agreement() {
         assert_eq!(
-            resolve_capabilities(Some(profile()), None),
+            resolve_capabilities(Some(profile()), None, false),
             (true, false, false)
         );
         assert_eq!(
-            resolve_capabilities(Some(profile()), Some(&bridge(true, true, true))),
+            resolve_capabilities(Some(profile()), Some(&bridge(true, true, true)), false),
             (true, true, false)
         );
         assert_eq!(
-            resolve_capabilities(Some(profile()), Some(&bridge(true, true, false))),
+            resolve_capabilities(Some(profile()), Some(&bridge(true, true, false)), false),
             (true, true, true)
         );
         assert_eq!(
-            resolve_capabilities(None, Some(&bridge(true, true, false))),
+            resolve_capabilities(None, Some(&bridge(true, true, false)), false),
+            (false, false, false)
+        );
+        assert_eq!(
+            resolve_capabilities(Some(profile()), Some(&bridge(true, true, false)), true),
             (false, false, false)
         );
     }

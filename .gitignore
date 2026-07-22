@@ -12,3 +12,7 @@ bridge/**/obj/
 *.AppImage
 *.deb
 *.rpm
+/release-artifacts/
+/packaging/flatpak/.flatpak-builder/
+/packaging/flatpak/build-dir/
+/packaging/flatpak/repo/
