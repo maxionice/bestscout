@@ -60,7 +60,7 @@
 - [ ] Live competition, fixture, stage and standings field adapter acceptance
 - [x] Canonical attribute freezer, per-field increase policy and change monitor
 - [ ] Automatic live freezer scheduling and read-back acceptance
-- [ ] Newgen and facepack tooling
+- [x] Deterministic, manifest-protected Newgen facepack assignment tooling
 
 ## 0.8 — Linux distribution
 

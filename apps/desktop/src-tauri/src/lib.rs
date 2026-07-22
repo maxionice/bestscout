@@ -1,10 +1,12 @@
 mod editor_store;
+mod facepack_store;
 mod freezer_store;
 
 use bestscout_core::ImportResult;
 use tauri::Manager;
 
 use editor_store::EditorStore;
+use facepack_store::FacepackFilesystemRequest;
 use freezer_store::FreezerStore;
 
 #[tauri::command]
@@ -249,6 +251,46 @@ async fn prepare_competition_action(
 }
 
 #[tauri::command]
+async fn preview_facepack(
+    snapshot: bestscout_core::DatabaseSnapshot,
+    request: FacepackFilesystemRequest,
+) -> Result<facepack_store::FacepackPreview, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        facepack_store::preview_facepack(&snapshot, &request)
+    })
+    .await
+    .map_err(|error| format!("Facepack-Vorschau fehlgeschlagen: {error}"))?
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn install_facepack(
+    snapshot: bestscout_core::DatabaseSnapshot,
+    request: FacepackFilesystemRequest,
+    expected_plan_hash: String,
+) -> Result<facepack_store::InstalledFacepack, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        facepack_store::install_facepack(&snapshot, &request, &expected_plan_hash)
+    })
+    .await
+    .map_err(|error| format!("Facepack-Installation fehlgeschlagen: {error}"))?
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn remove_facepack(
+    destination_root: std::path::PathBuf,
+    pack_id: String,
+) -> Result<facepack_store::RemovedFacepack, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        facepack_store::remove_facepack(&destination_root, &pack_id)
+    })
+    .await
+    .map_err(|error| format!("Facepack-Entfernung fehlgeschlagen: {error}"))?
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 fn inspect_fm26_process(pid: u32) -> Result<bestscout_live::ProcessInspection, String> {
     bestscout_live::inspect_process(pid).map_err(|error| error.to_string())
 }
@@ -369,6 +411,9 @@ pub fn run() {
             prepare_people_action,
             prepare_club_action,
             prepare_competition_action,
+            preview_facepack,
+            install_facepack,
+            remove_facepack,
             inspect_fm26_process,
             search_database,
             query_players,

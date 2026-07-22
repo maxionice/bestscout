@@ -43,6 +43,15 @@ describe("BestScout desktop", () => {
     expect(screen.getByRole("heading", { name: "Change Monitor" })).toBeTruthy();
   });
 
+  it("opens the local deterministic newgen facepack workspace", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Newgen-Faces" }));
+    expect(screen.getByRole("heading", { name: "Newgen-Faces" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Newgen Facepack Studio" })).toBeTruthy();
+    expect(screen.getByText("Keine Savegame-Mutation")).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "Auswahl ausdrücklich als Newgens bestätigen" })).toBeTruthy();
+  });
+
   it("opens the safe People and Registration Center", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "People" }));
