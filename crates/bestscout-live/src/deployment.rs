@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use crate::{
     CompatibilityStatus, ExecutableFingerprint, FingerprintError, FmInstallation, FmProcess,
-    fingerprint_file,
+    RuntimeSandbox, fingerprint_file, runtime_sandbox,
 };
 
 use crate::discovery::{discover_processes, inspect_installation};
@@ -80,6 +80,8 @@ pub enum BridgeDeploymentError {
     UnsupportedBuild,
     #[error("FM26 is still running with PID(s) {0:?}; close it normally before changing plugins")]
     GameRunning(Vec<u32>),
+    #[error("bridge deployment is unavailable inside Flatpak; use AppImage, DEB or RPM")]
+    SandboxedRuntime,
     #[error("the bridge artifact must be a regular, non-symlink file named {BRIDGE_FILENAME}")]
     InvalidArtifact,
     #[error("the bridge artifact is empty, too large or has no PE signature")]
@@ -205,6 +207,7 @@ pub fn install_bridge(
     game_root: impl AsRef<Path>,
     artifact: impl AsRef<Path>,
 ) -> Result<BridgeDeploymentOutcome, BridgeDeploymentError> {
+    ensure_native_runtime(runtime_sandbox())?;
     let installation = inspect_installation(game_root.as_ref())
         .ok_or(BridgeDeploymentError::InvalidInstallation)?;
     install_bridge_for_installation(&installation, artifact.as_ref(), &discover_processes())
@@ -213,6 +216,7 @@ pub fn install_bridge(
 pub fn uninstall_bridge(
     game_root: impl AsRef<Path>,
 ) -> Result<BridgeDeploymentOutcome, BridgeDeploymentError> {
+    ensure_native_runtime(runtime_sandbox())?;
     let installation = inspect_installation(game_root.as_ref())
         .ok_or(BridgeDeploymentError::InvalidInstallation)?;
     uninstall_bridge_for_installation(&installation, &discover_processes())
@@ -402,6 +406,13 @@ fn ensure_game_stopped(processes: &[FmProcess]) -> Result<(), BridgeDeploymentEr
     Err(BridgeDeploymentError::GameRunning(
         processes.iter().map(|process| process.pid).collect(),
     ))
+}
+
+fn ensure_native_runtime(sandbox: RuntimeSandbox) -> Result<(), BridgeDeploymentError> {
+    match sandbox {
+        RuntimeSandbox::None => Ok(()),
+        RuntimeSandbox::Flatpak => Err(BridgeDeploymentError::SandboxedRuntime),
+    }
 }
 
 fn validate_artifact(path: &Path) -> Result<ExecutableFingerprint, BridgeDeploymentError> {
@@ -807,6 +818,14 @@ mod tests {
     fn deployment_manifest_version_matches_the_bridge_plugin() {
         let plugin_source = include_str!("../../../bridge/BestScout.Bridge/Plugin.cs");
         assert!(plugin_source.contains(&format!("PluginVersion = \"{BRIDGE_VERSION}\"")));
+    }
+
+    #[test]
+    fn flatpak_runtime_can_never_mutate_host_plugins() {
+        assert!(matches!(
+            ensure_native_runtime(RuntimeSandbox::Flatpak),
+            Err(BridgeDeploymentError::SandboxedRuntime)
+        ));
     }
 
     #[test]

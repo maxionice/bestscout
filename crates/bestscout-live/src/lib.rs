@@ -21,7 +21,8 @@ pub use deployment::{
     install_bridge, uninstall_bridge,
 };
 pub use discovery::{
-    FmInstallation, FmProcess, LiveEnvironment, discover_environment, inspect_installation,
+    FmInstallation, FmProcess, LiveEnvironment, RuntimeSandbox, discover_environment,
+    inspect_installation, runtime_sandbox,
 };
 pub use fingerprint::{
     BuildFingerprint, ExecutableFingerprint, FingerprintError, fingerprint_file,

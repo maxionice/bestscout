@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+authors = ["BestScout Contributors"]
+description = "Linux-first scouting and editing suite for Football Manager"
+homepage = "https://github.com/maxionice/bestscout"
 
 [lib]
 name = "bestscout_desktop_lib"

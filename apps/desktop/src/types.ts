@@ -375,6 +375,7 @@ export type ShortlistDocument = {
 export type ShortlistFormat = "json" | "csv" | "html";
 
 export type LiveEnvironment = {
+  runtime_sandbox: "none" | "flatpak";
   installations: Array<{
     root: string;
     executable: string;

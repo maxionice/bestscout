@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.maxionice.bestscout</id>
+  <name>BestScout</name>
+  <summary>Linux-first Football Manager scouting and squad analysis</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="io.github.maxionice">
+    <name>BestScout Contributors</name>
+  </developer>
+  <launchable type="desktop-id">io.github.maxionice.bestscout.desktop</launchable>
+  <url type="homepage">https://github.com/maxionice/bestscout</url>
+  <url type="bugtracker">https://github.com/maxionice/bestscout/issues</url>
+  <description>
+    <p>BestScout provides local player scouting, role analysis, comparisons,
+    shortlists and squad planning for Football Manager data.</p>
+    <p>The Flatpak build is an offline scouting edition because Flatpak hides
+    host processes. Use the AppImage, DEB or RPM package for FM26 live access.</p>
+  </description>
+  <categories>
+    <category>Utility</category>
+    <category>Sports</category>
+  </categories>
+  <provides>
+    <binary>bestscout</binary>
+  </provides>
+  <releases>
+    <release version="0.1.0" date="2026-07-22">
+      <description><p>Initial development release.</p></description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1" />
+</component>

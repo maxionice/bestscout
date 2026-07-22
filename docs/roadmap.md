@@ -53,6 +53,15 @@
 - [ ] Attribute freezer and change monitor
 - [ ] Newgen and facepack tooling
 
+## 0.8 — Linux distribution
+
+- [x] AppImage, DEB and RPM bundle configuration
+- [x] Native bundle signature, size and SHA-256 verification
+- [x] Ubuntu 22.04 packaging CI and tag-driven GitHub release workflow
+- [x] Flatpak offline manifest and hard sandbox capability gate
+- [ ] Steam Deck package and interaction acceptance test
+- [ ] Cryptographic release signing
+
 ## 1.0 — FM26 parity
 
 - [ ] Every supported feature passes the parity acceptance test
