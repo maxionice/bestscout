@@ -3,9 +3,12 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>10.0</LangVersion>
     <AssemblyName>BestScout.Bridge</AssemblyName>
     <RootNamespace>BestScout.Bridge</RootNamespace>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <PathMap>$(MSBuildProjectDirectory)=/_/bridge/BestScout.Bridge</PathMap>
   </PropertyGroup>
 
   <ItemGroup>

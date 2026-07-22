@@ -57,3 +57,10 @@ Release DLL builds with zero warnings/errors, is 86,528 bytes and has SHA-256
 FM remained running after this finding, so the installed 0.4.0 bytes and manifest
 were deliberately left untouched. Positive load/root/catalog acceptance for 0.5.0
 still requires a normal user shutdown, managed update and later user restart.
+
+That hash is retained as historical evidence from the first net6 compatibility
+build. The later [reproducibility acceptance](bridge-reproducibility.md) pins the
+SDK, C# version and source paths and supersedes the distributable candidate with
+an 84,992-byte DLL whose SHA-256 is
+`ee79abf5f85e048a636af3bb65d7ed623265e8e4b7e1afecd6a175686fef0600`.
+Neither candidate was installed while FM was running.

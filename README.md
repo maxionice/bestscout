@@ -28,6 +28,8 @@ and editing tools while remaining local, transparent and safe.
   duplicate validation for the FM26 domain adapter
 - Authenticated, single-flight FM26 reference sampler with catalog allowlisting,
   Unity-thread execution, five-second cleanup and independently validated output
+- Pinned deterministic local net6 bridge build with output allowlisting,
+  path-leak checks and two-rebuild hash verification
 - Bounded paginated live-snapshot protocol with end-to-end canonical validation
 - Schema-versioned player, staff, club and competition models
 - Validated global search and composable player-query engine

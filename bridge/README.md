@@ -35,8 +35,7 @@ that changes on every game launch.
 Build against your local installation:
 
 ```bash
-dotnet build bridge/BestScout.Bridge/BestScout.Bridge.csproj \
-  -c Release -p:FM26Root="/path/to/Football Manager 26"
+scripts/build-bridge.sh "/path/to/Football Manager 26"
 ```
 
 The bridge targets the .NET 6 runtime embedded by the installed BepInEx build and
@@ -45,6 +44,13 @@ Unity interop assemblies. Compiler-only nullable attributes are embedded in the
 plugin because the generated reference set otherwise resolves them to a newer
 `System.Runtime`. Those references remain `Private=false`: no Football Manager
 assembly is copied into the build output or distributed by BestScout.
+
+The repository pins .NET SDK 10.0.110 with roll-forward disabled and C# 10, maps
+the checkout path out of compiler output and enables deterministic CI build
+settings. `build-bridge.sh` performs two clean Release rebuilds and requires
+identical DLL, PDB and dependency-manifest hashes. It also verifies the bounded PE
+artifact, exact net6 target and output allowlist. The build remains local because
+the reference assemblies come from the user's own FM26/BepInEx installation.
 
 After a managed install and normal game restart, inspect the independently
 validated catalog with:
