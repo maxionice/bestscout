@@ -46,11 +46,11 @@ set. `sha256sum -c SHA256SUMS` passed for every listed subject:
 
 | Artifact | Bytes | SHA-256 |
 | --- | ---: | --- |
-| `BestScout_0.1.0_amd64.AppImage` | 108,104,184 | `897d954bc2819e04c995d1d73e3a8ce16253db0b993c43b7ea1cd859e4564960` |
-| `BestScout_0.1.0_amd64.deb` | 5,087,892 | `ef6015672b0a23fe0b40e7f6188a7fe1e07e2f366b5dfbde8b2486622de93cde` |
-| `BestScout-0.1.0-1.x86_64.rpm` | 5,111,246 | `40d23d8ddd25ef2f113462d0a1d2a2e5ee3e9ca1943beafb3ae6c81250c1e649` |
+| `BestScout_0.1.0_amd64.AppImage` | 108,104,184 | `b897ab2f64240fd531995923993c5a3cb08d7fbe38c05c49ec8eae8474c36bf6` |
+| `BestScout_0.1.0_amd64.deb` | 5,087,896 | `9645442e0d3597f33926a8855bf277467cf47f6361b5a28ff2f887b14d1af4cf` |
+| `BestScout-0.1.0-1.x86_64.rpm` | 5,111,246 | `851dfff43669ad7230f7222890370fae12aae01ce88e3b9f1cf019a9350cb036` |
 | `BestScout_0.1.0_x86_64.flatpak` | 3,546,840 | `4e75449c2d10f7b8f6c5b82f895ff5a6a03a8dc93ffbf7fc48c1deb390d5179a` |
-| `BestScout_0.1.0_SteamDeck_x86_64.AppImage` | 108,104,184 | `897d954bc2819e04c995d1d73e3a8ce16253db0b993c43b7ea1cd859e4564960` |
+| `BestScout_0.1.0_SteamDeck_x86_64.AppImage` | 108,104,184 | `b897ab2f64240fd531995923993c5a3cb08d7fbe38c05c49ec8eae8474c36bf6` |
 | `BestScout_0.1.0_SteamDeck_x86_64.sh` | 553 | `65fbd6d99e6b069ac0a88678f8aa7301f56ad4416068a6dc5e87ca93cf08de57` |
 | `BestScout_0.1.0_SteamDeck_x86_64.en.md` | 1,377 | `2ac3cc04783120412b38fced8bc8576c8be34fadae430e9b2a920d4eeb4d591e` |
 | `BestScout_0.1.0_SteamDeck_x86_64.de.md` | 1,470 | `27951245dfc40d491706d8840ce3c37cd617a6b383ee1bb95425000d7641457d` |
@@ -64,15 +64,16 @@ contained an executable x86-64 desktop binary plus the expected desktop entry.
 The Flatpak bundle imported successfully into a fresh temporary OSTree repository
 as `app/io.github.maxionice.bestscout/x86_64/stable`.
 
-Two complete native-package builds from the same commit were then run with
-`SOURCE_DATE_EPOCH=1784757997`, `TZ=UTC` and `LC_ALL=C`. All three independently
+Two complete native-package builds from commit
+`c9dc9907324489fe9b48a9698425b843f84809d1` were then run with its derived
+`SOURCE_DATE_EPOCH=1784760638`, `TZ=UTC` and `LC_ALL=C`. All three independently
 copied outputs compared byte for byte with `cmp`:
 
 | Reproducible native artifact | Bytes | SHA-256 in both builds |
 | --- | ---: | --- |
-| `BestScout_0.1.0_amd64.AppImage` | 108,104,184 | `897d954bc2819e04c995d1d73e3a8ce16253db0b993c43b7ea1cd859e4564960` |
-| `BestScout_0.1.0_amd64.deb` | 5,087,892 | `ef6015672b0a23fe0b40e7f6188a7fe1e07e2f366b5dfbde8b2486622de93cde` |
-| `BestScout-0.1.0-1.x86_64.rpm` | 5,111,246 | `40d23d8ddd25ef2f113462d0a1d2a2e5ee3e9ca1943beafb3ae6c81250c1e649` |
+| `BestScout_0.1.0_amd64.AppImage` | 108,104,184 | `b897ab2f64240fd531995923993c5a3cb08d7fbe38c05c49ec8eae8474c36bf6` |
+| `BestScout_0.1.0_amd64.deb` | 5,087,896 | `9645442e0d3597f33926a8855bf277467cf47f6361b5a28ff2f887b14d1af4cf` |
+| `BestScout-0.1.0-1.x86_64.rpm` | 5,111,246 | `851dfff43669ad7230f7222890370fae12aae01ce88e3b9f1cf019a9350cb036` |
 
 Both RPM copies also retained Tauri's automatically detected
 `libwebkit2gtk-4.1.so.0()(64bit)` and `libgtk-3.so.0()(64bit)` runtime
