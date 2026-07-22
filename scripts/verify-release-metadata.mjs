@@ -73,6 +73,8 @@ if (
 for (const property of [
   "<TargetFramework>net6.0</TargetFramework>",
   "<LangVersion>10.0</LangVersion>",
+  "<Version>0.5.0</Version>",
+  "<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>",
   "<Deterministic>true</Deterministic>",
   "<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>",
   "<PathMap>$(MSBuildProjectDirectory)=/_/bridge/BestScout.Bridge</PathMap>",
