@@ -80,8 +80,9 @@ domain invariants before presenting a preview.
 - **Transfers** covers immediate, future, loan and reciprocal swap routes.
 - **People** covers staff assignments, languages, qualifications, registrations
   and relationships.
-- **Club-Zentrale** covers identity, competition links, finance, stadium and
-  facilities.
+- **Club-Zentrale** covers identity, competition links, finance, stadium,
+  facilities, `#RRGGBB` club colours, four typed kit slots and club
+  relationships.
 - **Wettbewerbs-Zentrale** covers profiles, champions, stages, fixtures and
   standings.
 

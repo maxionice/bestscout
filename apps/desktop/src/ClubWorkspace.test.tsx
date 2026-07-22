@@ -112,6 +112,64 @@ describe("Club Operations Center", () => {
     expect(prepare).not.toHaveBeenCalled();
     expect(screen.getByText("Der Clubname darf nicht leer sein")).toBeTruthy();
   });
+
+  it("prepares bounded colours and a new away kit", async () => {
+    const snapshot = clubSnapshot();
+    const prepare = vi.fn(async (_snapshot: DatabaseSnapshot, request: ClubActionRequest) => prepared(
+      request.command,
+      clubTransaction("branding.primary_colour", "#102A43", "#112233"),
+      snapshot,
+    ));
+    render(<ClubWorkspace snapshot={snapshot} onSnapshotChange={() => undefined} gateway={gatewayWith({ prepare })} identity={identity} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Farben & Trikots" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Primärfarbe (Hex)" }), { target: { value: "#112233" } });
+    fireEvent.click(screen.getByRole("button", { name: "Trikot Auswärts hinzufügen" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Auswärts Muster" }), { target: { value: "stripes" } });
+    fireEvent.click(screen.getByRole("button", { name: "Farben & Trikots-Vorschau erstellen" }));
+
+    await waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
+    const command = prepare.mock.calls[0][1].command;
+    expect(command.kind).toBe("update_branding");
+    if (command.kind !== "update_branding") throw new Error("unexpected command");
+    expect(command.branding.primary_colour).toBe("#112233");
+    expect(command.branding.kits.map((kit) => kit.kind)).toEqual(["home", "away"]);
+    expect(command.branding.kits[1].pattern).toBe("stripes");
+  });
+
+  it("prepares a typed club relationship and an exact removal", async () => {
+    const snapshot = clubSnapshot();
+    const prepare = vi.fn(async (_snapshot: DatabaseSnapshot, request: ClubActionRequest) => prepared(
+      request.command,
+      clubTransaction("relationships", [], snapshot.clubs[0].relationships),
+      snapshot,
+    ));
+    render(<ClubWorkspace snapshot={snapshot} onSnapshotChange={() => undefined} gateway={gatewayWith({ prepare })} identity={identity} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Clubbeziehungen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Beziehungsart Partner" }));
+    fireEvent.click(screen.getByRole("button", { name: "Beziehungsstärke erhöhen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Beziehung-Vorschau erstellen" }));
+    await waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
+    expect(prepare.mock.calls[0][1].command).toEqual({
+      kind: "upsert_relationship",
+      club_id: "club-nordhafen",
+      relationship: {
+        id: "club-deterministic",
+        kind: "affiliate",
+        target_club_id: "club-suedstadt",
+        strength: 51,
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Clubbeziehung relation-rival-suedstadt entfernen" }));
+    await waitFor(() => expect(prepare).toHaveBeenCalledTimes(2));
+    expect(prepare.mock.calls[1][1].command).toEqual({
+      kind: "remove_relationship",
+      club_id: "club-nordhafen",
+      relationship_id: "relation-rival-suedstadt",
+    });
+  });
 });
 
 function clubSnapshot(): DatabaseSnapshot {
@@ -135,6 +193,32 @@ function clubSnapshot(): DatabaseSnapshot {
       average_attendance: 19_300,
       finances: { balance: 18_000_000, transfer_budget: 6_500_000, wage_budget: 450_000, debt: 2_000_000 },
       facilities: { training: 15, youth: 16, youth_recruitment: 14, junior_coaching: 15 },
+      branding: {
+        primary_colour: "#102A43",
+        secondary_colour: "#F6C344",
+        kits: [{
+          id: "kit-nordhafen-home", kind: "home", shirt_colour: "#102A43",
+          shorts_colour: "#102A43", socks_colour: "#F6C344", trim_colour: "#FFFFFF",
+          pattern: "solid",
+        }],
+      },
+      relationships: [{
+        id: "relation-rival-suedstadt", kind: "rival", target_club_id: "club-suedstadt", strength: 70,
+      }],
+    }, {
+      id: "club-suedstadt",
+      name: "FC Südstadt",
+      short_name: "Südstadt",
+      nation: "Deutschland",
+      competition: "Nordliga",
+      competition_id: "competition-nordliga",
+      reputation: 4200,
+      professional_status: "professional",
+      stadium: "Südstadt-Arena",
+      stadium_capacity: 18_000,
+      average_attendance: 12_000,
+      finances: { balance: 10_000_000, transfer_budget: 3_000_000, wage_budget: 300_000, debt: 1_000_000 },
+      facilities: { training: 13, youth: 12, youth_recruitment: 11, junior_coaching: 12 },
     }],
     competitions: [{
       id: "competition-nordliga",

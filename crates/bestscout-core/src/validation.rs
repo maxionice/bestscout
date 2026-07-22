@@ -101,6 +101,7 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
         .collect();
     let mut future_transfer_ids = HashSet::new();
     let mut relationship_ids = HashSet::new();
+    let mut club_relationship_ids = HashSet::new();
     let mut registration_ids = HashSet::new();
     let mut qualification_ids = HashSet::new();
     let mut stage_ids = HashSet::new();
@@ -543,6 +544,8 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
                 );
             }
         }
+        validate_club_branding(&mut issues, club);
+        validate_club_relationships(&mut issues, club, &club_ids, &mut club_relationship_ids);
     }
 
     for competition in &snapshot.competitions {
@@ -1043,6 +1046,178 @@ fn validate_languages(
                 entity_id,
                 format!("{prefix}.{index}"),
                 "language proficiency must be between one and 10",
+            );
+        }
+    }
+}
+
+fn validate_club_branding(issues: &mut Vec<SnapshotIssue>, club: &crate::Club) {
+    for (field, colour) in [
+        (
+            "branding.primary_colour",
+            club.branding.primary_colour.as_deref(),
+        ),
+        (
+            "branding.secondary_colour",
+            club.branding.secondary_colour.as_deref(),
+        ),
+    ] {
+        if colour.is_some_and(|value| !is_hex_colour(value)) {
+            issue(
+                issues,
+                "invalid_club_colour",
+                "club",
+                &club.id,
+                field,
+                "club colours must use the exact #RRGGBB form",
+            );
+        }
+    }
+
+    if club.branding.kits.len() > 4 {
+        issue(
+            issues,
+            "too_many_club_kits",
+            "club",
+            &club.id,
+            "branding.kits",
+            "a club may define at most one home, away, third and goalkeeper kit",
+        );
+    }
+    let mut ids = HashSet::new();
+    let mut kinds = HashSet::new();
+    for (index, kit) in club.branding.kits.iter().enumerate() {
+        if kit.id.trim().is_empty() || kit.id.len() > 128 || !ids.insert(kit.id.as_str()) {
+            issue(
+                issues,
+                "invalid_club_kit_id",
+                "club",
+                &club.id,
+                format!("branding.kits.{index}.id"),
+                "kit IDs must be non-empty, bounded and unique per club",
+            );
+        }
+        if !kinds.insert(kit.kind) {
+            issue(
+                issues,
+                "duplicate_club_kit_kind",
+                "club",
+                &club.id,
+                format!("branding.kits.{index}.kind"),
+                "a club may define each kit kind only once",
+            );
+        }
+        for (field, colour) in [
+            ("shirt_colour", Some(kit.shirt_colour.as_str())),
+            ("shorts_colour", Some(kit.shorts_colour.as_str())),
+            ("socks_colour", Some(kit.socks_colour.as_str())),
+            ("trim_colour", kit.trim_colour.as_deref()),
+        ] {
+            if colour.is_some_and(|value| !is_hex_colour(value)) {
+                issue(
+                    issues,
+                    "invalid_club_kit_colour",
+                    "club",
+                    &club.id,
+                    format!("branding.kits.{index}.{field}"),
+                    "kit colours must use the exact #RRGGBB form",
+                );
+            }
+        }
+        if kit
+            .pattern
+            .as_ref()
+            .is_some_and(|pattern| pattern.trim().is_empty() || pattern.chars().count() > 64)
+        {
+            issue(
+                issues,
+                "invalid_club_kit_pattern",
+                "club",
+                &club.id,
+                format!("branding.kits.{index}.pattern"),
+                "kit pattern must be non-empty and at most 64 characters",
+            );
+        }
+    }
+}
+
+fn is_hex_colour(value: &str) -> bool {
+    value.len() == 7
+        && value.starts_with('#')
+        && value.as_bytes()[1..]
+            .iter()
+            .all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn validate_club_relationships<'a>(
+    issues: &mut Vec<SnapshotIssue>,
+    club: &'a crate::Club,
+    club_ids: &HashSet<&str>,
+    relationship_ids: &mut HashSet<&'a str>,
+) {
+    if club.relationships.len() > 128 {
+        issue(
+            issues,
+            "too_many_club_relationships",
+            "club",
+            &club.id,
+            "relationships",
+            "a club may define at most 128 relationships",
+        );
+    }
+    let mut targets = HashSet::new();
+    for (index, relationship) in club.relationships.iter().enumerate() {
+        if relationship.id.trim().is_empty()
+            || relationship.id.len() > 128
+            || !relationship_ids.insert(relationship.id.as_str())
+        {
+            issue(
+                issues,
+                "invalid_club_relationship_id",
+                "club",
+                &club.id,
+                format!("relationships.{index}.id"),
+                "club relationship IDs must be non-empty, bounded and unique in the snapshot",
+            );
+        }
+        if !club_ids.contains(relationship.target_club_id.as_str()) {
+            issue(
+                issues,
+                "unknown_club_relationship_target",
+                "club",
+                &club.id,
+                format!("relationships.{index}.target_club_id"),
+                "club relationship target must exist in the snapshot",
+            );
+        }
+        if relationship.target_club_id == club.id {
+            issue(
+                issues,
+                "self_club_relationship",
+                "club",
+                &club.id,
+                format!("relationships.{index}.target_club_id"),
+                "a club cannot have a relationship with itself",
+            );
+        }
+        if !targets.insert((relationship.kind, relationship.target_club_id.as_str())) {
+            issue(
+                issues,
+                "duplicate_club_relationship",
+                "club",
+                &club.id,
+                format!("relationships.{index}"),
+                "relationship kind and target must be unique per club",
+            );
+        }
+        if !(1..=100).contains(&relationship.strength) {
+            issue(
+                issues,
+                "club_relationship_strength_out_of_range",
+                "club",
+                &club.id,
+                format!("relationships.{index}.strength"),
+                "club relationship strength must be between one and 100",
             );
         }
     }
@@ -1878,6 +2053,49 @@ mod tests {
             "invalid_professional_status",
             "stadium_capacity_out_of_range",
             "attendance_out_of_range",
+        ] {
+            assert!(
+                report.issues.iter().any(|issue| issue.code == code),
+                "missing expected issue code {code}: {:?}",
+                report.issues
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_club_branding_kits_and_relationships() {
+        let mut snapshot = synthetic_snapshot();
+        snapshot.clubs[0].branding.primary_colour = Some("blue".into());
+        snapshot.clubs[0].branding.kits[0].pattern = Some(String::new());
+        let mut duplicate_kit = snapshot.clubs[0].branding.kits[0].clone();
+        duplicate_kit.id = "second-home-kit".into();
+        duplicate_kit.trim_colour = Some("#12XY00".into());
+        snapshot.clubs[0].branding.kits.push(duplicate_kit);
+        let duplicate_relationship_id = snapshot.clubs[1].relationships[0].id.clone();
+        let self_club_id = snapshot.clubs[0].id.clone();
+        snapshot.clubs[0].relationships[0].id = duplicate_relationship_id;
+        snapshot.clubs[0].relationships[0].target_club_id = "missing-club".into();
+        snapshot.clubs[0].relationships[0].strength = 0;
+        snapshot.clubs[0]
+            .relationships
+            .push(crate::ClubRelationship {
+                id: "self-club-relation".into(),
+                kind: crate::ClubRelationshipKind::Friendly,
+                target_club_id: self_club_id,
+                strength: 50,
+            });
+
+        let report = validate_snapshot(&snapshot);
+        assert!(!report.valid);
+        for code in [
+            "invalid_club_colour",
+            "invalid_club_kit_colour",
+            "invalid_club_kit_pattern",
+            "duplicate_club_kit_kind",
+            "invalid_club_relationship_id",
+            "unknown_club_relationship_target",
+            "self_club_relationship",
+            "club_relationship_strength_out_of_range",
         ] {
             assert!(
                 report.issues.iter().any(|issue| issue.code == code),

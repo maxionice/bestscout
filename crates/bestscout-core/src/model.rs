@@ -553,6 +553,53 @@ pub struct ClubFacilities {
     pub junior_coaching: Option<u8>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ClubKitKind {
+    #[default]
+    Home,
+    Away,
+    Third,
+    Goalkeeper,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClubKit {
+    pub id: String,
+    pub kind: ClubKitKind,
+    pub shirt_colour: String,
+    pub shorts_colour: String,
+    pub socks_colour: String,
+    pub trim_colour: Option<String>,
+    pub pattern: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ClubBranding {
+    pub primary_colour: Option<String>,
+    pub secondary_colour: Option<String>,
+    pub kits: Vec<ClubKit>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ClubRelationshipKind {
+    Rival,
+    Affiliate,
+    Parent,
+    Feeder,
+    Friendly,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClubRelationship {
+    pub id: String,
+    pub kind: ClubRelationshipKind,
+    pub target_club_id: String,
+    pub strength: u8,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Club {
     pub id: String,
@@ -569,6 +616,10 @@ pub struct Club {
     pub average_attendance: Option<u32>,
     pub finances: ClubFinances,
     pub facilities: ClubFacilities,
+    #[serde(default)]
+    pub branding: ClubBranding,
+    #[serde(default)]
+    pub relationships: Vec<ClubRelationship>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -734,7 +785,7 @@ mod tests {
     }
 
     #[test]
-    fn accepts_club_payloads_without_a_competition_reference_id() {
+    fn accepts_club_payloads_without_new_reference_or_branding_fields() {
         let club: Club = serde_json::from_value(serde_json::json!({
             "id": "legacy-club",
             "name": "Legacy Club",
@@ -753,6 +804,8 @@ mod tests {
 
         assert!(club.competition_id.is_none());
         assert_eq!(club.competition.as_deref(), Some("Legacy League"));
+        assert_eq!(club.branding, ClubBranding::default());
+        assert!(club.relationships.is_empty());
     }
 
     #[test]

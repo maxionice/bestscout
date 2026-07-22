@@ -68,6 +68,8 @@ const clubGridColumns: GridColumn[] = [
   { id: "wage_budget", label: "Gehaltsbudget" }, { id: "debt", label: "Schulden" },
   { id: "training", label: "Training" }, { id: "youth", label: "Jugendeinrichtungen" },
   { id: "youth_recruitment", label: "Jugendrekrutierung" }, { id: "junior_coaching", label: "Juniorentraining" },
+  { id: "primary_colour", label: "Primärfarbe" }, { id: "secondary_colour", label: "Sekundärfarbe" },
+  { id: "kits", label: "Trikots" }, { id: "club_relationships", label: "Clubbeziehungen" },
 ];
 
 const competitionGridColumns: GridColumn[] = [
@@ -309,6 +311,10 @@ function clubRow(club: Club): GridRow {
       debt: formatMoney(club.finances?.debt), training: attribute(club.facilities?.training),
       youth: attribute(club.facilities?.youth), youth_recruitment: attribute(club.facilities?.youth_recruitment),
       junior_coaching: attribute(club.facilities?.junior_coaching),
+      primary_colour: display(club.branding?.primary_colour),
+      secondary_colour: display(club.branding?.secondary_colour),
+      kits: display(club.branding?.kits.length),
+      club_relationships: display(club.relationships?.length),
     },
   };
 }
