@@ -36,6 +36,7 @@
 ## 0.5 — Core editor
 
 - [x] Transaction journal, private backups, conflict detection and exact undo
+- [x] HeroUI v3 editor workspace with preview, history, restore and undo
 - [ ] Players, contracts, injuries and bans
 - [ ] Clubs, finance and facilities
 - [ ] Transfers, presets and validated mass edit

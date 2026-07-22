@@ -40,6 +40,9 @@ impl EditorStore {
         let backup = create_backup(snapshot, transaction.created_at_utc.clone())
             .map_err(|error| error.to_string())?;
         self.persist_backup(&backup)?;
+        let committed_backup = create_backup(&applied.snapshot, transaction.created_at_utc.clone())
+            .map_err(|error| error.to_string())?;
+        self.persist_backup(&committed_backup)?;
         let mut journal = self.load_journal(journal_id)?;
         journal
             .append(applied.journal_entry.clone())
@@ -72,6 +75,9 @@ impl EditorStore {
             .map_err(|error| error.to_string())?;
         let backup = create_backup(snapshot, created_at_utc).map_err(|error| error.to_string())?;
         self.persist_backup(&backup)?;
+        let committed_backup =
+            create_backup(&applied.snapshot, created_at_utc).map_err(|error| error.to_string())?;
+        self.persist_backup(&committed_backup)?;
         journal
             .append(applied.journal_entry.clone())
             .map_err(|error| error.to_string())?;
@@ -278,6 +284,12 @@ mod tests {
             .restore(&applied.journal_entry.snapshot_before_hash)
             .unwrap();
         assert_eq!(restored, snapshot);
+        assert_eq!(
+            store
+                .restore(&applied.journal_entry.snapshot_after_hash)
+                .unwrap(),
+            applied.snapshot
+        );
 
         let undone = store
             .undo(

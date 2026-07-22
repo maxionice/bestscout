@@ -35,6 +35,8 @@ and editing tools while remaining local, transparent and safe.
 - Complete searchable HeroUI tables for every player, staff, club and competition field
 - Atomic canonical edit transactions with exact preview conflicts, private backups,
   a hash-chained journal, read-back verification and exact undo
+- Full HeroUI v3 editor workspace for player, staff, club and competition fields
+  with staged changes, validated preview, history, restore and undo
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.
