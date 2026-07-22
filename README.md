@@ -37,6 +37,8 @@ and editing tools while remaining local, transparent and safe.
   a hash-chained journal, read-back verification and exact undo
 - Full HeroUI v3 editor workspace for player, staff, club and competition fields
   with staged changes, validated preview, history, restore and undo
+- Persistent preset manager and filtered mass editor with set, add, scale and
+  clamp strategies, bounded server-side preview and atomic commit
 - Explainable development probability and projected CA/attribute peaks with
   configurable Wonderkid, bargain, free-agent and expiring-contract smart lists
 

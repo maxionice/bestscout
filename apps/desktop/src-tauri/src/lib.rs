@@ -67,6 +67,18 @@ async fn preview_snapshot_transaction(
 }
 
 #[tauri::command]
+async fn prepare_mass_edit(
+    snapshot: bestscout_core::DatabaseSnapshot,
+    request: bestscout_core::MassEditRequest,
+) -> Result<bestscout_core::PreparedMassEdit, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        bestscout_core::prepare_mass_edit(&snapshot, &request).map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| format!("Masseneditor-Vorschau fehlgeschlagen: {error}"))?
+}
+
+#[tauri::command]
 async fn undo_snapshot_transaction(
     store: tauri::State<'_, EditorStore>,
     journal_id: String,
@@ -208,6 +220,7 @@ pub fn run() {
             detect_fm26,
             load_live_snapshot,
             preview_snapshot_transaction,
+            prepare_mass_edit,
             apply_snapshot_transaction,
             undo_snapshot_transaction,
             editor_history,

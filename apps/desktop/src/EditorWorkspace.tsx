@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Card, Input, TextArea, TextField } from "@heroui/react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   AlertTriangle, ArrowRight, Check, CheckCircle2, Clock3, DatabaseBackup,
-  History, PencilLine, RotateCcw, Search, ShieldCheck, Trash2, Users,
-  UserRoundCog, Building2, Trophy,
+  History, Layers3, PencilLine, Plus, RotateCcw, Save, Search, ShieldCheck,
+  Trash2, Users, UserRoundCog, Building2, Trophy,
 } from "lucide-react";
 
 import type {
   AppliedTransaction, Club, Competition, DatabaseSnapshot, EditEntityKind,
-  EditOperation, EditTransaction, JournalEntry, Player, Staff, TransactionJournal,
+  EditOperation, EditorPreset, EditTransaction, JournalEntry, MassEditRequest,
+  Player, PreparedMassEdit, PresetChange, Staff, TransactionJournal,
 } from "./types";
 import { playerColumns } from "./view-preferences";
 
@@ -38,6 +39,7 @@ export type EditorGateway = {
     createdAtUtc: string,
   ) => Promise<AppliedTransaction>;
   restore: (snapshotHash: string) => Promise<DatabaseSnapshot>;
+  prepareMassEdit: (snapshot: DatabaseSnapshot, request: MassEditRequest) => Promise<PreparedMassEdit>;
 };
 
 const tauriGateway: EditorGateway = {
@@ -48,6 +50,7 @@ const tauriGateway: EditorGateway = {
     journalId, snapshot, transactionId, undoId, createdAtUtc,
   }),
   restore: (snapshotHash) => invoke("restore_snapshot_backup", { snapshotHash }),
+  prepareMassEdit: (snapshot, request) => invoke("prepare_mass_edit", { snapshot, request }),
 };
 
 const kinds: Array<{ id: EditEntityKind; label: string; icon: typeof Users }> = [
@@ -140,6 +143,7 @@ export function EditorWorkspace({
   liveWriteEnabled?: boolean;
   gateway?: EditorGateway;
 }) {
+  const [mode, setMode] = useState<"single" | "bulk">("single");
   const [kind, setKind] = useState<EditEntityKind>("player");
   const [entityQuery, setEntityQuery] = useState("");
   const [fieldQuery, setFieldQuery] = useState("");
@@ -153,6 +157,10 @@ export function EditorWorkspace({
   const [message, setMessage] = useState("Arbeitskopie bereit");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState({ selected: 0, prepared: false, busy: false });
+  const handleBulkStatus = useCallback((selected: number, preparedState: boolean, busyState: boolean) => {
+    setBulkStatus({ selected, prepared: preparedState, busy: busyState });
+  }, []);
 
   const journalId = `canonical-${snapshot?.source ?? "offline"}-workspace-v1`;
   const entities = useMemo(() => entitiesFor(snapshot, kind), [snapshot, kind]);
@@ -318,19 +326,23 @@ export function EditorWorkspace({
         <Card.Header>
           <div><span className="eyebrow">TRANSAKTIONALER EDITOR</span><Card.Title>Sichere Arbeitskopie</Card.Title><Card.Description>Exakte Preview-Werte, atomare Validierung, private Backups und Hash-Journal.</Card.Description></div>
           <div className="editor-safety-state">
+            <div className="editor-mode-switch" role="group" aria-label="Editormodus wählen">
+              <Button size="sm" variant={mode === "single" ? "primary" : "ghost"} aria-pressed={mode === "single"} onPress={() => setMode("single")}><PencilLine size={13} /> Einzeln</Button>
+              <Button size="sm" variant={mode === "bulk" ? "primary" : "ghost"} aria-pressed={mode === "bulk"} onPress={() => setMode("bulk")}><Layers3 size={13} /> Presets & Masse</Button>
+            </div>
             <span className="engine-badge"><ShieldCheck size={13} /> SCHEMA {snapshot.schema_version}</span>
             <span className={`profile-state ${liveWriteEnabled ? "exact" : ""}`}>{liveWriteEnabled ? "LIVE-ADAPTER FREIGEGEBEN" : "LIVE-SCHREIBEN GESPERRT"}</span>
           </div>
         </Card.Header>
         <Card.Content className="editor-summary">
-          <div><PencilLine size={16} /><span>Vorgemerkt</span><strong>{operations.length}</strong></div>
-          <div><CheckCircle2 size={16} /><span>Vorschau</span><strong>{preview ? "Validiert" : "Offen"}</strong></div>
+          <div>{mode === "bulk" ? <Layers3 size={16} /> : <PencilLine size={16} />}<span>{mode === "bulk" ? "Gewählte Ziele" : "Vorgemerkt"}</span><strong>{mode === "bulk" ? bulkStatus.selected : operations.length}</strong></div>
+          <div><CheckCircle2 size={16} /><span>Vorschau</span><strong>{mode === "bulk" ? (bulkStatus.prepared ? "Validiert" : "Offen") : (preview ? "Validiert" : "Offen")}</strong></div>
           <div><History size={16} /><span>Journal</span><strong>{history.length} Einträge</strong></div>
           <div><DatabaseBackup size={16} /><span>Ziel</span><strong>{sourceLabel(snapshot.source)}</strong></div>
         </Card.Content>
       </Card>
 
-      <div className="editor-columns">
+      {mode === "single" ? <div className="editor-columns">
         <Card className="editor-panel entity-panel">
           <Card.Header><div><Card.Title>1 · Datensatz</Card.Title><Card.Description>Entität eindeutig auswählen</Card.Description></div></Card.Header>
           <Card.Content>
@@ -381,16 +393,275 @@ export function EditorWorkspace({
             </div>
           </Card.Content>
         </Card>
-      </div>
+      </div> : <BulkEditWorkspace snapshot={snapshot} journalId={journalId} gateway={gateway} onStatusChange={handleBulkStatus} onCommitted={(result) => {
+        onSnapshotChange(result.snapshot);
+        setHistory((current) => [...current, result.journal_entry]);
+        setMessage("Preset atomar committed · Vorher/Nachher gesichert");
+      }} />}
 
       <Card className="editor-history-card">
-        <Card.Header><div><Card.Title>Transaktionsverlauf</Card.Title><Card.Description>Hash-verkettete, save-spezifische Historie mit exaktem Undo.</Card.Description></div><div className="history-actions"><Button size="sm" variant="secondary" isDisabled={busy || history.length === 0} onPress={restoreLatest}><DatabaseBackup size={14} /> Letzten Stand laden</Button><Button size="sm" variant="secondary" isDisabled={busy || history.length === 0} onPress={undoLast}><RotateCcw size={14} /> Letzte Transaktion rückgängig</Button></div></Card.Header>
+        <Card.Header><div><Card.Title>Transaktionsverlauf</Card.Title><Card.Description>Hash-verkettete, save-spezifische Historie mit exaktem Undo.</Card.Description></div><div className="history-actions"><Button size="sm" variant="secondary" isDisabled={busy || bulkStatus.busy || history.length === 0} onPress={restoreLatest}><DatabaseBackup size={14} /> Letzten Stand laden</Button><Button size="sm" variant="secondary" isDisabled={busy || bulkStatus.busy || history.length === 0} onPress={undoLast}><RotateCcw size={14} /> Letzte Transaktion rückgängig</Button></div></Card.Header>
         <Card.Content>
           {history.length === 0 ? <div className="editor-history-empty"><Clock3 size={18} /> Noch keine committen Änderungen in diesem Journal.</div> : <div className="editor-history-list">{history.slice().reverse().slice(0, 8).map((entry) => <div className="editor-history-row" key={entry.transaction_id}><span className={entry.reverts_transaction_id ? "undo" : "commit"}>{entry.reverts_transaction_id ? <RotateCcw size={13} /> : <Check size={13} />}</span><div><strong>{entry.reason || (entry.reverts_transaction_id ? `Undo ${entry.reverts_transaction_id}` : "Editor-Transaktion")}</strong><small>{entry.transaction_id} · {entry.changes.length} Änderung{entry.changes.length === 1 ? "" : "en"}</small></div><code>{shortHash(entry.snapshot_after_hash)}</code></div>)}</div>}
         </Card.Content>
       </Card>
     </div>
   );
+}
+
+const builtInPresets: EditorPreset[] = [
+  {
+    schema_version: 1, id: "builtin-player-transfer-list", name: "Auf Transferliste setzen", entity_kind: "player",
+    changes: [{ field: "details.status.transfer_listed", strategy: { kind: "set", value: true } }],
+  },
+  {
+    schema_version: 1, id: "builtin-club-facilities", name: "Elite-Einrichtungen (20)", entity_kind: "club",
+    changes: ["training", "youth", "youth_recruitment", "junior_coaching"].map((facility) => ({
+      field: `facilities.${facility}`, strategy: { kind: "set", value: 20 },
+    })),
+  },
+  {
+    schema_version: 1, id: "builtin-staff-reputation", name: "Staff-Reputation maximieren", entity_kind: "staff",
+    changes: [{ field: "reputation", strategy: { kind: "set", value: 10_000 } }],
+  },
+  {
+    schema_version: 1, id: "builtin-competition-reputation", name: "Wettbewerbsreputation maximieren", entity_kind: "competition",
+    changes: [{ field: "reputation", strategy: { kind: "set", value: 10_000 } }],
+  },
+];
+
+function BulkEditWorkspace({
+  snapshot, journalId, gateway, onCommitted, onStatusChange,
+}: {
+  snapshot: DatabaseSnapshot;
+  journalId: string;
+  gateway: EditorGateway;
+  onCommitted: (result: AppliedTransaction) => void;
+  onStatusChange: (selected: number, prepared: boolean, busy: boolean) => void;
+}) {
+  const [kind, setKind] = useState<EditEntityKind>("player");
+  const [targetQuery, setTargetQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [customPresets, setCustomPresets] = useState<EditorPreset[]>(readCustomPresets);
+  const [presetId, setPresetId] = useState("builtin-player-transfer-list");
+  const [draftName, setDraftName] = useState("");
+  const [draftFieldPath, setDraftFieldPath] = useState("potential_ability");
+  const [draftStrategy, setDraftStrategy] = useState<PresetChange["strategy"]["kind"]>("set");
+  const [draftValue, setDraftValue] = useState("180");
+  const [draftMaximum, setDraftMaximum] = useState("20");
+  const [draftChanges, setDraftChanges] = useState<PresetChange[]>([]);
+  const [reason, setReason] = useState("");
+  const [prepared, setPrepared] = useState<PreparedMassEdit | null>(null);
+  const [message, setMessage] = useState("Ziele und Preset auswählen");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const entities = useMemo(() => entitiesFor(snapshot, kind), [snapshot, kind]);
+  const fields = useMemo(() => fieldsFor(kind, null), [kind]);
+  const selectedField = fields.find((item) => item.path === draftFieldPath) ?? fields[0];
+  const presets = useMemo(() => [...builtInPresets, ...customPresets].filter((preset) => preset.entity_kind === kind), [customPresets, kind]);
+  const selectedPreset = presets.find((preset) => preset.id === presetId) ?? presets[0] ?? null;
+  const visibleEntities = useMemo(() => {
+    const needle = normalize(targetQuery);
+    return needle ? entities.filter((entity) => normalize(`${entityName(entity)} ${entitySubtitle(entity, kind)}`).includes(needle)) : entities;
+  }, [entities, kind, targetQuery]);
+
+  useEffect(() => {
+    try { if (typeof window !== "undefined") window.localStorage.setItem("bestscout.editor-presets.v1", JSON.stringify(customPresets)); } catch { /* private storage unavailable */ }
+  }, [customPresets]);
+
+  useEffect(() => {
+    onStatusChange(selectedIds.length, prepared != null, busy);
+  }, [busy, onStatusChange, prepared, selectedIds.length]);
+
+  useEffect(() => {
+    if (!selectedPreset && presets[0]) setPresetId(presets[0].id);
+  }, [presets, selectedPreset]);
+
+  useEffect(() => {
+    if (!fields.some((item) => item.path === draftFieldPath)) setDraftFieldPath(fields[0]?.path ?? "");
+  }, [draftFieldPath, fields]);
+
+  useEffect(() => {
+    if (selectedField && selectedField.type !== "integer" && selectedField.type !== "number" && draftStrategy !== "set") setDraftStrategy("set");
+  }, [draftStrategy, selectedField]);
+
+  function selectKind(next: EditEntityKind) {
+    setKind(next);
+    setTargetQuery("");
+    setSelectedIds([]);
+    setDraftChanges([]);
+    setPrepared(null);
+    setPresetId([...builtInPresets, ...customPresets].find((preset) => preset.entity_kind === next)?.id ?? "");
+  }
+
+  function selectPreset(next: string) {
+    setPresetId(next);
+    setPrepared(null);
+    setError("");
+  }
+
+  function toggleTarget(id: string) {
+    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+    setPrepared(null);
+  }
+
+  function selectVisible() {
+    const visibleIds = visibleEntities.map((entity) => entity.id);
+    setSelectedIds((current) => [...new Set([...current, ...visibleIds])]);
+    setPrepared(null);
+  }
+
+  function addPresetRule() {
+    if (!selectedField) return;
+    try {
+      const change = createPresetChange(selectedField, draftStrategy, draftValue, draftMaximum);
+      setDraftChanges((current) => [...current.filter((item) => item.field !== change.field), change]);
+      setError("");
+      setMessage(`${selectedField.label} zum Preset-Entwurf hinzugefügt`);
+    } catch (nextError) {
+      setError(String(nextError));
+    }
+  }
+
+  function savePreset() {
+    if (!draftName.trim() || draftChanges.length === 0) {
+      setError("Preset-Name und mindestens eine Regel sind erforderlich");
+      return;
+    }
+    const preset: EditorPreset = {
+      schema_version: 1,
+      id: newTransactionId("preset"),
+      name: draftName.trim(),
+      entity_kind: kind,
+      changes: draftChanges,
+    };
+    setCustomPresets((current) => [...current, preset]);
+    setPresetId(preset.id);
+    setDraftName("");
+    setDraftChanges([]);
+    setPrepared(null);
+    setError("");
+    setMessage(`Preset „${preset.name}“ lokal gespeichert`);
+  }
+
+  function deletePreset(id: string) {
+    setCustomPresets((current) => current.filter((preset) => preset.id !== id));
+    setPrepared(null);
+    setMessage("Benutzer-Preset gelöscht");
+  }
+
+  async function prepare() {
+    if (!selectedPreset || selectedIds.length === 0) return;
+    setBusy(true);
+    setError("");
+    try {
+      const request: MassEditRequest = {
+        transaction_id: newTransactionId("mass"),
+        created_at_utc: new Date().toISOString(),
+        reason: reason.trim() || `Preset: ${selectedPreset.name}`,
+        entity_ids: selectedIds,
+        preset: selectedPreset,
+      };
+      const result = await gateway.prepareMassEdit(snapshot, request);
+      setPrepared(result);
+      setMessage(`${result.transaction.operations.length} Änderungen atomar validiert`);
+    } catch (nextError) {
+      setPrepared(null);
+      setError(`Massen-Vorschau abgelehnt: ${String(nextError)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function commit() {
+    if (!prepared) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await gateway.apply(journalId, snapshot, prepared.transaction);
+      onCommitted(result);
+      setPrepared(null);
+      setSelectedIds([]);
+      setReason("");
+      setMessage("Massenänderung atomar committed und gesichert");
+    } catch (nextError) {
+      setError(`Commit abgelehnt: ${String(nextError)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <div className="bulk-editor">
+    <Card className="editor-panel bulk-preset-panel">
+      <Card.Header><div><Card.Title>1 · Preset</Card.Title><Card.Description>Wiederverwendbare, schema-validierte Regeln</Card.Description></div><span className="nav-count">{presets.length}</span></Card.Header>
+      <Card.Content>
+        <div className="editor-kind-tabs" role="group" aria-label="Masseneditor-Entitätstyp wählen">
+          {kinds.map((item) => <Button key={item.id} isIconOnly size="sm" variant={kind === item.id ? "primary" : "ghost"} aria-label={`Masseneditor ${item.label}`} aria-pressed={kind === item.id} onPress={() => selectKind(item.id)}><item.icon size={14} /></Button>)}
+        </div>
+        <div className="bulk-preset-list" role="group" aria-label="Verfügbare Presets">
+          {presets.map((preset) => <div className={`bulk-preset-row ${preset.id === selectedPreset?.id ? "selected" : ""}`} key={preset.id}>
+            <Button variant="ghost" aria-pressed={preset.id === selectedPreset?.id} onPress={() => selectPreset(preset.id)}><div><strong>{preset.name}</strong><span>{preset.changes.length} Regel{preset.changes.length === 1 ? "" : "n"}</span></div></Button>
+            {customPresets.some((item) => item.id === preset.id) && <Button isIconOnly size="sm" variant="ghost" aria-label={`Preset ${preset.name} löschen`} onPress={() => deletePreset(preset.id)}><Trash2 size={13} /></Button>}
+          </div>)}
+        </div>
+        <div className="preset-builder">
+          <div className="section-kicker"><Plus size={12} /> EIGENES PRESET</div>
+          <TextField aria-label="Name des neuen Presets" value={draftName} onChange={setDraftName}><Input placeholder="Preset-Name …" maxLength={128} /></TextField>
+          <div className="preset-field-list" role="group" aria-label="Feld für neues Preset">
+            {fields.map((item) => <Button key={item.path} size="sm" variant={item.path === selectedField?.path ? "secondary" : "ghost"} aria-pressed={item.path === selectedField?.path} onPress={() => setDraftFieldPath(item.path)}>{item.label}</Button>)}
+          </div>
+          <div className="preset-strategies" role="group" aria-label="Preset-Strategie">
+            {(["set", "add_number", "scale_number", "clamp_number"] as const).map((strategy) => <Button key={strategy} size="sm" variant={draftStrategy === strategy ? "primary" : "ghost"} aria-pressed={draftStrategy === strategy} isDisabled={strategy !== "set" && selectedField?.type !== "number" && selectedField?.type !== "integer"} onPress={() => setDraftStrategy(strategy)}>{strategyLabel(strategy)}</Button>)}
+          </div>
+          <div className="preset-values">
+            <TextField aria-label="Preset-Wert" value={draftValue} onChange={setDraftValue}><Input placeholder={draftStrategy === "clamp_number" ? "Minimum" : "Wert"} /></TextField>
+            {draftStrategy === "clamp_number" && <TextField aria-label="Preset-Maximum" value={draftMaximum} onChange={setDraftMaximum}><Input placeholder="Maximum" /></TextField>}
+          </div>
+          <Button size="sm" variant="secondary" onPress={addPresetRule}><Plus size={13} /> Regel hinzufügen</Button>
+          {draftChanges.length > 0 && <div className="preset-draft-list" aria-label="Regeln im Preset-Entwurf">{draftChanges.map((change) => <div key={change.field}><div><strong>{fieldLabel(kind, change.field)}</strong><span>{describeStrategy(change.strategy)}</span></div><Button isIconOnly size="sm" variant="ghost" aria-label={`Regel ${change.field} entfernen`} onPress={() => setDraftChanges((current) => current.filter((item) => item.field !== change.field))}><Trash2 size={12} /></Button></div>)}</div>}
+          <Button size="sm" isDisabled={draftChanges.length === 0} onPress={savePreset}><Save size={13} /> Preset mit {draftChanges.length} Regel{draftChanges.length === 1 ? "" : "n"} speichern</Button>
+        </div>
+      </Card.Content>
+    </Card>
+
+    <Card className="editor-panel bulk-target-panel">
+      <Card.Header><div><Card.Title>2 · Ziele</Card.Title><Card.Description>Filter wirkt nur auf die Auswahl, nie verdeckt</Card.Description></div><span className="nav-count">{selectedIds.length}</span></Card.Header>
+      <Card.Content>
+        <TextField aria-label="Masseneditor-Ziele durchsuchen" value={targetQuery} onChange={setTargetQuery} className="editor-search"><Search className="search-icon" size={14} /><Input placeholder="Name, Verein oder Nation …" /></TextField>
+        <div className="bulk-select-actions"><Button size="sm" variant="secondary" onPress={selectVisible}>Alle sichtbaren ({visibleEntities.length})</Button><Button size="sm" variant="ghost" onPress={() => { setSelectedIds([]); setPrepared(null); }}>Auswahl leeren</Button></div>
+        <div className="bulk-target-list" role="group" aria-label="Ziele der Massenänderung">
+          {visibleEntities.map((entity) => {
+            const selected = selectedIds.includes(entity.id);
+            return <Button key={entity.id} variant={selected ? "secondary" : "ghost"} className="bulk-target" aria-label={`Ziel ${entityName(entity)}`} aria-pressed={selected} onPress={() => toggleTarget(entity.id)}><span className={`bulk-check ${selected ? "selected" : ""}`}>{selected && <Check size={12} />}</span><div><strong>{entityName(entity)}</strong><small>{entitySubtitle(entity, kind)}</small></div></Button>;
+          })}
+        </div>
+      </Card.Content>
+    </Card>
+
+    <Card className="editor-panel bulk-preview-panel">
+      <Card.Header><div><Card.Title>3 · Vorschau & Commit</Card.Title><Card.Description>Bis zu 5.000 Änderungen, alles oder nichts</Card.Description></div><ShieldCheck size={17} /></Card.Header>
+      <Card.Content>
+        <div className="bulk-plan">
+          <span>Aktiver Plan</span>
+          <strong>{selectedPreset?.name ?? "Kein Preset"}</strong>
+          <small>{selectedIds.length} Ziele × {selectedPreset?.changes.length ?? 0} Regeln</small>
+          {selectedPreset?.changes.map((change) => <code key={change.field}>{fieldLabel(kind, change.field)} · {describeStrategy(change.strategy)}</code>)}
+        </div>
+        <TextField aria-label="Grund für die Massenänderung" value={reason} onChange={(value) => { setReason(value); setPrepared(null); }}><Input placeholder="Optionaler Journal-Kommentar …" maxLength={1000} /></TextField>
+        {error ? <div className="editor-alert error" role="alert"><AlertTriangle size={14} /><span>{error}</span></div> : <div className="editor-alert"><ShieldCheck size={14} /><span>{message}</span></div>}
+        {prepared && <div className="bulk-proof">
+          <div className="preview-proof"><CheckCircle2 size={16} /><div><strong>{prepared.transaction.operations.length} Änderungen vollständig gültig</strong><span>{shortHash(prepared.preview.journal_entry.snapshot_before_hash)} → {shortHash(prepared.preview.journal_entry.snapshot_after_hash)}</span></div></div>
+          <div className="bulk-change-preview">{prepared.preview.journal_entry.changes.slice(0, 7).map((change) => <div key={`${change.entity_id}-${change.field}`}><span>{entityLabel(snapshot, { entity_kind: change.entity_kind, entity_id: change.entity_id, field: change.field, expected_before: { mode: "exact", value: change.before }, after: change.after })}</span><strong>{fieldLabel(change.entity_kind, change.field)}</strong><code>{humanValue(change.before)} → {humanValue(change.after)}</code></div>)}</div>
+          {prepared.preview.journal_entry.changes.length > 7 && <small className="bulk-more">+ {prepared.preview.journal_entry.changes.length - 7} weitere Änderungen</small>}
+        </div>}
+        <div className="editor-commit-actions">
+          <Button variant="secondary" isDisabled={busy || !selectedPreset || selectedIds.length === 0} onPress={prepare}><ShieldCheck size={14} /> Massen-Vorschau validieren</Button>
+          <Button isDisabled={busy || !prepared} onPress={commit}><DatabaseBackup size={14} /> Alles atomar committen</Button>
+        </div>
+      </Card.Content>
+    </Card>
+  </div>;
 }
 
 function field(path: string, label: string, group: string, type: ValueType, nullable = false, min?: number, max?: number): EditorField {
@@ -406,17 +677,17 @@ function entitiesFor(snapshot: DatabaseSnapshot | null, kind: EditEntityKind): E
 }
 
 function fieldsFor(kind: EditEntityKind, entity: EditorEntity | null): EditorField[] {
-  if (!entity) return basicFields[kind];
-  const fields = basicFields[kind].filter((item) => {
+  const fields = entity ? basicFields[kind].filter((item) => {
     if (item.path.includes("contract.") && valueAtPath(entity, item.path.split(".").slice(0, -1).join(".")) == null) return false;
     if (item.path.startsWith("details.status.") && valueAtPath(entity, "details.status") == null) return false;
     return true;
-  });
-  if ((kind === "player" || kind === "staff") && "attributes" in entity) {
+  }) : basicFields[kind];
+  if (kind === "player" || kind === "staff") {
     const labels = kind === "player"
       ? new Map(playerColumns.filter((item) => item.attribute).map((item) => [item.attribute!, [item.label, item.category]]))
       : staffAttributeLabels;
-    const attributeIds = [...new Set([...labels.keys(), ...Object.keys(entity.attributes)])];
+    const entityAttributes = entity && "attributes" in entity ? Object.keys(entity.attributes) : [];
+    const attributeIds = [...new Set([...labels.keys(), ...entityAttributes])];
     const attributes = attributeIds.sort((left, right) => {
       const leftLabel = labels.get(left)?.[0] ?? left;
       const rightLabel = labels.get(right)?.[0] ?? right;
@@ -438,6 +709,71 @@ const staffAttributeLabels = new Map<string, [string, string]>([
   ["fitness", "Fitness"], ["goalkeepers", "Torhüter"], ["mental", "Mental"], ["tactical", "Taktik"], ["technical", "Technik"],
 ].map(([id, label]) => [id, [label, "Staff-Attribute"]]));
 
+function readCustomPresets(): EditorPreset[] {
+  try {
+    const raw = typeof window === "undefined" ? null : window.localStorage.getItem("bestscout.editor-presets.v1");
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return [...new Map(parsed.filter(isEditorPreset).slice(0, 100).map((preset) => [preset.id, preset])).values()];
+  } catch {
+    return [];
+  }
+}
+
+function isEditorPreset(value: unknown): value is EditorPreset {
+  if (!value || typeof value !== "object") return false;
+  const preset = value as Partial<EditorPreset>;
+  return preset.schema_version === 1
+    && typeof preset.id === "string" && preset.id.length > 0 && preset.id.length <= 128
+    && typeof preset.name === "string" && preset.name.length > 0 && preset.name.length <= 1_000
+    && kinds.some((kind) => kind.id === preset.entity_kind)
+    && Array.isArray(preset.changes)
+    && preset.changes.length > 0
+    && preset.changes.length <= 100
+    && preset.changes.every(isPresetChange)
+    && new Set(preset.changes.map((change) => change.field)).size === preset.changes.length;
+}
+
+function isPresetChange(change: unknown): change is PresetChange {
+  if (!change || typeof change !== "object") return false;
+  const candidate = change as Partial<PresetChange>;
+  if (typeof candidate.field !== "string" || candidate.field.length === 0 || !candidate.strategy) return false;
+  const strategy = candidate.strategy;
+  if (strategy.kind === "set") return "value" in strategy;
+  if (strategy.kind === "add_number") return Number.isFinite(strategy.delta);
+  if (strategy.kind === "scale_number") return Number.isFinite(strategy.factor);
+  return strategy.kind === "clamp_number" && Number.isFinite(strategy.minimum)
+    && Number.isFinite(strategy.maximum) && strategy.minimum <= strategy.maximum;
+}
+
+function createPresetChange(
+  item: EditorField,
+  strategy: PresetChange["strategy"]["kind"],
+  valueInput: string,
+  maximumInput: string,
+): PresetChange {
+  if (strategy === "set") return { field: item.path, strategy: { kind: "set", value: parseEditorValue(valueInput, item) } };
+  if (item.type !== "integer" && item.type !== "number") throw new Error("Diese Strategie ist nur für Zahlenfelder erlaubt");
+  const value = Number(valueInput.trim());
+  if (!Number.isFinite(value)) throw new Error("Eine endliche Zahl ist erforderlich");
+  if (strategy === "add_number") return { field: item.path, strategy: { kind: strategy, delta: value } };
+  if (strategy === "scale_number") return { field: item.path, strategy: { kind: strategy, factor: value } };
+  const maximum = Number(maximumInput.trim());
+  if (!Number.isFinite(maximum) || maximum < value) throw new Error("Das Maximum muss eine Zahl größer oder gleich dem Minimum sein");
+  return { field: item.path, strategy: { kind: strategy, minimum: value, maximum } };
+}
+
+function strategyLabel(strategy: PresetChange["strategy"]["kind"]) {
+  return ({ set: "Setzen", add_number: "Addieren", scale_number: "Skalieren", clamp_number: "Begrenzen" })[strategy];
+}
+
+function describeStrategy(strategy: PresetChange["strategy"]) {
+  if (strategy.kind === "set") return `setzen auf ${humanValue(strategy.value)}`;
+  if (strategy.kind === "add_number") return `${strategy.delta >= 0 ? "+" : ""}${strategy.delta}`;
+  if (strategy.kind === "scale_number") return `× ${strategy.factor}`;
+  return `${strategy.minimum} bis ${strategy.maximum}`;
+}
+
 function valueAtPath(entity: EditorEntity, path: string): unknown {
   return path.split(".").reduce<unknown>((current, segment) => current && typeof current === "object"
     ? (current as Record<string, unknown>)[segment] : undefined, entity);
@@ -447,7 +783,10 @@ function parseEditorValue(input: string, item: EditorField): unknown {
   const trimmed = input.trim();
   if (trimmed === "" && item.nullable) return null;
   if (item.type === "string") return input.trim();
-  if (item.type === "boolean") return trimmed === "true";
+  if (item.type === "boolean") {
+    if (trimmed !== "true" && trimmed !== "false") throw new Error("Boolean-Wert muss true oder false sein");
+    return trimmed === "true";
+  }
   if (item.type === "list") return trimmed ? [...new Set(input.split(",").map((value) => value.trim()).filter(Boolean))] : [];
   if (item.type === "json") {
     try { return JSON.parse(input); } catch { throw new Error("JSON ist syntaktisch ungültig"); }

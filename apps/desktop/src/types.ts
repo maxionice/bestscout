@@ -132,6 +132,38 @@ export type EditTransaction = {
   operations: EditOperation[];
 };
 
+export type PresetStrategy =
+  | { kind: "set"; value: unknown }
+  | { kind: "add_number"; delta: number }
+  | { kind: "scale_number"; factor: number }
+  | { kind: "clamp_number"; minimum: number; maximum: number };
+
+export type PresetChange = {
+  field: string;
+  strategy: PresetStrategy;
+};
+
+export type EditorPreset = {
+  schema_version: 1;
+  id: string;
+  name: string;
+  entity_kind: EditEntityKind;
+  changes: PresetChange[];
+};
+
+export type MassEditRequest = {
+  transaction_id: string;
+  created_at_utc: string;
+  reason: string | null;
+  entity_ids: string[];
+  preset: EditorPreset;
+};
+
+export type PreparedMassEdit = {
+  transaction: EditTransaction;
+  preview: AppliedTransaction;
+};
+
 export type JournalChange = {
   entity_kind: EditEntityKind;
   entity_id: string;

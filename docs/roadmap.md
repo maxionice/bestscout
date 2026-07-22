@@ -41,7 +41,8 @@
 - [x] HeroUI v3 editor workspace with preview, history, restore and undo
 - [ ] Players, contracts, injuries and bans
 - [ ] Clubs, finance and facilities
-- [ ] Transfers, presets and validated mass edit
+- [x] Preset manager and validated, filtered mass edit
+- [ ] Immediate and future transfers
 
 ## 0.7 — Advanced editor
 
