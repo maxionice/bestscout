@@ -19,16 +19,26 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Require a production-ready commit on main
+        run: |
+          git fetch --no-tags origin main
+          tag_commit="$(git rev-parse "${GITHUB_REF_NAME}^{commit}")"
+          git merge-base --is-ancestor "$tag_commit" origin/main
+          node scripts/verify-release-readiness.mjs \
+            --tag="$GITHUB_REF_NAME" \
+            --require-complete
       - name: Install Linux packaging dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             flatpak flatpak-builder libwebkit2gtk-4.1-dev \
             libappindicator3-dev librsvg2-dev patchelf rpm xdg-utils
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 22
-          cache: npm
       - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c
         with:
           toolchain: 1.97.1
