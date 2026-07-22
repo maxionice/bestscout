@@ -31,10 +31,12 @@ scripts/build-linux-packages.sh
 ```
 
 The script builds AppImage, DEB and RPM, validates their file signatures and
-sizes, copies them to `release-artifacts/`, and writes `SHA256SUMS`. The
-`NO_STRIP=1` environment setting is intentional: it avoids incompatibility
-between linuxdeploy's bundled `strip` and modern ELF RELR sections on rolling
-Linux distributions.
+sizes, copies them to `release-artifacts/`, and writes `SHA256SUMS`. Its explicit
+native-only verification excludes any Flatpak or Steam Deck files left by an
+older build, so the report and checksum manifest describe only artifacts built
+by this invocation. The `NO_STRIP=1` environment setting is intentional: it
+avoids incompatibility between linuxdeploy's bundled `strip` and modern ELF RELR
+sections on rolling Linux distributions.
 
 To build the offline Flatpak after the native binary exists:
 
