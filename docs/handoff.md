@@ -13,7 +13,9 @@ People-Meilenstein und die weiterhin gesperrte FM26-Live-Grenze.
 - Stabiler `main`: `cb2191b225145098e285d733ebab57d0dca1423e`
 - Letzter gemergter Meilenstein: PR #24, vollständiges Transfer Center
 - Aktueller Branch: `agent/staff-registrations-relationships`
-- People-PR: wird nach der lokalen Abschlussprüfung veröffentlicht
+- Aktueller Produktcommit: `898bbf7096a40014deeb02f4ba255939a1452525`
+- Öffentlicher People-Draft-PR: `https://github.com/maxionice/bestscout/pull/25`
+- PR-Zustand beim Pausieren: offen, Draft und mergebar; GitHub-CI läuft noch
 
 Die historische WIP-Aufnahme und ihr Abschlussbefund stehen in
 [`docs/worklog/2026-07-22-people-wip.md`](worklog/2026-07-22-people-wip.md).
@@ -105,12 +107,17 @@ Sicherheitsregeln:
 
 ## Offene Gates dieses Meilensteins
 
-- Branch bewusst committen und als öffentlichen Draft-PR veröffentlichen;
-- GitHub-Actions vollständig grün abwarten;
+- Dokumentationscommit dieses Pausenstands auf PR #25 berücksichtigen;
+- GitHub-Actions auf dem neuesten PR-Commit vollständig grün abwarten;
 - native breite/schmale Tauri-Sicht, Tastatur, Fokus und lange/leere Listen
   prüfen, sobald eine geeignete Ansicht verfügbar ist;
 - erst nach diesen Gates als gemergten kanonischen Meilenstein behandeln;
 - Live-People-Feldadapter bleiben ein separater Roadmap-Punkt.
+
+Beim letzten Abruf am 2026-07-22 waren beide Frontend-Jobs grün; die beiden
+Rust- und Linux-Bundle-Jobs liefen noch. Dieser Zwischenstand ist keine
+CI-Abnahme. Vor Merge immer den neuesten Commit und sämtliche Checks des PR
+erneut prüfen.
 
 ## Exakte Wiederaufnahme
 
@@ -119,12 +126,15 @@ cd /home/maxi/Dokumente/bestscout
 git switch agent/staff-registrations-relationships
 git status -sb
 git diff --check
+gh pr view 25 --json url,state,isDraft,mergeable,statusCheckRollup
+gh pr checks 25
 ```
 
-Wenn noch kein PR existiert, die Abschlussmatrix wiederholen und anschließend
-bewusst committen/pushen. Wenn ein PR existiert, zuerst dessen Checks und
-Reviewzustand prüfen. Nach Merge `main` aktualisieren und diesen Handoff auf den
-neuen stabilen Commit setzen.
+Zuerst prüfen, ob der Pausen-Dokumentationscommit auf dem Remote-Branch liegt.
+Danach Checks und Reviewzustand von PR #25 prüfen. Nur bei vollständig grüner
+CI und nach der noch offenen nativen UI-Abnahme den Draft freigeben und mergen.
+Nach dem Merge `main` aktualisieren und diesen Handoff auf den neuen stabilen
+Commit setzen.
 
 FM-Live-Arbeit nur nach einem vom Nutzer selbst ausgeführten Neustart und
 geladenem Spielstand rein lesend mit folgendem Einstieg fortsetzen:
@@ -136,6 +146,8 @@ cargo run -p bestscout-live --bin bestscout-diagnose
 ## Kurzer Resume-Prompt
 
 > Lies `docs/handoff.md` und `docs/acceptance/people.md` vollständig. Prüfe den
-> Branch `agent/staff-registrations-relationships`, den öffentlichen PR und die
-> letzten Checks. Verwirf keine lokalen Änderungen. FM darf nicht von dir
-> gestartet, geschlossen oder live verändert werden.
+> Branch `agent/staff-registrations-relationships`, PR #25 und die Checks des
+> neuesten Commits. Verwirf keine lokalen Änderungen. Lass die native UI-
+> Abnahme, den Draft-Status und den Merge offen, bis ihre Gates wirklich erfüllt
+> sind. FM darf nicht von dir gestartet, geschlossen oder live verändert
+> werden.

@@ -329,3 +329,20 @@ Offen bleiben die native breite/schmale Sicht- und Tastaturprüfung, weil die
 verbindliche In-App-Browserliste leer (`[]`) war, die GitHub-CI-Abnahme sowie
 sämtliche echten FM26-Live-Feldadapter. Diese offenen Punkte werden nicht durch
 die grüne kanonische Testmatrix ersetzt.
+
+## Pausenstand und öffentliche Übergabe
+
+- Produktcommit: `898bbf7096a40014deeb02f4ba255939a1452525`
+- Öffentlicher Draft-PR: `https://github.com/maxionice/bestscout/pull/25`
+- Branch: `agent/staff-registrations-relationships`
+- Basis: `main` auf `cb2191b225145098e285d733ebab57d0dca1423e`
+- PR war beim Abruf offen, als Draft markiert und mergebar.
+- Beide Frontend-Jobs waren grün; Rust- und Linux-Bundle-Jobs liefen noch.
+- Es wurde bewusst weder die native UI-Abnahme behauptet noch der PR
+  freigegeben oder gemergt.
+- FM26 wurde nicht gestartet, geschlossen oder live verändert.
+
+Der aktuelle, kurze Wiedereinstieg steht in `docs/handoff.md`. Die historische
+WIP-Beschreibung weiter oben bleibt absichtlich erhalten; ihr
+`Remote-PR: noch keiner` beschreibt den Zustand bei der ersten Aufnahme und
+nicht den heutigen Pausenstand.
