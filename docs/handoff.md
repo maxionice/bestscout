@@ -1,6 +1,6 @@
 # Current development handoff
 
-Stand: 2026-07-22, Europe/Berlin
+Stand: 2026-07-23, Europe/Berlin
 
 Dieses Dokument ist der verbindliche Einstiegspunkt. BestScout ist noch nicht
 1.0: Die implementierten kanonischen Funktionen sind gestapelt veröffentlicht,
@@ -33,10 +33,12 @@ Der aktuelle Stack ist absichtlich linear:
 | #37 | `agent/release-artifact-freshness` | PR #36 | frische Native-Paketmanifeste ohne optionale Altartefakte |
 | #38 | `agent/release-upload-allowlist` | PR #37 | checksum-basierte Release-Upload-Allowlist |
 | #39 | `agent/ci-native-package-entrypoint` | PR #38 | einheitlicher lokaler und CI-Native-Paketpfad |
+| #40 | `agent/reproducible-native-packages` | PR #39 | byte-reproduzierbare AppImage-, DEB- und RPM-Pakete |
 
-PR #25 bis #37 sind offen, Draft, mergebar und vollständig grün. PR #38 und #39
-wurden nach vollständiger lokaler Prüfung als Draft geöffnet; deren GitHub-CI
-läuft. Keine offene Draft-Stufe als bereits in `main` enthalten behandeln.
+PR #25 bis #39 sind offen, Draft, mergebar und vollständig grün. PR #40 wurde
+nach vollständiger lokaler Prüfung als Draft auf PR #39 geöffnet; dessen
+GitHub-CI läuft. Keine offene Draft-Stufe als bereits in `main` enthalten
+behandeln.
 
 ## Implementierter Stand
 
@@ -58,6 +60,8 @@ läuft. Keine offene Draft-Stufe als bereits in `main` enthalten behandeln.
   ausschließen und nur die gerade gebauten AppImage-/DEB-/RPM-Dateien ausweisen;
 - ein gemeinsamer, durch Metadatenprüfung fixierter Native-Paketbefehl für lokale
   Entwicklung und Linux-Bundle-CI;
+- commit-gepinnte, byte-reproduzierbare AppImage-, DEB- und RPM-Builds mit
+  begrenzter Pure-Rust-Normalisierung der DEB- und RPM-Metadaten;
 - OIDC-/Sigstore-Attestierungsworkflow, der einen Draft-Release erst nach
   vollständigen Artefakten und erfolgreicher unabhängiger Verifikation
   veröffentlicht;
@@ -77,7 +81,7 @@ Bereichsdokumente bleiben jeweils maßgeblich.
 
 ## Aktueller Prüfstand
 
-Auf `agent/ci-native-package-entrypoint` erfolgreich ausgeführt:
+Auf `agent/reproducible-native-packages` erfolgreich ausgeführt:
 
 ```text
 cargo fmt --all -- --check
@@ -92,7 +96,7 @@ scripts/build-linux-packages.sh
 scripts/build-bridge.sh "/path/to/Football Manager 26"
 ```
 
-Ergebnis: 127 Rust-Tests, 66 Vitest-/DOM-Tests, 14 Node-Release-/Doku-Tests,
+Ergebnis: 131 Rust-Tests, 66 Vitest-/DOM-Tests, 14 Node-Release-/Doku-Tests,
 Clippy ohne Warnung, Formatierung, TypeScript/Vite, Linux-Pakete und
 Release-Metadaten grün. Der Readiness-Prüfer meldet exakt 62 noch offene 1.0-
 Gates und blockiert deshalb korrekt einen stabilen Release.
@@ -119,11 +123,13 @@ rekonstruiert und gehasht. Zugelassen sind genau acht Release-Subjects, das
 Manifest und das geparste Sigstore-Bundle. Die Steam-Deck-AppImage muss außerdem
 bytegleich zur aktuellen nativen AppImage sein.
 
-Zwei erfolgreiche Native-Paketläufe mit unveränderten Desktop-Quellen ergaben
-unterschiedliche Paket-Hashes. Die Pakete sind funktional validiert, aber noch
-nicht byte-reproduzierbar; das zugehörige 1.0-Gate bleibt deshalb offen. Als
-nächster unabhängiger Schritt sind `SOURCE_DATE_EPOCH`, Archivzeitstempel und die
-Tauri-/linuxdeploy-Paketstufen gezielt zu isolieren.
+Zwei vollständige Native-Paketläufe desselben Commits mit
+`SOURCE_DATE_EPOCH=1784757997`, UTC und C-Locale ergaben bytegleiche AppImage-,
+DEB- und RPM-Dateien. Die unabhängigen Kopien bestanden jeweils `cmp`; die
+belegten SHA-256-Werte stehen in der
+[`Linux-Release-Abnahme`](acceptance/linux-release.md). Damit ist die native
+Byte-Reproduzierbarkeit nachgewiesen. Das übergeordnete 1.0-Gate bleibt bis zum
+realen signierten Tag-Workflow und zur Installationsabnahme offen.
 
 ## Native UI-Gates
 
