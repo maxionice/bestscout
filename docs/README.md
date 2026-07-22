@@ -6,6 +6,7 @@
 - [Feature-parity specification](feature-parity.md)
 - [Current resumable handoff](handoff.md)
 - [Linux packaging and releases](release/linux-packaging.md)
+- [Production release readiness](release/release-readiness.md)
 - [Security policy](../SECURITY.md)
 
 Architecture, compatibility and acceptance records live in their respective

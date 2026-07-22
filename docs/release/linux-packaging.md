@@ -64,15 +64,17 @@ supports the opt-in `BESTSCOUT_APPIMAGE_EXTRACT_AND_RUN=1` FUSE fallback.
 1. Update the version in the root and desktop `package.json` files,
    `Cargo.toml`, `tauri.conf.json`, and the Flatpak AppStream metadata.
 2. Run `node scripts/verify-release-metadata.mjs` and the complete test suite.
-3. Merge the release commit to `main`.
-4. Create and push an annotated tag matching the version, for example `v0.1.0`.
-5. The `Release Linux` workflow rebuilds and tests everything on Ubuntu 22.04
+3. Close every documented acceptance gate and run the
+   [production-readiness verifier](release-readiness.md).
+4. Merge the release commit to `main`.
+5. Create and push an annotated tag matching the version, for example `v1.0.0`.
+6. The `Release Linux` workflow rebuilds and tests everything on Ubuntu 22.04
    and creates a draft release containing the native, Flatpak and Steam Deck
    artifacts.
-6. The workflow validates the complete artifact set, verifies `SHA256SUMS`,
+7. The workflow validates the complete artifact set, verifies `SHA256SUMS`,
    generates Sigstore-signed SLSA build provenance for every checksummed file,
    and verifies that provenance with GitHub CLI.
-7. Only after all gates pass does the workflow upload the checksum manifest and
+8. Only after all gates pass does the workflow upload the checksum manifest and
    portable Sigstore bundle and turn the draft into a published release.
 
 The workflow rejects a tag whose value differs from the application version.

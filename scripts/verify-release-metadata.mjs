@@ -105,6 +105,10 @@ if (!deckEnglish.includes("@APPIMAGE@") || !deckGerman.includes("@APPIMAGE@")) {
 const attestAction =
   "actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0";
 for (const required of [
+  "fetch-depth: 0",
+  'git merge-base --is-ancestor "$tag_commit" origin/main',
+  "node scripts/verify-release-readiness.mjs",
+  '--require-complete',
   "id-token: write",
   "attestations: write",
   "releaseDraft: true",
