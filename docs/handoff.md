@@ -124,17 +124,15 @@ Manifest und das geparste Sigstore-Bundle. Die Steam-Deck-AppImage muss außerde
 bytegleich zur aktuellen nativen AppImage sein.
 
 Zwei vollständige Native-Paketläufe des Commits
-`c9dc9907324489fe9b48a9698425b843f84809d1` mit dessen abgeleitetem
-`SOURCE_DATE_EPOCH=1784760638`, UTC und C-Locale ergaben bytegleiche AppImage-,
-DEB- und RPM-Dateien. Die nachgelagerte Härtung
-`e9f40c31f117e6705a969d028f605ca783e4bbcf` verschärft die unverändert
-bytegleichen RPMs zusätzlich: Der Normalisierer übernimmt und verifiziert alle
-acht von Tauri erzeugten Abhängigkeitsklassen (`Requires`, `Provides`,
-`Recommends`, `Conflicts`, `Obsoletes`, `Suggests`, `Enhances`, `Supplements`),
-während nur die von der RPM-Bibliothek deterministisch neu erzeugten
-`rpmlib(...)`- und Selbst-Provides aus dem Vergleich ausgenommen werden. Die
-unabhängigen Kopien bestanden jeweils `cmp`; die belegten SHA-256-Werte stehen
-in der
+`b4f43fb5841a96a51b0295137c62d1dbbf07b247` mit dessen abgeleitetem
+`SOURCE_DATE_EPOCH=1784762651`, UTC, C-Locale und erzwungenem `Cargo.lock`
+ergaben bytegleiche AppImage-, DEB- und RPM-Dateien. Der RPM-Normalisierer
+übernimmt und verifiziert alle acht von Tauri erzeugten Abhängigkeitsklassen
+(`Requires`, `Provides`, `Recommends`, `Conflicts`, `Obsoletes`, `Suggests`,
+`Enhances`, `Supplements`), während nur die von der RPM-Bibliothek
+deterministisch neu erzeugten `rpmlib(...)`- und Selbst-Provides aus dem
+Vergleich ausgenommen werden. Die unabhängigen Kopien bestanden jeweils `cmp`;
+die belegten SHA-256-Werte stehen in der
 [`Linux-Release-Abnahme`](acceptance/linux-release.md). Damit ist die native
 Byte-Reproduzierbarkeit nachgewiesen. Das übergeordnete 1.0-Gate bleibt bis zum
 realen signierten Tag-Workflow und zur Installationsabnahme offen.

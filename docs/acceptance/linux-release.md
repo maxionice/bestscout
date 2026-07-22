@@ -67,15 +67,16 @@ The Flatpak bundle imported successfully into a fresh temporary OSTree repositor
 as `app/io.github.maxionice.bestscout/x86_64/stable`.
 
 Two complete native-package builds from commit
-`c9dc9907324489fe9b48a9698425b843f84809d1` were then run with its derived
-`SOURCE_DATE_EPOCH=1784760638`, `TZ=UTC` and `LC_ALL=C`. All three independently
-copied outputs compared byte for byte with `cmp`:
+`b4f43fb5841a96a51b0295137c62d1dbbf07b247` were then run with its derived
+`SOURCE_DATE_EPOCH=1784762651`, `TZ=UTC`, `LC_ALL=C` and the committed
+`Cargo.lock` enforced for Tauri and both normalization helpers. All three
+independently copied outputs compared byte for byte with `cmp`:
 
 | Reproducible native artifact | Bytes | SHA-256 in both builds |
 | --- | ---: | --- |
-| `BestScout_0.1.0_amd64.AppImage` | 108,104,184 | `b897ab2f64240fd531995923993c5a3cb08d7fbe38c05c49ec8eae8474c36bf6` |
-| `BestScout_0.1.0_amd64.deb` | 5,087,896 | `9645442e0d3597f33926a8855bf277467cf47f6361b5a28ff2f887b14d1af4cf` |
-| `BestScout-0.1.0-1.x86_64.rpm` | 5,111,246 | `851dfff43669ad7230f7222890370fae12aae01ce88e3b9f1cf019a9350cb036` |
+| `BestScout_0.1.0_amd64.AppImage` | 108,104,184 | `5482480e685f7497d79716805ddf020dfd270b575b0e0e04b53d5408ed6c0f04` |
+| `BestScout_0.1.0_amd64.deb` | 5,087,894 | `11d217e97701dc5dda1a9d7dcbf7f03bd25332b23f21dc9314293bf668a53cef` |
+| `BestScout-0.1.0-1.x86_64.rpm` | 5,111,246 | `89d3d4ff2424d96d6fc68442892c486d481a36734bc14f2cc74aa7f15cfe8971` |
 
 Both RPM copies also retained Tauri's automatically detected
 `libwebkit2gtk-4.1.so.0()(64bit)` and `libgtk-3.so.0()(64bit)` runtime
