@@ -140,3 +140,38 @@ test("native-only rejects the complete release-set gate", () => {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });
+
+test("complete release verification rejects a stale Steam Deck AppImage", () => {
+  const fixtureRoot = mkdtempSync(resolve(tmpdir(), "bestscout-stale-deck-"));
+  try {
+    const { bundleRoot, outputRoot } = prepareNativeBundles(fixtureRoot);
+    writeFileSync(resolve(outputRoot, "BestScout_1.0.0_x86_64.flatpak"), Buffer.alloc(100_001));
+    prepareSteamDeck({
+      version: "1.0.0",
+      bundleRoot: resolve(bundleRoot, "appimage"),
+      outputRoot,
+      templates,
+    });
+    const nativePath = resolve(bundleRoot, "appimage/BestScout.AppImage");
+    const refreshedNative = readFileSync(nativePath);
+    refreshedNative[refreshedNative.length - 1] = 1;
+    writeFileSync(nativePath, refreshedNative, { mode: 0o755 });
+
+    assert.throws(
+      () => execFileSync(
+        process.execPath,
+        [
+          verifier,
+          "--bundle-root", bundleRoot,
+          "--output-root", outputRoot,
+          "--version", "1.0.0",
+          "--require-release-set",
+        ],
+        { encoding: "utf8", stdio: "pipe" },
+      ),
+      /Steam Deck AppImage does not match the current native AppImage/,
+    );
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});

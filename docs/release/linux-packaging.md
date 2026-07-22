@@ -60,6 +60,9 @@ cd release-artifacts && sha256sum -c SHA256SUMS
 The Deck AppImage remains an unarchived executable. Its companion launcher
 resolves the AppImage relative to itself, preserves command-line arguments and
 supports the opt-in `BESTSCOUT_APPIMAGE_EXTRACT_AND_RUN=1` FUSE fallback.
+Complete-set verification additionally requires that the Deck AppImage is byte
+for byte identical to the current native AppImage, preventing an older portable
+binary from being paired with fresh launch instructions.
 
 ## Release process
 
@@ -76,8 +79,11 @@ supports the opt-in `BESTSCOUT_APPIMAGE_EXTRACT_AND_RUN=1` FUSE fallback.
 7. The workflow validates the complete artifact set, verifies `SHA256SUMS`,
    generates Sigstore-signed SLSA build provenance for every checksummed file,
    and verifies that provenance with GitHub CLI.
-8. Only after all gates pass does the workflow upload the checksum manifest and
-   portable Sigstore bundle and turn the draft into a published release.
+8. The upload list is reconstructed from the verified checksum manifest. It
+   accepts exactly eight subjects plus `SHA256SUMS` and the validated top-level
+   Sigstore JSON bundle; unrelated staging files are never uploaded.
+9. Only after all gates pass does the workflow turn the draft into a published
+   release.
 
 The workflow rejects a tag whose value differs from the application version.
 GitHub-hosted Ubuntu 22.04 is the release baseline so the generated binaries use

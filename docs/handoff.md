@@ -31,8 +31,9 @@ Der aktuelle Stack ist absichtlich linear:
 | #35 | `agent/person-appearance-preferred-moves` | PR #34 | Personenprofile und bevorzugte Spielzüge |
 | #36 | `agent/contract-bonuses-clauses` | PR #35 | typisierte Vertragsboni und -klauseln |
 | #37 | `agent/release-artifact-freshness` | PR #36 | frische Native-Paketmanifeste ohne optionale Altartefakte |
+| #38 | `agent/release-upload-allowlist` | PR #37 | checksum-basierte Release-Upload-Allowlist |
 
-PR #25 bis #36 sind offen, Draft, mergebar und vollständig grün. PR #37 wurde
+PR #25 bis #37 sind offen, Draft, mergebar und vollständig grün. PR #38 wurde
 nach vollständiger lokaler Prüfung als Draft geöffnet; dessen GitHub-CI läuft.
 Keine offene Draft-Stufe als bereits in `main` enthalten behandeln.
 
@@ -57,6 +58,8 @@ Keine offene Draft-Stufe als bereits in `main` enthalten behandeln.
 - OIDC-/Sigstore-Attestierungsworkflow, der einen Draft-Release erst nach
   vollständigen Artefakten und erfolgreicher unabhängiger Verifikation
   veröffentlicht;
+- checksum-basierte Upload-Allowlist mit erneuter Hash-, Pfad- und
+  Sigstore-JSON-Prüfung; fremde Staging-Dateien erreichen GitHub nicht;
 - ein tag-, versions- und main-gebundener Release-Readiness-Prüfer, der alle
   Roadmap-, Paritäts- und Acceptance-Gates scannt;
 - topic-parallele deutsche und englische Benutzerhandbücher mit automatischer
@@ -71,7 +74,7 @@ Bereichsdokumente bleiben jeweils maßgeblich.
 
 ## Aktueller Prüfstand
 
-Auf `agent/release-artifact-freshness` erfolgreich ausgeführt:
+Auf `agent/release-upload-allowlist` erfolgreich ausgeführt:
 
 ```text
 cargo fmt --all -- --check
@@ -86,7 +89,7 @@ scripts/build-linux-packages.sh
 scripts/build-bridge.sh "/path/to/Football Manager 26"
 ```
 
-Ergebnis: 127 Rust-Tests, 66 Vitest-/DOM-Tests, 11 Node-Release-/Doku-Tests,
+Ergebnis: 127 Rust-Tests, 66 Vitest-/DOM-Tests, 14 Node-Release-/Doku-Tests,
 Clippy ohne Warnung, Formatierung, TypeScript/Vite, Linux-Pakete und
 Release-Metadaten grün. Der Readiness-Prüfer meldet exakt 62 noch offene 1.0-
 Gates und blockiert deshalb korrekt einen stabilen Release.
@@ -107,6 +110,11 @@ Dateien und schrieb bei der realen Regression ausschließlich diese drei frisch
 gebauten Pakete in Report und `SHA256SUMS`. Der Release-Workflow bleibt getrennt
 fail-closed: Er baut alle acht Dateien in einem sauberen Runner und verlangt den
 vollständigen Satz mit `--require-release-set`.
+
+Vor dem finalen GitHub-Upload wird dieser Satz aus `SHA256SUMS` erneut
+rekonstruiert und gehasht. Zugelassen sind genau acht Release-Subjects, das
+Manifest und das geparste Sigstore-Bundle. Die Steam-Deck-AppImage muss außerdem
+bytegleich zur aktuellen nativen AppImage sein.
 
 ## Native UI-Gates
 
