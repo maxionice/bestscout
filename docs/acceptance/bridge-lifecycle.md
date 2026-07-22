@@ -62,5 +62,5 @@ That hash is retained as historical evidence from the first net6 compatibility
 build. The later [reproducibility acceptance](bridge-reproducibility.md) pins the
 SDK, C# version and source paths and supersedes the distributable candidate with
 an 84,992-byte DLL whose SHA-256 is
-`f24ff2949fa8052ca8d29079aabf6a0420b98188b3688756d5eb858771b19cd4`.
+`d3f4225b59765ea39885039ebafd6eb3a7426f59e80d8383dc7a40888a408056`.
 Neither candidate was installed while FM was running.

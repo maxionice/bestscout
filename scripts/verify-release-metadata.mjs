@@ -75,6 +75,8 @@ for (const property of [
   "<LangVersion>10.0</LangVersion>",
   "<Version>0.5.0</Version>",
   "<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>",
+  "<EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>",
+  "<EnableSourceLink>false</EnableSourceLink>",
   "<Deterministic>true</Deterministic>",
   "<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>",
   "<PathMap>$(MSBuildProjectDirectory)=/_/bridge/BestScout.Bridge</PathMap>",

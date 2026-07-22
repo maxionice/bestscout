@@ -47,7 +47,7 @@ assembly is copied into the build output or distributed by BestScout.
 
 The repository pins .NET SDK 10.0.110 with roll-forward disabled, Bridge version
 0.5.0 and C# 10, maps the checkout path out of compiler output, excludes volatile
-Git-revision suffixes and enables deterministic CI build settings.
+Git-revision/Source Link metadata and enables deterministic CI build settings.
 `build-bridge.sh` performs two clean Release rebuilds and requires
 identical DLL, PDB and dependency-manifest hashes. It also verifies the bounded PE
 artifact, exact net6 target and output allowlist. The build remains local because
