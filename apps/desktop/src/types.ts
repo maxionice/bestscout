@@ -110,6 +110,57 @@ export type DatabaseSnapshot = {
   competitions: Competition[];
 };
 
+export type EditEntityKind = "player" | "staff" | "club" | "competition";
+
+export type FieldExpectation =
+  | { mode: "any" }
+  | { mode: "exact"; value: unknown };
+
+export type EditOperation = {
+  entity_kind: EditEntityKind;
+  entity_id: string;
+  field: string;
+  expected_before: FieldExpectation;
+  after: unknown;
+};
+
+export type EditTransaction = {
+  schema_version: 1;
+  id: string;
+  created_at_utc: string;
+  reason: string | null;
+  operations: EditOperation[];
+};
+
+export type JournalChange = {
+  entity_kind: EditEntityKind;
+  entity_id: string;
+  field: string;
+  before: unknown;
+  after: unknown;
+};
+
+export type JournalEntry = {
+  schema_version: 1;
+  transaction_id: string;
+  created_at_utc: string;
+  reason: string | null;
+  reverts_transaction_id: string | null;
+  snapshot_before_hash: string;
+  snapshot_after_hash: string;
+  changes: JournalChange[];
+};
+
+export type AppliedTransaction = {
+  snapshot: DatabaseSnapshot;
+  journal_entry: JournalEntry;
+};
+
+export type TransactionJournal = {
+  schema_version: 1;
+  entries: JournalEntry[];
+};
+
 export type SearchHit = {
   kind: "player" | "staff" | "club" | "competition";
   id: string;

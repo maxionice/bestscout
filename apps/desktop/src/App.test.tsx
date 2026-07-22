@@ -23,7 +23,15 @@ describe("BestScout desktop", () => {
     fireEvent.click(screen.getByRole("button", { name: "Live-Spiel" }));
     expect(screen.getByRole("heading", { name: "Live-Spiel" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "Live-Fähigkeiten" })).toBeTruthy();
-    expect(screen.getByText("Editor")).toBeTruthy();
+    expect(screen.getAllByText("Editor").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("opens the safe HeroUI editor without enabling live writes", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Editor" }));
+    expect(await screen.findByRole("heading", { name: "Sichere Arbeitskopie" })).toBeTruthy();
+    expect(screen.getByText("LIVE-SCHREIBEN GESPERRT")).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Editor-Entitätstyp wählen" })).toBeTruthy();
   });
 
   it("shows squad depth, contracts, wages and succession risks", () => {

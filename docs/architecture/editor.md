@@ -20,10 +20,19 @@ the original hash byte for byte.
 
 ## Local persistence
 
-Before an edit or undo is returned, Tauri stores a content-addressed backup and
-atomically replaces the save-specific journal. Journal entries form a hash chain,
-use unique transaction IDs and are revalidated when loaded. Linux backup and
-journal directories use mode `0700`; files use mode `0600`.
+Before an edit or undo is returned, Tauri stores content-addressed backups of both
+the previous and resulting snapshots and atomically replaces the save-specific
+journal. This makes the verified journal head restorable after an application
+restart. Journal entries form a hash chain, use unique transaction IDs and are
+revalidated when loaded. Linux backup and journal directories use mode `0700`;
+files use mode `0600`.
+
+The HeroUI workspace never calls the persistent command directly from a field
+input. Changes are staged first, then sent through a non-persistent core preview.
+Only that exact preview transaction can be committed. The workspace exposes all
+canonical player, staff, club and competition edit fields, including all 47 player
+and 16 staff attributes, and keeps live-write capability visibly separate from
+offline snapshot editing.
 
 ## Future live commit
 

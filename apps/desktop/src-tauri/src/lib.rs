@@ -54,6 +54,19 @@ async fn apply_snapshot_transaction(
 }
 
 #[tauri::command]
+async fn preview_snapshot_transaction(
+    snapshot: bestscout_core::DatabaseSnapshot,
+    transaction: bestscout_core::EditTransaction,
+) -> Result<bestscout_core::AppliedTransaction, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        bestscout_core::apply_transaction(&snapshot, &transaction)
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| format!("Editor-Vorschau fehlgeschlagen: {error}"))?
+}
+
+#[tauri::command]
 async fn undo_snapshot_transaction(
     store: tauri::State<'_, EditorStore>,
     journal_id: String,
@@ -186,6 +199,7 @@ pub fn run() {
             parse_csv,
             detect_fm26,
             load_live_snapshot,
+            preview_snapshot_transaction,
             apply_snapshot_transaction,
             undo_snapshot_transaction,
             editor_history,
