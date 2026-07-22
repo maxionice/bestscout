@@ -99,11 +99,16 @@ if ((deckFiles.length > 0 || requireReleaseSet) && deckFiles.length !== deckName
 }
 if (deckFiles.length === deckNames.length) {
   const deckAppImage = readFileSync(resolve(outputRoot, deckNames[0]));
+  const nativeAppImagePath = files.find((path) => extname(path) === ".AppImage");
+  const nativeAppImage = readFileSync(nativeAppImagePath);
   if (
     deckAppImage.length < 100_000
     || !deckAppImage.subarray(0, expected.get(".AppImage").length).equals(expected.get(".AppImage"))
   ) {
     throw new Error("Steam Deck AppImage has an invalid signature or size");
+  }
+  if (!deckAppImage.equals(nativeAppImage)) {
+    throw new Error("Steam Deck AppImage does not match the current native AppImage");
   }
   const launcher = readFileSync(resolve(outputRoot, deckNames[1]), "utf8");
   if (!launcher.startsWith("#!/usr/bin/env bash\n") || /@[A-Z_]+@/.test(launcher)) {

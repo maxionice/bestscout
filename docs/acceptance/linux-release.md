@@ -12,7 +12,8 @@ does not claim FM26 live-adapter or native Steam Deck hardware acceptance.
   and enables AppImage extraction only with an explicit environment opt-in.
 - `scripts/verify-linux-bundles.mjs --require-release-set` requires one AppImage,
   DEB, RPM and Flatpak plus all four exact Steam Deck files. It rejects missing,
-  duplicate, undersized, symbolic-link and wrong-signature inputs.
+  duplicate, undersized, symbolic-link and wrong-signature inputs, and requires
+  the Deck AppImage to match the current native AppImage byte for byte.
 - The local native build uses the mutually exclusive `--native-only` mode, so
   pre-existing Flatpak or Steam Deck files cannot enter its report or checksum
   manifest. A regression fixture covers a populated output directory.
@@ -20,6 +21,9 @@ does not claim FM26 live-adapter or native Steam Deck hardware acceptance.
   complete set, generates SLSA provenance with the commit-pinned
   `actions/attest@v4.2.0`, verifies every subject and publishes only at the final
   step.
+- The final upload is reconstructed from eight independently rehashed manifest
+  subjects plus the manifest and parsed top-level Sigstore bundle. Unrelated
+  files in the staging directory are not passed to GitHub CLI.
 - Release metadata tests enforce matching versions, pinned toolchain and actions,
   constrained Flatpak permissions, Steam Deck templates, signed-provenance order
   and draft-first publication.

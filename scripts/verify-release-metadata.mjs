@@ -116,6 +116,9 @@ for (const required of [
   attestAction,
   "subject-checksums: release-artifacts/SHA256SUMS",
   "--write-checksums --require-release-set",
+  "scripts/list-release-assets.mjs",
+  "--expected-subjects 8",
+  '"${release_assets[@]}" --clobber',
   'gh release edit "$GITHUB_REF_NAME" --draft=false',
 ]) {
   if (!releaseWorkflow.includes(required)) {
@@ -124,6 +127,9 @@ for (const required of [
 }
 if (releaseWorkflow.includes("releaseDraft: false")) {
   fail("the release must remain draft until checksums and provenance pass");
+}
+if (releaseWorkflow.includes("release-artifacts/* --clobber")) {
+  fail("release uploads must use the checksum-derived asset allowlist");
 }
 if (!localBuildScript.includes("--write-checksums --native-only")) {
   fail("the local native build must exclude pre-existing optional release artifacts");

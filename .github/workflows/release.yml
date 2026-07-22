@@ -97,7 +97,15 @@ jobs:
       - name: Upload complete verified release set
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$GITHUB_REF_NAME" release-artifacts/* --clobber
+        run: |
+          asset_list="$RUNNER_TEMP/bestscout-release-assets"
+          node scripts/list-release-assets.mjs \
+            --artifact-root release-artifacts \
+            --provenance "release-artifacts/BestScout_${GITHUB_REF_NAME#v}_provenance.sigstore.json" \
+            --expected-subjects 8 > "$asset_list"
+          mapfile -t release_assets < "$asset_list"
+          test "${#release_assets[@]}" -eq 10
+          gh release upload "$GITHUB_REF_NAME" "${release_assets[@]}" --clobber
       - name: Publish signed release
         env:
           GH_TOKEN: ${{ github.token }}
