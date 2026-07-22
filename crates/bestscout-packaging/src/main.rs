@@ -62,17 +62,44 @@ fn run(arguments: Result<Arguments, String>) -> Result<(), Box<dyn Error>> {
         .and_then(|name| name.to_str())
         .ok_or("RPM binary has no UTF-8 filename")?;
     let package_name = AsKebabCase(product_name).to_string();
-    let dependencies = string_array(rpm_config, "depends")?;
     let provides = string_array(rpm_config, "provides")?;
     let recommends = string_array(rpm_config, "recommends")?;
     let conflicts = string_array(rpm_config, "conflicts")?;
     let obsoletes = string_array(rpm_config, "obsoletes")?;
+    let expected_paths = [
+        PathBuf::from(format!("/usr/bin/{binary_name}")),
+        PathBuf::from(format!("/usr/share/applications/{product_name}.desktop")),
+        PathBuf::from(format!(
+            "/usr/share/icons/hicolor/512x512/apps/{binary_name}.png"
+        )),
+    ];
 
     let output_parent = arguments
         .output
         .parent()
         .ok_or("RPM output has no parent")?;
     fs::create_dir_all(output_parent)?;
+    let tauri_package = Package::open(&arguments.output)?;
+    tauri_package.verify_digests()?;
+    let tauri_metadata = &tauri_package.metadata;
+    if tauri_metadata.get_name()? != package_name
+        || tauri_metadata.get_epoch()? != epoch
+        || tauri_metadata.get_version()? != version
+        || tauri_metadata.get_release()? != release
+        || tauri_metadata.get_arch()? != architecture
+        || tauri_metadata.get_license()? != license
+        || tauri_metadata.get_summary()? != summary
+        || tauri_metadata.get_description()? != description
+        || tauri_metadata.get_url()? != homepage
+        || tauri_metadata.get_file_paths()? != expected_paths
+    {
+        return Err("Tauri RPM metadata does not match the requested package".into());
+    }
+    let tauri_requirements = tauri_metadata.get_requires()?;
+    let expected_requirement_keys = dependency_keys(&tauri_requirements);
+    let preserved_requirements = tauri_requirements
+        .into_iter()
+        .filter(|dependency| !dependency.name.starts_with("rpmlib("));
     let patched_binary_path =
         output_parent.join(format!(".bestscout-rpm-binary-{}", std::process::id()));
     let mut patched_binary = patch_bundle_type(fs::read(&arguments.binary)?)?;
@@ -112,8 +139,8 @@ fn run(arguments: Result<Arguments, String>) -> Result<(), Box<dyn Error>> {
                     ))
                     .mode(FileMode::regular(0o644)),
                 )?;
-        for dependency in dependencies {
-            builder = builder.requires(Dependency::any(dependency));
+        for dependency in preserved_requirements {
+            builder = builder.requires(dependency);
         }
         for dependency in provides {
             builder = builder.provides(Dependency::any(dependency));
@@ -149,18 +176,29 @@ fn run(arguments: Result<Arguments, String>) -> Result<(), Box<dyn Error>> {
     {
         return Err("written RPM metadata does not match the requested package".into());
     }
-    let expected_paths = [
-        PathBuf::from(format!("/usr/bin/{binary_name}")),
-        PathBuf::from(format!("/usr/share/applications/{product_name}.desktop")),
-        PathBuf::from(format!(
-            "/usr/share/icons/hicolor/512x512/apps/{binary_name}.png"
-        )),
-    ];
     if metadata.get_file_paths()? != expected_paths {
         return Err("written RPM contains an unexpected file set".into());
     }
+    if dependency_keys(&metadata.get_requires()?) != expected_requirement_keys {
+        return Err("written RPM does not preserve Tauri's runtime requirements".into());
+    }
     fs::rename(staged_output, &arguments.output)?;
     Ok(())
+}
+
+fn dependency_keys(dependencies: &[Dependency]) -> Vec<(String, u32, String)> {
+    let mut keys = dependencies
+        .iter()
+        .map(|dependency| {
+            (
+                dependency.name.clone(),
+                dependency.flags.bits(),
+                dependency.version.clone(),
+            )
+        })
+        .collect::<Vec<_>>();
+    keys.sort();
+    keys
 }
 
 fn patch_bundle_type(mut binary: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -329,6 +367,32 @@ mod tests {
             let first = root.join("first.rpm");
             let second = root.join("second.rpm");
             for output in [&first, &second] {
+                PackageBuilder::new(
+                    "best-scout",
+                    "1.0.0",
+                    "GPL-3.0-or-later",
+                    env::consts::ARCH,
+                    "Test package",
+                )
+                .description("Reproducibility fixture")
+                .url("https://example.invalid")
+                .requires(Dependency::any("libwebkit2gtk-4.1.so.0()(64bit)"))
+                .with_file(
+                    &binary,
+                    FileOptions::new("/usr/bin/bestscout-desktop").mode(FileMode::regular(0o755)),
+                )?
+                .with_file(
+                    &desktop,
+                    FileOptions::new("/usr/share/applications/BestScout.desktop")
+                        .mode(FileMode::regular(0o644)),
+                )?
+                .with_file(
+                    &icon,
+                    FileOptions::new("/usr/share/icons/hicolor/512x512/apps/bestscout-desktop.png")
+                        .mode(FileMode::regular(0o644)),
+                )?
+                .build()?
+                .write_file(output)?;
                 run(Ok(Arguments {
                     source_date_epoch: 1_600_000_000,
                     config: config.clone(),
@@ -342,6 +406,13 @@ mod tests {
             assert_eq!(
                 rpm::Package::open(first)?.metadata.get_build_time()?,
                 1_600_000_000
+            );
+            assert!(
+                rpm::Package::open(second)?
+                    .metadata
+                    .get_requires()?
+                    .iter()
+                    .any(|dependency| dependency.name == "libwebkit2gtk-4.1.so.0()(64bit)")
             );
             Ok(())
         })();

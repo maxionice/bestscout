@@ -43,10 +43,12 @@ timestamp (or honors an explicitly supplied value) and fixes the timezone and
 locale. AppImage tooling consumes that timestamp directly. A bounded DEB repacker
 normalizes tar, gzip and ar metadata, while the BestScout packaging helper uses
 the same pure-Rust RPM library as Tauri with its explicit source-date API. The
-RPM helper reopens its staged result and verifies package digests, identity,
-release metadata and the exact installed file set before atomically replacing
-Tauri's original bundle. The release workflow derives the identical timestamp
-from the tagged commit before building any package.
+RPM helper first verifies Tauri's source bundle, preserves its automatically
+detected runtime requirements, then reopens its staged result and verifies
+package digests, identity, release metadata, runtime requirements and the exact
+installed file set before atomically replacing Tauri's original bundle. The
+release workflow derives the identical timestamp from the tagged commit before
+building any package.
 
 The `linux-bundles` CI job invokes this same script directly. Release-metadata
 validation locks that entrypoint in place, preventing CI and documented local
