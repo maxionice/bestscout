@@ -8,7 +8,7 @@ use std::{
 };
 
 use heck::AsKebabCase;
-use rpm::{CompressionWithLevel, Dependency, FileMode, FileOptions, PackageBuilder};
+use rpm::{CompressionWithLevel, Dependency, FileMode, FileOptions, Package, PackageBuilder};
 use serde_json::Value;
 
 const BUNDLE_MARKER: &[u8] = b"__TAURI_BUNDLE_TYPE_VAR_UNK";
@@ -61,6 +61,7 @@ fn run(arguments: Result<Arguments, String>) -> Result<(), Box<dyn Error>> {
         .file_name()
         .and_then(|name| name.to_str())
         .ok_or("RPM binary has no UTF-8 filename")?;
+    let package_name = AsKebabCase(product_name).to_string();
     let dependencies = string_array(rpm_config, "depends")?;
     let provides = string_array(rpm_config, "provides")?;
     let recommends = string_array(rpm_config, "recommends")?;
@@ -86,35 +87,31 @@ fn run(arguments: Result<Arguments, String>) -> Result<(), Box<dyn Error>> {
     drop(temporary);
 
     let build_result = (|| -> Result<_, rpm::Error> {
-        let mut builder = PackageBuilder::new(
-            &AsKebabCase(product_name).to_string(),
-            version,
-            license,
-            architecture,
-            summary,
-        )
-        .epoch(epoch)
-        .release(release)
-        .compression(CompressionWithLevel::Gzip(6))
-        .source_date(source_date_epoch)
-        .description(description)
-        .url(homepage)
-        .with_file(
-            &patched_binary_path,
-            FileOptions::new(format!("/usr/bin/{binary_name}")).mode(FileMode::regular(0o755)),
-        )?
-        .with_file(
-            &arguments.desktop,
-            FileOptions::new(format!("/usr/share/applications/{product_name}.desktop"))
-                .mode(FileMode::regular(0o644)),
-        )?
-        .with_file(
-            &arguments.icon,
-            FileOptions::new(format!(
-                "/usr/share/icons/hicolor/512x512/apps/{binary_name}.png"
-            ))
-            .mode(FileMode::regular(0o644)),
-        )?;
+        let mut builder =
+            PackageBuilder::new(&package_name, version, license, architecture, summary)
+                .epoch(epoch)
+                .release(release)
+                .compression(CompressionWithLevel::Gzip(6))
+                .source_date(source_date_epoch)
+                .description(description)
+                .url(homepage)
+                .with_file(
+                    &patched_binary_path,
+                    FileOptions::new(format!("/usr/bin/{binary_name}"))
+                        .mode(FileMode::regular(0o755)),
+                )?
+                .with_file(
+                    &arguments.desktop,
+                    FileOptions::new(format!("/usr/share/applications/{product_name}.desktop"))
+                        .mode(FileMode::regular(0o644)),
+                )?
+                .with_file(
+                    &arguments.icon,
+                    FileOptions::new(format!(
+                        "/usr/share/icons/hicolor/512x512/apps/{binary_name}.png"
+                    ))
+                    .mode(FileMode::regular(0o644)),
+                )?;
         for dependency in dependencies {
             builder = builder.requires(Dependency::any(dependency));
         }
@@ -136,6 +133,32 @@ fn run(arguments: Result<Arguments, String>) -> Result<(), Box<dyn Error>> {
     let package = build_result?;
     let staged_output = output_parent.join(format!(".bestscout-rpm-{}", std::process::id()));
     package.write_file(&staged_output)?;
+    let written_package = Package::open(&staged_output)?;
+    written_package.verify_digests()?;
+    let metadata = &written_package.metadata;
+    if metadata.get_name()? != package_name
+        || metadata.get_epoch()? != epoch
+        || metadata.get_version()? != version
+        || metadata.get_release()? != release
+        || metadata.get_arch()? != architecture
+        || metadata.get_license()? != license
+        || metadata.get_summary()? != summary
+        || metadata.get_description()? != description
+        || metadata.get_url()? != homepage
+        || metadata.get_build_time()? != u64::from(source_date_epoch)
+    {
+        return Err("written RPM metadata does not match the requested package".into());
+    }
+    let expected_paths = [
+        PathBuf::from(format!("/usr/bin/{binary_name}")),
+        PathBuf::from(format!("/usr/share/applications/{product_name}.desktop")),
+        PathBuf::from(format!(
+            "/usr/share/icons/hicolor/512x512/apps/{binary_name}.png"
+        )),
+    ];
+    if metadata.get_file_paths()? != expected_paths {
+        return Err("written RPM contains an unexpected file set".into());
+    }
     fs::rename(staged_output, &arguments.output)?;
     Ok(())
 }
