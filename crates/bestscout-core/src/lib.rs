@@ -3,6 +3,7 @@ pub mod clubs;
 pub mod comparison;
 pub mod competitions;
 pub mod editor;
+pub mod facepack;
 pub mod fixtures;
 pub mod freezer;
 pub mod import;
@@ -37,6 +38,10 @@ pub use editor::{
     PresetChange, PresetStrategy, SnapshotBackup, TransactionError, TransactionJournal,
     apply_transaction, create_backup, prepare_mass_edit, restore_backup, snapshot_hash,
     undo_transaction, verify_read_back,
+};
+pub use facepack::{
+    FACEPACK_SCHEMA_VERSION, FacepackAssignment, FacepackError, FacepackImage, FacepackPlan,
+    FacepackRequest, plan_facepack, render_facepack_config,
 };
 pub use fixtures::synthetic_snapshot;
 pub use freezer::{

@@ -144,6 +144,57 @@ export type ImportResult = {
   delimiter: string;
 };
 
+export type FacepackRequest = {
+  pack_id: string;
+  selected_player_ids: string[];
+  seed: string;
+  confirm_newgens: boolean;
+};
+
+export type FacepackFilesystemRequest = {
+  source_directory: string;
+  destination_root: string;
+  plan: FacepackRequest;
+};
+
+export type FacepackAssignment = {
+  player_id: string;
+  player_name: string;
+  target_id: string;
+  source_name: string;
+  source_sha256: string;
+  output_filename: string;
+  resource_name: string;
+};
+
+export type FacepackPlan = {
+  schema_version: number;
+  pack_id: string;
+  seed: string;
+  assignments: FacepackAssignment[];
+  unused_image_count: number;
+  plan_hash: string;
+};
+
+export type FacepackPreview = {
+  plan: FacepackPlan;
+  source_directory: string;
+  target_directory: string;
+  config_xml: string;
+};
+
+export type InstalledFacepack = {
+  target_directory: string;
+  plan_hash: string;
+  assignment_count: number;
+  file_count: number;
+};
+
+export type RemovedFacepack = {
+  target_directory: string;
+  removed_file_count: number;
+};
+
 export type Staff = {
   id: string;
   name: string;

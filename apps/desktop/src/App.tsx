@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   Activity, BarChart3, Building2, CheckCircle2, ChevronDown, CircleOff, Database,
-  FileUp, Filter, Fingerprint, LayoutDashboard, LockKeyhole, RefreshCw, Search, TableProperties,
+  FileUp, Filter, Fingerprint, Images, LayoutDashboard, LockKeyhole, RefreshCw, Search, TableProperties,
   ShieldCheck, Star, Trophy, UserRoundCog, Users, Zap, Minus, Square, X, PencilLine, Sparkles, Snowflake, HeartPulse, ArrowRightLeft,
 } from "lucide-react";
 import { AvailabilityWorkspace } from "./AvailabilityWorkspace";
@@ -14,6 +14,7 @@ import { ClubWorkspace } from "./ClubWorkspace";
 import { CompetitionWorkspace } from "./CompetitionWorkspace";
 import { DatabaseWorkspace } from "./DatabaseWorkspace";
 import { EditorWorkspace } from "./EditorWorkspace";
+import { FacepackWorkspace } from "./FacepackWorkspace";
 import { FreezerWorkspace } from "./FreezerWorkspace";
 import { IntelligenceWorkspace } from "./IntelligenceWorkspace";
 import { PeopleWorkspace } from "./PeopleWorkspace";
@@ -35,7 +36,7 @@ import type {
 
 const nav = [
   [LayoutDashboard, "Übersicht"], [Sparkles, "Scout-Intel"], [TableProperties, "Datenbank"], [Search, "Spielersuche"], [Users, "Kaderanalyse"],
-  [Star, "Shortlist"], [BarChart3, "Vergleich"], [HeartPulse, "Verfügbarkeit"], [ArrowRightLeft, "Transfers"], [UserRoundCog, "People"], [Building2, "Club-Zentrale"], [Trophy, "Wettbewerbs-Zentrale"], [PencilLine, "Editor"], [Snowflake, "Freezer"], [Activity, "Live-Spiel"],
+  [Star, "Shortlist"], [BarChart3, "Vergleich"], [HeartPulse, "Verfügbarkeit"], [ArrowRightLeft, "Transfers"], [UserRoundCog, "People"], [Building2, "Club-Zentrale"], [Trophy, "Wettbewerbs-Zentrale"], [PencilLine, "Editor"], [Snowflake, "Freezer"], [Images, "Newgen-Faces"], [Activity, "Live-Spiel"],
 ] as const;
 
 const money = new Intl.NumberFormat("de-DE", { notation: "compact", style: "currency", currency: "EUR", maximumFractionDigits: 1 });
@@ -80,10 +81,14 @@ export default function App() {
       && (maximumValue === null || (player.value ?? Number.POSITIVE_INFINITY) <= maximumValue));
   }, [players, query, u21Only, freeAgentsOnly, minPotential, maxValueMillions]);
   const selectedRole = roles.find((role) => role.id === selectedRoleId);
+  const facepackSnapshot = useMemo(
+    () => snapshot ? { ...snapshot, players } : fallbackSnapshot(players),
+    [players, snapshot],
+  );
   const visibleColumnDefinitions = playerColumns.filter((column) => column.locked || visibleColumns.includes(column.id));
   const [filtered, setFiltered] = useState<PlayerQueryRow[]>(() => locallyRatedRows(demoPlayers, previewRoles[0]));
   const activeFilterCount = Number(u21Only) + Number(freeAgentsOnly) + Number(minPotential > 0) + Number(maxValueMillions > 0);
-  const metricPlayers = (active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers" || active === "People" || active === "Club-Zentrale" || active === "Wettbewerbs-Zentrale") && snapshot ? snapshot.players : players;
+  const metricPlayers = (active === "Editor" || active === "Freezer" || active === "Newgen-Faces" || active === "Verfügbarkeit" || active === "Transfers" || active === "People" || active === "Club-Zentrale" || active === "Wettbewerbs-Zentrale") && snapshot ? snapshot.players : players;
 
   useEffect(() => {
     let cancelled = false;
@@ -398,7 +403,7 @@ export default function App() {
         </header>
 
         <section className="metrics" aria-label="Datenübersicht">
-          <Metric label="Spieler im Datensatz" value={metricPlayers.length.toLocaleString("de-DE")} detail={active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers" || active === "People" || active === "Club-Zentrale" || active === "Wettbewerbs-Zentrale" ? "Editor-Arbeitskopie" : "Aktueller Import"} />
+          <Metric label="Spieler im Datensatz" value={metricPlayers.length.toLocaleString("de-DE")} detail={active === "Editor" || active === "Freezer" || active === "Newgen-Faces" || active === "Verfügbarkeit" || active === "Transfers" || active === "People" || active === "Club-Zentrale" || active === "Wettbewerbs-Zentrale" ? "Kanonischer Snapshot" : "Aktueller Import"} />
           <Metric label="U21-Talente" value={metricPlayers.filter((p) => (p.age ?? 99) <= 21).length.toString()} detail="Potenzialanalyse" accent />
           <Metric label="Auf Shortlist" value={shortlist.size.toString()} detail="Lokale Auswahl" />
           <Metric label="Datenabdeckung" value={`${Math.round(metricPlayers.reduce((sum, p) => sum + Object.keys(p.attributes).length, 0) / Math.max(metricPlayers.length, 1) / totalPlayerAttributes * 100)}%`} detail="47 FM26-Attribute" />
@@ -434,6 +439,8 @@ export default function App() {
           <EditorWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
         ) : active === "Freezer" ? (
           <FreezerWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
+        ) : active === "Newgen-Faces" ? (
+          <FacepackWorkspace snapshot={facepackSnapshot} />
         ) : active === "Shortlist" ? (
           <ShortlistWorkspace players={players} document={shortlistDocument} onChange={setShortlistDocument} />
         ) : (

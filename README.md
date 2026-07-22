@@ -49,6 +49,8 @@ and editing tools while remaining local, transparent and safe.
   clamp strategies, bounded server-side preview and atomic commit
 - Persistent per-field attribute freezer with exact, allow-increase and
   monitor-only policies, unresolved-rule blocking and journaled correction
+- Deterministic local Newgen facepack assignments with full image decoding,
+  exact `r-UID` configuration, atomic activation and tamper-safe removal
 - Canonical fitness, morale, injury and ban model with deterministic squad
   availability, a full HeroUI medical workspace and journaled correction actions
 - Canonical immediate, future, loan and reciprocal swap transfers with validated
