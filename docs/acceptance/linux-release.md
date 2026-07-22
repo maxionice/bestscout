@@ -17,6 +17,8 @@ does not claim FM26 live-adapter or native Steam Deck hardware acceptance.
 - The local native build uses the mutually exclusive `--native-only` mode, so
   pre-existing Flatpak or Steam Deck files cannot enter its report or checksum
   manifest. A regression fixture covers a populated output directory.
+- The Linux bundle CI job calls the same local packaging entrypoint rather than
+  maintaining a second build recipe; release metadata validation enforces this.
 - The tag workflow creates a draft before uploads, validates and checksums the
   complete set, generates SLSA provenance with the commit-pinned
   `actions/attest@v4.2.0`, verifies every subject and publishes only at the final
