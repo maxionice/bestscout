@@ -100,6 +100,9 @@ internal static class DomainRootProbeRuntime
         _lastState = null;
     }
 
+    internal static ReferenceCatalogStatus GetReferenceCatalog() =>
+        _store?.GetReferenceCatalog() ?? DomainRootProbeStore.EmptyCatalog("waiting_for_game", null);
+
     internal static void Tick()
     {
         var now = DateTimeOffset.UtcNow;
@@ -169,7 +172,7 @@ internal static class DomainRootProbeRuntime
         }
     }
 
-    private static bool IsAlive(Il2CppObjectBase? value) => value is not null && value.Pointer != nint.Zero;
+    private static bool IsAlive(Il2CppObjectBase? value) => value is not null && value.Pointer != IntPtr.Zero;
 
     private static bool MetadataIsPopulated(DomainReferenceMetadata metadata) =>
         metadata.GameProperties > 0
@@ -272,5 +275,9 @@ public sealed class DomainRootProbeBehaviour : MonoBehaviour
     {
     }
 
-    public void Update() => DomainRootProbeRuntime.Tick();
+    public void Update()
+    {
+        DomainRootProbeRuntime.Tick();
+        ReferenceSampleRuntime.Tick();
+    }
 }

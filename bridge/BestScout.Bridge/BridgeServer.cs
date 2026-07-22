@@ -19,6 +19,7 @@ internal sealed class BridgeServer : IDisposable
     private readonly ManualLogSource _log;
     private readonly DomainSnapshotStore _snapshots;
     private readonly DomainRootProbeStore _domainRoots;
+    private readonly ReferenceSampleStore _referenceSamples;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly byte[] _tokenBytes = RandomNumberGenerator.GetBytes(32);
     private TcpListener? _listener;
@@ -28,12 +29,14 @@ internal sealed class BridgeServer : IDisposable
         string configDirectory,
         ManualLogSource log,
         DomainSnapshotStore snapshots,
-        DomainRootProbeStore domainRoots)
+        DomainRootProbeStore domainRoots,
+        ReferenceSampleStore referenceSamples)
     {
         _descriptorPath = Path.Combine(configDirectory, "bestscout-bridge.json");
         _log = log;
         _snapshots = snapshots;
         _domainRoots = domainRoots;
+        _referenceSamples = referenceSamples;
     }
 
     internal void Start()
@@ -103,7 +106,7 @@ internal sealed class BridgeServer : IDisposable
                 BridgeResponse response;
                 try
                 {
-                    var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                    var line = await reader.ReadLineAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
                     response = Handle(line);
                 }
                 catch (Exception error) when (error is JsonException or FormatException)
@@ -146,10 +149,52 @@ internal sealed class BridgeServer : IDisposable
             "capabilities" => Success(request.Id, new CapabilityResult(true, _snapshots.IsAvailable, false)),
             "domain_roots" => Success(request.Id, _domainRoots.Get()),
             "reference_catalog" => Success(request.Id, _domainRoots.GetReferenceCatalog()),
+            "reference_sample_start" => ReferenceSampleStart(request),
+            "reference_sample_status" => ReferenceSampleStatus(request),
             "snapshot_manifest" => SnapshotManifest(request.Id),
             "snapshot_page" => SnapshotPage(request),
             _ => Error(request.Id, "unknown_method"),
         };
+    }
+
+    private BridgeResponse ReferenceSampleStart(BridgeRequest request)
+    {
+        if (!TryDeserializeParameters(request, out ReferenceSampleStartRequest? parameters))
+        {
+            return Error(request.Id, "invalid_parameters");
+        }
+        return _referenceSamples.TryEnqueue(
+            parameters!,
+            _domainRoots.Get(),
+            _domainRoots.GetReferenceCatalog(),
+            out var status,
+            out var error)
+            ? Success(request.Id, status!)
+            : Error(request.Id, error);
+    }
+
+    private BridgeResponse ReferenceSampleStatus(BridgeRequest request)
+    {
+        if (!TryDeserializeParameters(request, out ReferenceSampleStatusRequest? parameters)
+            || string.IsNullOrWhiteSpace(parameters!.RequestId)
+            || parameters.RequestId.Length > 128)
+        {
+            return Error(request.Id, "invalid_parameters");
+        }
+        return _referenceSamples.TryGet(parameters.RequestId, out var status)
+            ? Success(request.Id, status!)
+            : Error(request.Id, "reference_sample_not_found");
+    }
+
+    private static bool TryDeserializeParameters<T>(BridgeRequest request, out T? parameters)
+    {
+        parameters = default;
+        if (!request.Parameters.HasValue || request.Parameters.Value.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+        parameters = request.Parameters.Value.Deserialize<T>(JsonOptions);
+        return parameters is not null;
     }
 
     private BridgeResponse SnapshotManifest(string requestId)
@@ -162,13 +207,8 @@ internal sealed class BridgeServer : IDisposable
 
     private BridgeResponse SnapshotPage(BridgeRequest request)
     {
-        if (!request.Parameters.HasValue || request.Parameters.Value.ValueKind != JsonValueKind.Object)
-        {
-            return Error(request.Id, "invalid_parameters");
-        }
-        var parameters = request.Parameters.Value.Deserialize<SnapshotPageRequest>(JsonOptions);
-        if (parameters is null
-            || string.IsNullOrWhiteSpace(parameters.SnapshotId)
+        if (!TryDeserializeParameters(request, out SnapshotPageRequest? parameters)
+            || string.IsNullOrWhiteSpace(parameters!.SnapshotId)
             || string.IsNullOrWhiteSpace(parameters.EntityKind))
         {
             return Error(request.Id, "invalid_parameters");

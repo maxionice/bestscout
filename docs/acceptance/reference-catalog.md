@@ -2,7 +2,7 @@
 
 Profile: `fm26-steam-23583635`
 
-Bridge candidate: `0.4.0`
+Bridge candidate: `0.5.0`
 
 ## Automated evidence
 
@@ -36,7 +36,7 @@ was copied or injected. After a normal shutdown and managed install, acceptance
 requires:
 
 1. Restart FM26 and load the selected test career.
-2. Confirm bridge `0.4.0`, resolved domain roots and `catalog_ready`.
+2. Confirm bridge `0.5.0`, resolved domain roots and `catalog_ready`.
 3. Persist the catalog only as local compatibility evidence and verify all eight
    families, counts and IDs with the Rust command.
 4. Confirm `domain_read = false` until the entity-channel adapter separately
