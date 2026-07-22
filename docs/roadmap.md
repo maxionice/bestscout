@@ -31,6 +31,7 @@
 - [x] Reject unknown or partial fingerprint matches
 - [x] Select the real Proton game process and verify minimal read-only access
 - [x] Authenticated, bounded and paginated canonical snapshot transport
+- [x] Authenticated main-thread domain-root prerequisite probe
 - [ ] Resolve validated FM26 domain roots
 - [ ] Read players, staff, clubs and competitions
 - [x] Reject unsupported builds safely

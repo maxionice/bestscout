@@ -688,6 +688,7 @@ export function LiveWorkspace({ environment, isDetecting, onDetect }: { environm
   const compatibility = installation?.compatibility;
   const fingerprint = installation?.build_fingerprint;
   const access = environment?.process_access;
+  const domainRoots = environment?.bridge?.domain_roots;
 
   return (
     <div className="live-workspace">
@@ -707,6 +708,7 @@ export function LiveWorkspace({ environment, isDetecting, onDetect }: { environm
         <Capability title="Build-Profil" enabled={compatibility?.status === "exact"} detail={compatibility?.label ?? "Kein Profil abgeglichen"} />
         <Capability title="Read-only Probe" enabled={access?.executable_signature_valid ?? false} detail={access ? `PID ${access.inspection.pid} · MZ-Signatur bestätigt` : environment?.process_access_error ?? "Kein lesbarer FM26-Spielprozess"} />
         <Capability title="In-Game Bridge" enabled={environment?.bridge?.health.read_only ?? false} detail={environment?.bridge ? `Bridge ${environment.bridge.health.bridge_version} · PID ${environment.bridge.health.pid}` : "Noch nicht in FM26 installiert"} />
+        <Capability title="Domain-Roots" enabled={domainRoots?.state === "roots_resolved"} detail={domainRootDetail(domainRoots)} />
         <Capability title="Domänendaten" enabled={environment?.reader_allowed ?? false} detail="Spieler-, Vereins- und Staff-Layout noch gesperrt" />
         <Capability title="Editor" enabled={environment?.editor_allowed ?? false} detail="Schreiben erst nach validierten Feldprofilen" locked />
       </section>
@@ -732,6 +734,13 @@ export function LiveWorkspace({ environment, isDetecting, onDetect }: { environm
 
 function formatAddress(address: number | null | undefined) {
   return typeof address === "number" ? `0x${address.toString(16)}` : "–";
+}
+
+function domainRootDetail(roots: NonNullable<NonNullable<LiveEnvironment["bridge"]>["domain_roots"]> | undefined) {
+  if (!roots) return "Probe wird nach FM26-Neustart verfügbar";
+  if (roots.state === "roots_resolved") return `${roots.interop_subsystem_count} Interop-Root · Referenzen verifiziert`;
+  if (roots.state === "probe_failed") return roots.error ?? "Domain-Probe fehlgeschlagen";
+  return roots.initialisation_complete ? "Warte auf Interop-Subsystem" : "Warte auf vollständige Spielinitialisierung";
 }
 
 function Capability({ title, enabled, detail, locked = false }: { title: string; enabled: boolean; detail: string; locked?: boolean }) {

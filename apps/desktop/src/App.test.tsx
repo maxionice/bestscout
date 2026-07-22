@@ -174,7 +174,23 @@ describe("BestScout desktop", () => {
           capabilities: { process_inspection: true, domain_read: false, domain_write: false }, reason: "match",
         },
       }],
-      processes: [{ pid: 77, command: "fm.exe" }], bridge: null,
+      processes: [{ pid: 77, command: "fm.exe" }],
+      bridge: {
+        health: { bridge_version: "0.3.0", pid: 77, read_only: true },
+        capabilities: { health: true, domain_read: false, domain_write: false },
+        domain_roots: {
+          schema_version: 1, checked_at_utc: "2026-07-22T02:00:00Z", state: "roots_resolved",
+          initialiser_count: 1, initialisation_complete: true, context_module_count: 1,
+          interop_subsystem_count: 1, database_factory_available: true,
+          reference_metadata: {
+            game_properties: 1, person_properties: 1, club_properties: 1,
+            competition_properties: 1, person_search_properties: 1,
+            person_summary_properties: 1, club_summary_properties: 1,
+            competition_summary_properties: 1,
+          },
+          error: null,
+        },
+      },
       process_access: {
         inspection: { pid: 77, region_count: 100, readable_region_count: 90, fm_executable_base: 0x140000000, game_assembly_base: 0x6ffff0000000 },
         executable_signature_valid: true,
@@ -185,6 +201,7 @@ describe("BestScout desktop", () => {
 
     render(<LiveWorkspace environment={environment} isDetecting={false} onDetect={() => undefined} />);
     expect(screen.getByText("PID 77 · MZ-Signatur bestätigt")).toBeTruthy();
+    expect(screen.getByText("1 Interop-Root · Referenzen verifiziert")).toBeTruthy();
     expect(screen.getByText("0x140000000")).toBeTruthy();
     expect(screen.getByTitle("PID 77 · 90/100 Bereiche lesbar")).toBeTruthy();
   });

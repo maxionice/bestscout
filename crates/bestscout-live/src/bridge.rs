@@ -52,6 +52,43 @@ pub struct BridgeCapabilities {
 pub struct BridgeProbe {
     pub health: BridgeHealth,
     pub capabilities: BridgeCapabilities,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domain_roots: Option<DomainRootStatus>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DomainRootState {
+    NotStarted,
+    WaitingForGame,
+    RootsResolved,
+    ProbeFailed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DomainReferenceMetadata {
+    pub game_properties: u32,
+    pub person_properties: u32,
+    pub club_properties: u32,
+    pub competition_properties: u32,
+    pub person_search_properties: u32,
+    pub person_summary_properties: u32,
+    pub club_summary_properties: u32,
+    pub competition_summary_properties: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DomainRootStatus {
+    pub schema_version: u32,
+    pub checked_at_utc: String,
+    pub state: DomainRootState,
+    pub initialiser_count: u32,
+    pub initialisation_complete: bool,
+    pub context_module_count: u32,
+    pub interop_subsystem_count: u32,
+    pub database_factory_available: bool,
+    pub reference_metadata: DomainReferenceMetadata,
+    pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -156,6 +193,8 @@ pub enum BridgeError {
     DomainReadUnavailable,
     #[error("bridge snapshot manifest is invalid: {0}")]
     InvalidManifest(String),
+    #[error("bridge domain-root status is invalid: {0}")]
+    InvalidDomainRoots(String),
     #[error("bridge snapshot page is invalid: {0}")]
     InvalidPage(String),
     #[error("live snapshot failed canonical validation with {0} issue(s)")]
@@ -212,6 +251,12 @@ impl BridgeClient {
 
     pub fn capabilities(&self) -> Result<BridgeCapabilities, BridgeError> {
         self.request("capabilities", None)
+    }
+
+    pub fn domain_roots(&self) -> Result<DomainRootStatus, BridgeError> {
+        let status = self.request("domain_roots", None)?;
+        validate_domain_roots(&status)?;
+        Ok(status)
     }
 
     pub fn snapshot_manifest(&self) -> Result<SnapshotManifest, BridgeError> {
@@ -434,11 +479,81 @@ fn validate_manifest(manifest: &SnapshotManifest) -> Result<(), BridgeError> {
     Ok(())
 }
 
+fn validate_domain_roots(status: &DomainRootStatus) -> Result<(), BridgeError> {
+    const MAXIMUM_ROOTS: u32 = 128;
+    const MAXIMUM_PROPERTIES: u32 = 100_000;
+    if status.schema_version != 1
+        || status.checked_at_utc.is_empty()
+        || status.checked_at_utc.len() > 128
+        || status.initialiser_count > MAXIMUM_ROOTS
+        || status.context_module_count > MAXIMUM_ROOTS
+        || status.interop_subsystem_count > MAXIMUM_ROOTS
+        || status.error.as_ref().is_some_and(|error| error.len() > 512)
+    {
+        return Err(BridgeError::InvalidDomainRoots(
+            "metadata or root counts exceed protocol bounds".to_owned(),
+        ));
+    }
+    let property_counts = [
+        status.reference_metadata.game_properties,
+        status.reference_metadata.person_properties,
+        status.reference_metadata.club_properties,
+        status.reference_metadata.competition_properties,
+        status.reference_metadata.person_search_properties,
+        status.reference_metadata.person_summary_properties,
+        status.reference_metadata.club_summary_properties,
+        status.reference_metadata.competition_summary_properties,
+    ];
+    if property_counts
+        .iter()
+        .any(|count| *count > MAXIMUM_PROPERTIES)
+    {
+        return Err(BridgeError::InvalidDomainRoots(
+            "reference property count exceeds protocol bounds".to_owned(),
+        ));
+    }
+    match status.state {
+        DomainRootState::ProbeFailed => {
+            if status.error.as_ref().is_none_or(String::is_empty) {
+                return Err(BridgeError::InvalidDomainRoots(
+                    "failed state must contain a bounded error".to_owned(),
+                ));
+            }
+        }
+        _ if status.error.is_some() => {
+            return Err(BridgeError::InvalidDomainRoots(
+                "only failed state may contain an error".to_owned(),
+            ));
+        }
+        _ => {}
+    }
+    if status.state == DomainRootState::RootsResolved
+        && (status.initialiser_count == 0
+            || !status.initialisation_complete
+            || status.interop_subsystem_count != 1
+            || !status.database_factory_available
+            || property_counts.contains(&0))
+    {
+        return Err(BridgeError::InvalidDomainRoots(
+            "resolved state does not satisfy every root invariant".to_owned(),
+        ));
+    }
+    Ok(())
+}
+
 pub fn probe_bridge(root: &Path) -> Result<BridgeProbe, BridgeError> {
     let client = BridgeClient::from_installation(root)?;
+    let health = client.health()?;
+    let capabilities = client.capabilities()?;
+    let domain_roots = match client.domain_roots() {
+        Ok(status) => Some(status),
+        Err(BridgeError::Rejected(error)) if error == "unknown_method" => None,
+        Err(error) => return Err(error),
+    };
     Ok(BridgeProbe {
-        health: client.health()?,
-        capabilities: client.capabilities()?,
+        health,
+        capabilities,
+        domain_roots,
     })
 }
 
@@ -520,6 +635,138 @@ mod tests {
         let result = BridgeClient::from_descriptor(&path);
         fs::remove_file(path).unwrap();
         assert!(matches!(result, Err(BridgeError::UnsupportedProtocol(99))));
+    }
+
+    #[test]
+    fn validates_every_invariant_before_accepting_resolved_domain_roots() {
+        let mut status = DomainRootStatus {
+            schema_version: 1,
+            checked_at_utc: "2026-07-22T02:00:00Z".to_owned(),
+            state: DomainRootState::RootsResolved,
+            initialiser_count: 1,
+            initialisation_complete: true,
+            context_module_count: 1,
+            interop_subsystem_count: 1,
+            database_factory_available: true,
+            reference_metadata: DomainReferenceMetadata {
+                game_properties: 1,
+                person_properties: 1,
+                club_properties: 1,
+                competition_properties: 1,
+                person_search_properties: 1,
+                person_summary_properties: 1,
+                club_summary_properties: 1,
+                competition_summary_properties: 1,
+            },
+            error: None,
+        };
+        validate_domain_roots(&status).unwrap();
+
+        status.initialiser_count = 0;
+        assert!(matches!(
+            validate_domain_roots(&status),
+            Err(BridgeError::InvalidDomainRoots(_))
+        ));
+        status.initialiser_count = 1;
+
+        status.initialisation_complete = false;
+        assert!(matches!(
+            validate_domain_roots(&status),
+            Err(BridgeError::InvalidDomainRoots(_))
+        ));
+        status.initialisation_complete = true;
+
+        status.interop_subsystem_count = 2;
+        assert!(matches!(
+            validate_domain_roots(&status),
+            Err(BridgeError::InvalidDomainRoots(_))
+        ));
+        status.interop_subsystem_count = 1;
+
+        status.database_factory_available = false;
+        assert!(matches!(
+            validate_domain_roots(&status),
+            Err(BridgeError::InvalidDomainRoots(_))
+        ));
+        status.database_factory_available = true;
+
+        status.reference_metadata.person_properties = 0;
+        assert!(matches!(
+            validate_domain_roots(&status),
+            Err(BridgeError::InvalidDomainRoots(_))
+        ));
+        status.reference_metadata.person_properties = 1;
+
+        status.error = Some("unexpected".to_owned());
+        assert!(matches!(
+            validate_domain_roots(&status),
+            Err(BridgeError::InvalidDomainRoots(_))
+        ));
+
+        status.state = DomainRootState::ProbeFailed;
+        status.error = None;
+        assert!(matches!(
+            validate_domain_roots(&status),
+            Err(BridgeError::InvalidDomainRoots(_))
+        ));
+        status.error = Some("test failure".to_owned());
+        validate_domain_roots(&status).unwrap();
+    }
+
+    #[test]
+    fn requests_authenticated_domain_root_status() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut line = String::new();
+            BufReader::new(stream.try_clone().unwrap())
+                .read_line(&mut line)
+                .unwrap();
+            let request: Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(request["method"], "domain_roots");
+            assert_eq!(request["token"], "test-token");
+            writeln!(
+                stream,
+                "{}",
+                serde_json::json!({
+                    "protocol_version": 1,
+                    "id": request["id"],
+                    "ok": true,
+                    "result": {
+                        "schema_version": 1,
+                        "checked_at_utc": "2026-07-22T02:00:00Z",
+                        "state": "waiting_for_game",
+                        "initialiser_count": 0,
+                        "initialisation_complete": false,
+                        "context_module_count": 0,
+                        "interop_subsystem_count": 0,
+                        "database_factory_available": false,
+                        "reference_metadata": {
+                            "game_properties": 0,
+                            "person_properties": 0,
+                            "club_properties": 0,
+                            "competition_properties": 0,
+                            "person_search_properties": 0,
+                            "person_summary_properties": 0,
+                            "club_summary_properties": 0,
+                            "competition_summary_properties": 0
+                        },
+                        "error": null
+                    },
+                    "error": null
+                })
+            )
+            .unwrap();
+        });
+
+        let path = temporary_descriptor(port, 4244);
+        let client = BridgeClient::from_descriptor(&path).unwrap();
+        let status = client.domain_roots().unwrap();
+        fs::remove_file(path).unwrap();
+        server.join().unwrap();
+
+        assert_eq!(status.state, DomainRootState::WaitingForGame);
     }
 
     #[test]
