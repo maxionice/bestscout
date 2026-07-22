@@ -35,10 +35,8 @@ Der aktuelle Stack ist absichtlich linear:
 | #39 | `agent/ci-native-package-entrypoint` | PR #38 | einheitlicher lokaler und CI-Native-Paketpfad |
 | #40 | `agent/reproducible-native-packages` | PR #39 | byte-reproduzierbare AppImage-, DEB- und RPM-Pakete |
 
-PR #25 bis #39 sind offen, Draft, mergebar und vollständig grün. PR #40 wurde
-nach vollständiger lokaler Prüfung als Draft auf PR #39 geöffnet; dessen
-GitHub-CI läuft. Keine offene Draft-Stufe als bereits in `main` enthalten
-behandeln.
+PR #25 bis #40 sind offen, Draft, mergebar und vollständig grün. Keine offene
+Draft-Stufe als bereits in `main` enthalten behandeln.
 
 ## Implementierter Stand
 
