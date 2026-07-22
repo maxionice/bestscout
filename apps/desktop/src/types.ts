@@ -236,6 +236,55 @@ export type SquadAnalysis = {
   wage_outliers: WageOutlier[];
 };
 
+export type IntelligenceCriteria = {
+  as_of: GameDate;
+  wonderkid_max_age: number;
+  wonderkid_min_potential: number;
+  bargain_max_value: number;
+  bargain_min_projected_peak: number;
+  expiring_within_days: number;
+};
+
+export type ProjectionFactor = {
+  id: string;
+  label: string;
+  score: number;
+  weight: number;
+  observed: boolean;
+  explanation: string;
+};
+
+export type DevelopmentProjection = {
+  projected_peak_ability: number;
+  reach_potential_probability: number;
+  confidence: number;
+  ability_gain: number;
+  years_to_peak: number;
+  attribute_peaks: Record<string, number>;
+  factors: ProjectionFactor[];
+};
+
+export type PlayerIntelligence = {
+  player: Player;
+  projection: DevelopmentProjection | null;
+  is_wonderkid: boolean;
+  is_bargain: boolean;
+  is_free_agent: boolean;
+  is_expiring_contract: boolean;
+  bargain_score: number | null;
+  contract_days_remaining: number | null;
+  discovery_score: number;
+};
+
+export type ScoutIntelligenceReport = {
+  criteria: IntelligenceCriteria;
+  players: PlayerIntelligence[];
+  wonderkid_count: number;
+  bargain_count: number;
+  free_agent_count: number;
+  expiring_contract_count: number;
+};
+
 export type AnalysisBucket = {
   id: string;
   label: string;

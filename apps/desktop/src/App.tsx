@@ -5,12 +5,13 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   Activity, BarChart3, Building2, CheckCircle2, ChevronDown, CircleOff, Database,
   FileUp, Filter, Fingerprint, LayoutDashboard, LockKeyhole, RefreshCw, Search, TableProperties,
-  ShieldCheck, Star, Trophy, UserRoundCog, Users, Zap, Minus, Square, X, PencilLine,
+  ShieldCheck, Star, Trophy, UserRoundCog, Users, Zap, Minus, Square, X, PencilLine, Sparkles,
 } from "lucide-react";
 import { demoPlayers } from "./demo";
 import { ComparisonWorkspace } from "./ComparisonWorkspace";
 import { DatabaseWorkspace } from "./DatabaseWorkspace";
 import { EditorWorkspace } from "./EditorWorkspace";
+import { IntelligenceWorkspace } from "./IntelligenceWorkspace";
 import { RoleExplorer } from "./RoleExplorer";
 import { ShortlistWorkspace } from "./ShortlistWorkspace";
 import { SquadAnalysisWorkspace } from "./SquadAnalysisWorkspace";
@@ -27,7 +28,7 @@ import type {
 } from "./types";
 
 const nav = [
-  [LayoutDashboard, "Übersicht"], [TableProperties, "Datenbank"], [Search, "Spielersuche"], [Users, "Kaderanalyse"],
+  [LayoutDashboard, "Übersicht"], [Sparkles, "Scout-Intel"], [TableProperties, "Datenbank"], [Search, "Spielersuche"], [Users, "Kaderanalyse"],
   [Star, "Shortlist"], [BarChart3, "Vergleich"], [PencilLine, "Editor"], [Activity, "Live-Spiel"],
 ] as const;
 
@@ -391,6 +392,8 @@ export default function App() {
             hits={searchHits}
             isSearching={isSearching}
           />
+        ) : active === "Scout-Intel" ? (
+          <IntelligenceWorkspace players={players} snapshot={snapshot} />
         ) : active === "Datenbank" ? (
           <DatabaseWorkspace players={players} snapshot={snapshot} />
         ) : active === "Kaderanalyse" ? (

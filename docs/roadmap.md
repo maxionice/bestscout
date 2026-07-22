@@ -21,6 +21,8 @@
 - [x] Multi-player comparison, role-weighted radar charts and similar-player search
 - [x] Squad planning, contract, wage and succession analysis
 - [x] Versioned shortlist import/export, favourites, tags and notes
+- [x] Explainable development probability and peak projection
+- [x] Configurable Wonderkid, bargain, free-agent and expiring-contract lists
 
 ## 0.3 — Live reader
 

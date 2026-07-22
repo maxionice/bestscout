@@ -35,3 +35,7 @@ boundary so the desktop UI never needs adapter-specific filtering rules.
 
 Synthetic fixtures exercise cross-entity links without shipping proprietary or
 real-world Football Manager database content.
+
+Derived scouting insights are isolated from adapter code as well. The
+[scout-intelligence engine](scout-intelligence.md) documents its original
+projection heuristic, confidence model and deterministic smart-list rules.

@@ -37,6 +37,8 @@ and editing tools while remaining local, transparent and safe.
   a hash-chained journal, read-back verification and exact undo
 - Full HeroUI v3 editor workspace for player, staff, club and competition fields
   with staged changes, validated preview, history, restore and undo
+- Explainable development probability and projected CA/attribute peaks with
+  configurable Wonderkid, bargain, free-agent and expiring-contract smart lists
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.
