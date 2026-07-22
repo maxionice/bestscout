@@ -2,10 +2,10 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
-    AppliedTransaction, Club, ClubFacilities, ClubFinances, DatabaseSnapshot,
-    EDITOR_SCHEMA_VERSION, EditEntityKind, EditOperation, EditTransaction, FieldExpectation,
-    TransactionError, apply_transaction, editor::entity_value, editor::value_at_path,
-    validate_snapshot,
+    AppliedTransaction, Club, ClubBranding, ClubFacilities, ClubFinances, ClubRelationship,
+    DatabaseSnapshot, EDITOR_SCHEMA_VERSION, EditEntityKind, EditOperation, EditTransaction,
+    FieldExpectation, TransactionError, apply_transaction, editor::entity_value,
+    editor::value_at_path, validate_snapshot,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -34,6 +34,18 @@ pub enum ClubCommand {
         club_id: String,
         facilities: ClubFacilities,
     },
+    UpdateBranding {
+        club_id: String,
+        branding: ClubBranding,
+    },
+    UpsertRelationship {
+        club_id: String,
+        relationship: ClubRelationship,
+    },
+    RemoveRelationship {
+        club_id: String,
+        relationship_id: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -54,6 +66,8 @@ pub struct PreparedClubAction {
 pub enum ClubError {
     #[error("competition {0} was not found")]
     CompetitionNotFound(String),
+    #[error("club relationship {0} was not found")]
+    RelationshipNotFound(String),
     #[error("club action would not change the canonical snapshot")]
     NoChanges,
     #[error(transparent)]
@@ -211,6 +225,72 @@ pub fn prepare_club_action(
                 &facilities.junior_coaching,
             )?;
         }
+        ClubCommand::UpdateBranding { club_id, branding } => {
+            club(snapshot, club_id)?;
+            add_serialized_change(
+                snapshot,
+                &mut operations,
+                club_id,
+                "branding.primary_colour",
+                &branding.primary_colour,
+            )?;
+            add_serialized_change(
+                snapshot,
+                &mut operations,
+                club_id,
+                "branding.secondary_colour",
+                &branding.secondary_colour,
+            )?;
+            add_serialized_change(
+                snapshot,
+                &mut operations,
+                club_id,
+                "branding.kits",
+                &branding.kits,
+            )?;
+        }
+        ClubCommand::UpsertRelationship {
+            club_id,
+            relationship,
+        } => {
+            let source_club = club(snapshot, club_id)?;
+            club(snapshot, &relationship.target_club_id)?;
+            let mut relationships = source_club.relationships.clone();
+            if let Some(existing) = relationships
+                .iter_mut()
+                .find(|item| item.id == relationship.id)
+            {
+                *existing = relationship.clone();
+            } else {
+                relationships.push(relationship.clone());
+            }
+            add_serialized_change(
+                snapshot,
+                &mut operations,
+                club_id,
+                "relationships",
+                &relationships,
+            )?;
+        }
+        ClubCommand::RemoveRelationship {
+            club_id,
+            relationship_id,
+        } => {
+            let club = club(snapshot, club_id)?;
+            let mut relationships = club.relationships.clone();
+            let before = relationships.len();
+            relationships.retain(|item| item.id != *relationship_id);
+            if relationships.len() == before {
+                return Err(ClubError::RelationshipNotFound(relationship_id.clone()));
+            }
+            add_serialized_change(
+                snapshot,
+                &mut operations,
+                club_id,
+                "relationships",
+                &relationships,
+            )?;
+        }
     }
 
     if operations.is_empty() {
@@ -305,6 +385,9 @@ fn command_reason(command: &ClubCommand) -> String {
         ClubCommand::UpdateStadium { club_id, .. } => ("stadium", club_id),
         ClubCommand::UpdateFinances { club_id, .. } => ("finances", club_id),
         ClubCommand::UpdateFacilities { club_id, .. } => ("facilities", club_id),
+        ClubCommand::UpdateBranding { club_id, .. } => ("branding", club_id),
+        ClubCommand::UpsertRelationship { club_id, .. } => ("relationship", club_id),
+        ClubCommand::RemoveRelationship { club_id, .. } => ("relationship", club_id),
     };
     format!("Update club {action} for {club_id}")
 }
@@ -395,6 +478,61 @@ mod tests {
     }
 
     #[test]
+    fn updates_branding_and_relationships_through_exact_previews() {
+        let snapshot = synthetic_snapshot();
+        let mut branding = snapshot.clubs[0].branding.clone();
+        branding.primary_colour = Some("#224466".into());
+        branding.kits.push(crate::ClubKit {
+            id: "kit-nordhafen-away".into(),
+            kind: crate::ClubKitKind::Away,
+            shirt_colour: "#FFFFFF".into(),
+            shorts_colour: "#224466".into(),
+            socks_colour: "#FFFFFF".into(),
+            trim_colour: Some("#F6C344".into()),
+            pattern: Some("stripes".into()),
+        });
+        let prepared = prepare_club_action(
+            &snapshot,
+            &request(ClubCommand::UpdateBranding {
+                club_id: "club-nordhafen".into(),
+                branding: branding.clone(),
+            }),
+        )
+        .unwrap();
+        assert_eq!(prepared.preview.snapshot.clubs[0].branding, branding);
+        assert!(
+            prepared.transaction.operations.iter().all(|operation| {
+                matches!(operation.expected_before, FieldExpectation::Exact(_))
+            })
+        );
+
+        let mut relationship = prepared.preview.snapshot.clubs[0].relationships[0].clone();
+        relationship.strength = 85;
+        let prepared = prepare_club_action(
+            &prepared.preview.snapshot,
+            &request(ClubCommand::UpsertRelationship {
+                club_id: "club-nordhafen".into(),
+                relationship: relationship.clone(),
+            }),
+        )
+        .unwrap();
+        assert_eq!(
+            prepared.preview.snapshot.clubs[0].relationships[0],
+            relationship
+        );
+
+        let prepared = prepare_club_action(
+            &prepared.preview.snapshot,
+            &request(ClubCommand::RemoveRelationship {
+                club_id: "club-nordhafen".into(),
+                relationship_id: relationship.id,
+            }),
+        )
+        .unwrap();
+        assert!(prepared.preview.snapshot.clubs[0].relationships.is_empty());
+    }
+
+    #[test]
     fn rejects_invalid_stadiums_unknown_references_missing_clubs_and_no_ops() {
         let snapshot = synthetic_snapshot();
         assert!(matches!(
@@ -445,6 +583,16 @@ mod tests {
                 }),
             ),
             Err(ClubError::NoChanges)
+        ));
+        assert!(matches!(
+            prepare_club_action(
+                &snapshot,
+                &request(ClubCommand::RemoveRelationship {
+                    club_id: "club-nordhafen".into(),
+                    relationship_id: "missing-relationship".into(),
+                }),
+            ),
+            Err(ClubError::RelationshipNotFound(id)) if id == "missing-relationship"
         ));
     }
 

@@ -799,6 +799,10 @@ pub(crate) fn is_editable_field(kind: EditEntityKind, field: &str) -> bool {
                 | "facilities.youth"
                 | "facilities.youth_recruitment"
                 | "facilities.junior_coaching"
+                | "branding.primary_colour"
+                | "branding.secondary_colour"
+                | "branding.kits"
+                | "relationships"
         ),
         EditEntityKind::Competition => matches!(
             field,

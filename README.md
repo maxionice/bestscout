@@ -32,6 +32,7 @@ and editing tools while remaining local, transparent and safe.
   path-leak checks and two-rebuild hash verification
 - Bounded paginated live-snapshot protocol with end-to-end canonical validation
 - Schema-versioned player, staff, club and competition models
+- Validated club branding, four typed kit slots and referential club relationships
 - Validated global search and composable player-query engine
 - HeroUI global-search workspace and advanced player filters
 - Custom frameless Linux title bar with native window controls

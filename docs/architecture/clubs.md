@@ -1,11 +1,12 @@
-# Club finance, stadium and facilities architecture
+# Club identity, branding, relationships and operations architecture
 
-Status: kanonische Implementierung auf `agent/club-finance-facilities`;
-automatisierte Repository-Abnahme bestanden, native Sichtprüfung und
-Live-FM26-Adapter offen.
+Status: kanonische Operationsbasis aus `agent/club-finance-facilities`, auf
+`agent/club-branding-relationships` um Farben, Kits und Clubbeziehungen
+erweitert; native Sichtprüfung und Live-FM26-Adapter offen.
 
-BestScout behandelt Vereinsidentität, Wettbewerb, Stadion, Finanzen und Anlagen
-als kanonische Snapshot-Daten. Die Club-Zentrale besitzt keinen direkten
+BestScout behandelt Vereinsidentität, Wettbewerb, Stadion, Finanzen, Anlagen,
+Farben, Trikots und Clubbeziehungen als kanonische Snapshot-Daten. Die
+Club-Zentrale besitzt keinen direkten
 Schreibpfad. Jede Aktion erzeugt eine normale, exakte `EditTransaction` und
 läuft dadurch über denselben Backup-, Journal-, Read-back- und Undo-Pfad wie
 der generische Editor.
@@ -28,14 +29,25 @@ Zuschauerschnitt darf weder die Kapazität noch die technische Obergrenze
 überschreiten. Namen, Kurzname, Nation, Stadion und Profistatus besitzen
 explizite Längen- beziehungsweise Werteschranken.
 
+Die rückwärtskompatible `branding`-Struktur enthält optionale Primär- und
+Sekundärfarbe sowie höchstens je ein Heim-, Auswärts-, Dritt- und Torwarttrikot.
+Jede Farbe nutzt exakt `#RRGGBB`; Kit-IDs und Kit-Arten sind pro Club eindeutig,
+Mustertexte begrenzt. Clubbeziehungen sind typisiert als Rivale, Partner,
+Mutterverein, Farmteam oder befreundeter Club. Zielclub und ID müssen existieren
+beziehungsweise snapshotweit eindeutig sein; Selbstbezug, doppelte
+Art-/Zielpaare und Stärken außerhalb 1 bis 100 werden abgelehnt.
+
 ## Aktionsprotokoll
 
-`ClubCommand` trennt vier atomare Anwendungsfälle:
+`ClubCommand` trennt sieben atomare Anwendungsfälle:
 
 - Identität, stabile Wettbewerbsreferenz, Reputation und Profistatus;
 - Stadionname, Kapazität und Zuschauerschnitt;
 - vollständiger Finanzrahmen;
-- vollständige Anlagenqualität.
+- vollständige Anlagenqualität;
+- Clubfarben und die vollständige typisierte Kitliste;
+- Clubbeziehung anlegen oder aktualisieren;
+- vorhandene Clubbeziehung entfernen.
 
 `prepare_club_action` validiert zuerst den gesamten Ausgangssnapshot, liest
 jeden betroffenen Wert und erzeugt nur tatsächliche Änderungen mit
@@ -50,15 +62,17 @@ Backups, Hash-Journal, Read-back und exaktes Undo.
 
 ## Oberfläche
 
-Das `Club Operations Center` besteht aus vier Modi: Identität, Stadion,
-Finanzen und Anlagen. Auswahl, Formular und Transaktionsvorschau sind sichtbar
-getrennt. Jede Formänderung verwirft eine vorhandene Vorschau; eine verspätete
+Das `Club Operations Center` besteht aus sechs Modi: Identität, Stadion,
+Finanzen, Anlagen, Farben & Trikots und Clubbeziehungen. Auswahl, Formular und
+Transaktionsvorschau sind sichtbar getrennt. Jede Formänderung verwirft eine
+vorhandene Vorschau; eine verspätete
 asynchrone Antwort wird nach Formular- oder Snapshotwechsel ignoriert. Nach
 Commit synchronisiert sich der Entwurf aus dem übernommenen Snapshot.
 
 ## Live-Grenze
 
-Der kanonische Command schaltet keine FM26-Schreibrechte frei. Für jeden Club-
-Feldpfad bleiben bestätigte Domain-Roots, typisierte Lese- und Main-Thread-
+Der kanonische Command schaltet keine FM26-Schreibrechte frei. Für jeden Club-,
+Branding-, Kit- und Beziehungsfeldpfad bleiben bestätigte Domain-Roots,
+typisierte Lese- und Main-Thread-
 Schreibzuordnung, unmittelbarer Read-back, Rollback und exaktes Undo auf dem
 unterstützten Build erforderlich. Bis dahin bleibt `editor_allowed=false`.

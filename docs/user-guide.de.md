@@ -81,8 +81,9 @@ werden Referenzen und Domäneninvarianten vollständig geprüft.
 - **Transfers** umfasst sofortige, künftige, Leih- und gegenseitige Tauschrouten.
 - **People** umfasst Staff-Zuweisungen, Sprachen, Qualifikationen,
   Registrierungen und Beziehungen.
-- **Club-Zentrale** umfasst Identität, Wettbewerbslinks, Finanzen, Stadion und
-  Einrichtungen.
+- **Club-Zentrale** umfasst Identität, Wettbewerbslinks, Finanzen, Stadion,
+  Einrichtungen, `#RRGGBB`-Clubfarben, vier typisierte Trikotslots und
+  Clubbeziehungen.
 - **Wettbewerbs-Zentrale** umfasst Profile, Titelverteidiger, Stufen, Paarungen
   und Tabellen.
 

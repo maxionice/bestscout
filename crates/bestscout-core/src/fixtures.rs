@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    Attribute, Club, ClubFacilities, ClubFinances, Competition, CompetitionFixture,
-    CompetitionStage, CompetitionStageKind, CompetitionStanding, Contract, ContractType,
-    DatabaseSnapshot, FixtureStatus, Foot, GameDate, LanguageSkill, PersonRelationship, Player,
-    PlayerDetails, PlayerFitness, PlayerRegistration, PlayerStatus, RegistrationStatus,
-    RelationshipKind, RelationshipTargetKind, SnapshotSource, Staff, StaffAttribute,
-    StaffQualification, StaffResponsibility, StaffRole,
+    Attribute, Club, ClubBranding, ClubFacilities, ClubFinances, ClubKit, ClubKitKind,
+    ClubRelationship, ClubRelationshipKind, Competition, CompetitionFixture, CompetitionStage,
+    CompetitionStageKind, CompetitionStanding, Contract, ContractType, DatabaseSnapshot,
+    FixtureStatus, Foot, GameDate, LanguageSkill, PersonRelationship, Player, PlayerDetails,
+    PlayerFitness, PlayerRegistration, PlayerStatus, RegistrationStatus, RelationshipKind,
+    RelationshipTargetKind, SnapshotSource, Staff, StaffAttribute, StaffQualification,
+    StaffResponsibility, StaffRole,
 };
 
 pub fn synthetic_snapshot() -> DatabaseSnapshot {
@@ -207,6 +208,25 @@ pub fn synthetic_snapshot() -> DatabaseSnapshot {
                     youth_recruitment: Some(14),
                     junior_coaching: Some(15),
                 },
+                branding: ClubBranding {
+                    primary_colour: Some("#102A43".into()),
+                    secondary_colour: Some("#F6C344".into()),
+                    kits: vec![ClubKit {
+                        id: "kit-nordhafen-home".into(),
+                        kind: ClubKitKind::Home,
+                        shirt_colour: "#102A43".into(),
+                        shorts_colour: "#102A43".into(),
+                        socks_colour: "#F6C344".into(),
+                        trim_colour: Some("#FFFFFF".into()),
+                        pattern: Some("solid".into()),
+                    }],
+                },
+                relationships: vec![ClubRelationship {
+                    id: "club-relation-nordhafen-suedstadt".into(),
+                    kind: ClubRelationshipKind::Rival,
+                    target_club_id: "club-suedstadt".into(),
+                    strength: 70,
+                }],
             },
             Club {
                 id: "club-suedstadt".into(),
@@ -232,6 +252,25 @@ pub fn synthetic_snapshot() -> DatabaseSnapshot {
                     youth_recruitment: Some(11),
                     junior_coaching: Some(12),
                 },
+                branding: ClubBranding {
+                    primary_colour: Some("#8B1E3F".into()),
+                    secondary_colour: Some("#F4E9CD".into()),
+                    kits: vec![ClubKit {
+                        id: "kit-suedstadt-home".into(),
+                        kind: ClubKitKind::Home,
+                        shirt_colour: "#8B1E3F".into(),
+                        shorts_colour: "#F4E9CD".into(),
+                        socks_colour: "#8B1E3F".into(),
+                        trim_colour: None,
+                        pattern: Some("solid".into()),
+                    }],
+                },
+                relationships: vec![ClubRelationship {
+                    id: "club-relation-suedstadt-nordhafen".into(),
+                    kind: ClubRelationshipKind::Rival,
+                    target_club_id: "club-nordhafen".into(),
+                    strength: 70,
+                }],
             },
         ],
         competitions: vec![Competition {

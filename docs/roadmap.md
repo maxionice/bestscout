@@ -45,6 +45,7 @@
 - [x] Canonical player fitness, morale, injury and ban analysis/editing workspace
 - [ ] Live player, contract, injury and ban field adapter acceptance
 - [x] Canonical clubs, finance, stadium and facilities center
+- [x] Canonical club colours, kits and typed club relationships
 - [ ] Live club, finance, stadium and facilities field adapter acceptance
 - [x] Preset manager and validated, filtered mass edit
 - [x] Canonical immediate, future and loan transfer planning/completion

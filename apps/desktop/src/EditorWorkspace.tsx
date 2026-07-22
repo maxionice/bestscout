@@ -145,6 +145,10 @@ const basicFields: Record<EditEntityKind, EditorField[]> = {
     field("facilities.youth", "Jugendeinrichtungen", "Einrichtungen", "integer", true, 1, 20),
     field("facilities.youth_recruitment", "Jugendrekrutierung", "Einrichtungen", "integer", true, 1, 20),
     field("facilities.junior_coaching", "Juniorentraining", "Einrichtungen", "integer", true, 1, 20),
+    field("branding.primary_colour", "Primärfarbe", "Marke & Trikots", "string", true),
+    field("branding.secondary_colour", "Sekundärfarbe", "Marke & Trikots", "string", true),
+    field("branding.kits", "Trikots (JSON)", "Marke & Trikots", "json"),
+    field("relationships", "Clubbeziehungen (JSON)", "Beziehungen", "json"),
   ],
   competition: [
     field("name", "Name", "Wettbewerb", "string"), field("short_name", "Kurzname", "Wettbewerb", "string", true),

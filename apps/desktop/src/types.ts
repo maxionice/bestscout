@@ -237,6 +237,33 @@ export type ClubFacilities = {
   junior_coaching: number | null;
 };
 
+export type ClubKitKind = "home" | "away" | "third" | "goalkeeper";
+
+export type ClubKit = {
+  id: string;
+  kind: ClubKitKind;
+  shirt_colour: string;
+  shorts_colour: string;
+  socks_colour: string;
+  trim_colour: string | null;
+  pattern: string | null;
+};
+
+export type ClubBranding = {
+  primary_colour: string | null;
+  secondary_colour: string | null;
+  kits: ClubKit[];
+};
+
+export type ClubRelationshipKind = "rival" | "affiliate" | "parent" | "feeder" | "friendly";
+
+export type ClubRelationship = {
+  id: string;
+  kind: ClubRelationshipKind;
+  target_club_id: string;
+  strength: number;
+};
+
 export type Club = {
   id: string;
   name: string;
@@ -251,6 +278,8 @@ export type Club = {
   average_attendance?: number | null;
   finances?: ClubFinances;
   facilities?: ClubFacilities;
+  branding?: ClubBranding;
+  relationships?: ClubRelationship[];
 };
 
 export type Competition = {
@@ -605,7 +634,10 @@ export type ClubCommand =
       average_attendance: number | null;
     }
   | { kind: "update_finances"; club_id: string; finances: ClubFinances }
-  | { kind: "update_facilities"; club_id: string; facilities: ClubFacilities };
+  | { kind: "update_facilities"; club_id: string; facilities: ClubFacilities }
+  | { kind: "update_branding"; club_id: string; branding: ClubBranding }
+  | { kind: "upsert_relationship"; club_id: string; relationship: ClubRelationship }
+  | { kind: "remove_relationship"; club_id: string; relationship_id: string };
 
 export type ClubActionRequest = {
   transaction_id: string;
