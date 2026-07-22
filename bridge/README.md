@@ -33,3 +33,9 @@ Do not install development builds into the game until their exact FM26 profile i
 approved. Domain adapters must run game-facing reads on the appropriate game
 thread, publish only canonical data into the thread-safe cache and remain gated
 by an exact compatibility profile.
+
+Use the Rust `bestscout-bridge` lifecycle command instead of copying files by
+hand. It accepts only an exact supported FM26 build, refuses every mutation while
+an FM process is running, verifies the DLL as a bounded PE artifact and records
+its SHA-256 in `BepInEx/plugins/BestScout/bestscout-install.json`. Updates and
+uninstall only touch a bridge whose current bytes still match that manifest.

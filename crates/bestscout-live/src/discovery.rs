@@ -6,8 +6,9 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BridgeProbe, BuildFingerprint, Capabilities, CompatibilityReport, ProcessAccessProbe,
-    fingerprint_file, match_profile, probe_bridge, probe_process_read_access,
+    BridgeDeploymentStatus, BridgeProbe, BuildFingerprint, Capabilities, CompatibilityReport,
+    ProcessAccessProbe, bridge_deployment_status, fingerprint_file, match_profile, probe_bridge,
+    probe_process_read_access,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,6 +33,7 @@ pub struct LiveEnvironment {
     pub installations: Vec<FmInstallation>,
     pub processes: Vec<FmProcess>,
     pub bridge: Option<BridgeProbe>,
+    pub bridge_deployment: Option<BridgeDeploymentStatus>,
     pub process_access: Option<ProcessAccessProbe>,
     pub process_access_error: Option<String>,
     pub process_inspection_allowed: bool,
@@ -51,6 +53,9 @@ pub fn discover_environment() -> LiveEnvironment {
                 .iter()
                 .any(|process| process.pid == probe.health.pid)
         });
+    let bridge_deployment = installations
+        .first()
+        .and_then(|installation| bridge_deployment_status(&installation.root).ok());
     let capabilities = installations
         .first()
         .and_then(|installation| installation.compatibility.as_ref())
@@ -98,6 +103,7 @@ pub fn discover_environment() -> LiveEnvironment {
         installations,
         processes,
         bridge,
+        bridge_deployment,
         process_access,
         process_access_error,
         process_inspection_allowed,
@@ -137,11 +143,11 @@ fn discover_installations() -> Vec<FmInstallation> {
     candidates.dedup();
     candidates
         .into_iter()
-        .filter_map(|root| installation_at(&root))
+        .filter_map(|root| inspect_installation(&root))
         .collect()
 }
 
-fn installation_at(root: &Path) -> Option<FmInstallation> {
+pub fn inspect_installation(root: &Path) -> Option<FmInstallation> {
     let executable = root.join("fm.exe");
     let game_assembly = root.join("GameAssembly.dll");
     let global_metadata = root.join("fm_Data/il2cpp_data/Metadata/global-metadata.dat");
@@ -183,7 +189,7 @@ fn read_steam_build_id(root: &Path) -> Option<String> {
     })
 }
 
-fn discover_processes() -> Vec<FmProcess> {
+pub(crate) fn discover_processes() -> Vec<FmProcess> {
     let Ok(entries) = fs::read_dir("/proc") else {
         return Vec::new();
     };
@@ -261,7 +267,7 @@ mod tests {
 
     #[test]
     fn ignores_directories_without_both_runtime_files() {
-        assert!(installation_at(Path::new("/definitely/not/fm26")).is_none());
+        assert!(inspect_installation(Path::new("/definitely/not/fm26")).is_none());
     }
 
     #[test]

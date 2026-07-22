@@ -424,6 +424,23 @@ export type LiveEnvironment = {
       error: string | null;
     };
   } | null;
+  bridge_deployment: {
+    state: "not_installed" | "managed" | "unmanaged_file" | "missing_binary" | "invalid_manifest" | "modified" | "transaction_residue";
+    plugin_directory: string;
+    bridge_path: string;
+    manifest_path: string;
+    manifest: {
+      schema_version: number;
+      bridge_version: string;
+      profile_id: string;
+      bridge_filename: string;
+      sha256: string;
+      size: number;
+      installed_at_unix_seconds: number;
+    } | null;
+    observed_artifact: { sha256: string; size: number } | null;
+    reason: string;
+  } | null;
   process_access: {
     inspection: {
       pid: number;
