@@ -58,7 +58,11 @@ set. `sha256sum -c SHA256SUMS` passed for every listed subject:
 The Flatpak build directory additionally passed `appstreamcli validate --no-net`,
 `desktop-file-validate` and a read-only sandbox probe. The probe exposed the
 expected `FLATPAK_ID=io.github.maxionice.bestscout` and only five processes in
-its private `/proc` namespace.
+its private `/proc` namespace. The current AppImage was also extracted without
+launching it, the DEB and RPM payloads were independently unpacked, and all three
+contained an executable x86-64 desktop binary plus the expected desktop entry.
+The Flatpak bundle imported successfully into a fresh temporary OSTree repository
+as `app/io.github.maxionice.bestscout/x86_64/stable`.
 
 Two complete native-package builds from the same commit were then run with
 `SOURCE_DATE_EPOCH=1784757997`, `TZ=UTC` and `LC_ALL=C`. All three independently
