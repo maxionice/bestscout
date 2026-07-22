@@ -4,7 +4,7 @@ Date: 2026-07-21
 
 Profile: `fm26-steam-23583635`
 
-Bridge originally tested: `0.3.0`; current candidate: `0.4.0`
+Bridge originally tested: `0.3.0`; current candidate: `0.5.0`
 
 ## Automated evidence
 
@@ -38,3 +38,22 @@ and artifact SHA-256
 `6e00672924f73f76c7450764e7eb875c43a3e6ac315710790404503a30cb8c5d`.
 The lifecycle command again named PID `1517254`, returned exit code 1, and a
 post-check proved that the BestScout plugin directory was still absent.
+
+## Real BepInEx runtime compatibility finding
+
+The user later started FM26 normally with managed bridge `0.4.0` installed.
+BepInEx 6 identified the plugin, but its .NET 6.0.7 host rejected the net8.0
+artifact before `Load()` with a `NullableContextAttribute` type-load failure. No
+bridge descriptor was created, so the Rust client correctly reported no bridge
+and kept `domain_read` and `domain_write` false.
+
+Candidate `0.5.0` now targets `net6.0`, replaces the one unavailable cancellation
+overload with the .NET 6 `Task.WaitAsync` equivalent, and embeds only the two
+compiler-only nullable metadata attributes in the plugin. ILSpy confirms a
+`.NETCoreApp,Version=v6.0` target and assembly-local nullable attributes. The exact
+Release DLL builds with zero warnings/errors, is 86,528 bytes and has SHA-256
+`7957a581325ea63c230d2b5df7fde5cff34247526921256321435ea02609278e`.
+
+FM remained running after this finding, so the installed 0.4.0 bytes and manifest
+were deliberately left untouched. Positive load/root/catalog acceptance for 0.5.0
+still requires a normal user shutdown, managed update and later user restart.

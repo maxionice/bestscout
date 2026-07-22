@@ -2,8 +2,10 @@
 
 This record defines the pending runtime acceptance for the read-only domain-root
 probe on profile `fm26-steam-23583635`. It is intentionally not an acceptance
-record yet: the game was already running while bridge version 0.4 was built, so
-the new plugin was not copied into or injected into that process.
+record yet. Managed bridge 0.4 was later found by BepInEx but rejected before
+`Load()` because the artifact targeted .NET 8 while the host runs .NET 6.0.7.
+Candidate 0.5 now targets that exact runtime, but was not installed into the
+already-running process.
 
 ## Implemented gates
 
@@ -23,7 +25,7 @@ the new plugin was not copied into or injected into that process.
 1. Close FM26 normally and confirm that no real `fm.exe` process remains.
 2. Build the bridge against the exact local interop assemblies and copy only
    `BestScout.Bridge.dll` into its own BepInEx plugin directory.
-3. Start FM26, load the synthetic test career and confirm bridge version 0.4.
+3. Start FM26, load the synthetic test career and confirm bridge version 0.5.
 4. Require `domain_roots.state = roots_resolved`, exactly one interop subsystem,
    a live database factory and non-zero counts for all eight reference groups.
 5. Require `reference_catalog.state = catalog_ready`, exactly the eight expected

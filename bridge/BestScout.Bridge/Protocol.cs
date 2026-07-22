@@ -75,6 +75,36 @@ internal sealed record ReferenceCatalogStatus(
     [property: JsonPropertyName("references")] IReadOnlyList<ReferenceTypeCatalog> References,
     [property: JsonPropertyName("error")] string? Error);
 
+internal sealed record ReferenceSampleStartRequest(
+    [property: JsonPropertyName("family")] string Family,
+    [property: JsonPropertyName("entity_index")] int? EntityIndex,
+    [property: JsonPropertyName("property_ids")] IReadOnlyList<uint> PropertyIds);
+
+internal sealed record ReferenceSampleStatusRequest(
+    [property: JsonPropertyName("request_id")] string RequestId);
+
+internal sealed record ReferenceSampleProperty(
+    [property: JsonPropertyName("property_id")] uint PropertyId,
+    [property: JsonPropertyName("description")] string Description,
+    [property: JsonPropertyName("received")] bool Received,
+    [property: JsonPropertyName("is_null")] bool? IsNull,
+    [property: JsonPropertyName("value_type")] string? ValueType,
+    [property: JsonPropertyName("value_text")] string? ValueText,
+    [property: JsonPropertyName("reported_size")] long? ReportedSize,
+    [property: JsonPropertyName("error")] string? Error);
+
+internal sealed record ReferenceSampleStatus(
+    [property: JsonPropertyName("schema_version")] int SchemaVersion,
+    [property: JsonPropertyName("request_id")] string RequestId,
+    [property: JsonPropertyName("state")] string State,
+    [property: JsonPropertyName("family")] string Family,
+    [property: JsonPropertyName("entity_index")] int? EntityIndex,
+    [property: JsonPropertyName("requested_at_utc")] DateTimeOffset RequestedAtUtc,
+    [property: JsonPropertyName("updated_at_utc")] DateTimeOffset UpdatedAtUtc,
+    [property: JsonPropertyName("finished_at_utc")] DateTimeOffset? FinishedAtUtc,
+    [property: JsonPropertyName("properties")] IReadOnlyList<ReferenceSampleProperty> Properties,
+    [property: JsonPropertyName("error")] string? Error);
+
 internal sealed record SnapshotPageRequest(
     [property: JsonPropertyName("snapshot_id")] string SnapshotId,
     [property: JsonPropertyName("entity_kind")] string EntityKind,

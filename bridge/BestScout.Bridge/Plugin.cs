@@ -8,11 +8,12 @@ public sealed class Plugin : BasePlugin
 {
     public const string PluginId = "io.github.maxionice.bestscout.bridge";
     public const string PluginName = "BestScout Bridge";
-    public const string PluginVersion = "0.4.0";
+    public const string PluginVersion = "0.5.0";
 
     private BridgeServer? _server;
     private DomainSnapshotStore? _snapshots;
     private DomainRootProbeStore? _domainRoots;
+    private ReferenceSampleStore? _referenceSamples;
     private DomainRootProbeBehaviour? _domainProbeBehaviour;
 
     public override void Load()
@@ -21,9 +22,11 @@ public sealed class Plugin : BasePlugin
         {
             _snapshots = new DomainSnapshotStore();
             _domainRoots = new DomainRootProbeStore();
+            _referenceSamples = new ReferenceSampleStore();
             DomainRootProbeRuntime.Start(_domainRoots, Log);
+            ReferenceSampleRuntime.Start(_referenceSamples, Log);
             _domainProbeBehaviour = AddComponent<DomainRootProbeBehaviour>();
-            _server = new BridgeServer(Paths.ConfigPath, Log, _snapshots, _domainRoots);
+            _server = new BridgeServer(Paths.ConfigPath, Log, _snapshots, _domainRoots, _referenceSamples);
             _server.Start();
             Log.LogInfo("BestScout Bridge is listening on loopback.");
         }
@@ -34,11 +37,13 @@ public sealed class Plugin : BasePlugin
             _server = null;
             _snapshots = null;
             DomainRootProbeRuntime.Stop();
+            ReferenceSampleRuntime.Stop();
             if (_domainProbeBehaviour is not null)
             {
                 UnityEngine.Object.Destroy(_domainProbeBehaviour);
             }
             _domainRoots = null;
+            _referenceSamples = null;
             _domainProbeBehaviour = null;
         }
     }
@@ -50,12 +55,14 @@ public sealed class Plugin : BasePlugin
         _snapshots?.Clear();
         _snapshots = null;
         DomainRootProbeRuntime.Stop();
+        ReferenceSampleRuntime.Stop();
         if (_domainProbeBehaviour is not null)
         {
             UnityEngine.Object.Destroy(_domainProbeBehaviour);
             _domainProbeBehaviour = null;
         }
         _domainRoots = null;
+        _referenceSamples = null;
         return true;
     }
 }

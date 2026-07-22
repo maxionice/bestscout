@@ -3,7 +3,7 @@
 Stand: 2026-07-22, Europe/Berlin
 
 Dieses Dokument ist der verbindliche Einstiegspunkt für die nächste
-Arbeitssitzung. Es trennt den stabilen öffentlichen Stand, die drei
+Arbeitssitzung. Es trennt den stabilen öffentlichen Stand, die vier
 gestapelten kanonischen Editor-Meilensteine und die weiterhin gesperrte
 FM26-Live-Grenze.
 
@@ -19,15 +19,20 @@ FM26-Live-Grenze.
 - Club-Branch: `agent/club-finance-facilities`
 - Club-Produktcommit: `3744a48b8495c985e5fdb8c57acbb6f37853523e`
 - Gestapelter Club-Draft-PR: `https://github.com/maxionice/bestscout/pull/26`
-- Aktueller Branch: `agent/competitions-fixtures-stages`
+- Wettbewerbs-Branch: `agent/competitions-fixtures-stages`
 - Wettbewerbs-Produktcommit: `47196988e4ed25c030381dff09e25d079cbb69d6`
 - Gestapelter Wettbewerbs-Draft-PR: `https://github.com/maxionice/bestscout/pull/27`
+- Aktueller Branch: `agent/live-domain-readers`
+- Live-Reader-Produktcommit: `760c945ac650211853e65bbad70ffc436f2cd109`
+- Gestapelter Live-Reader-Draft-PR: `https://github.com/maxionice/bestscout/pull/28`
 - PR #26 basiert bewusst auf dem People-Branch, nicht direkt auf `main`.
 - PR #27 basiert bewusst auf dem Club-Branch.
+- PR #28 basiert bewusst auf dem Wettbewerbs-Branch.
 
-PR #25, PR #26 und PR #27 waren beim letzten Abruf offen, als Draft markiert
+PR #25, PR #26, PR #27 und PR #28 waren beim letzten Abruf offen, als Draft markiert
 und mergebar. Auf allen drei veröffentlichten Produktständen waren jeweils
-alle sechs GitHub-Actions-Jobs grün. Es gab keine offenen Reviewhinweise.
+alle sechs GitHub-Actions-Jobs grün; die sechs Jobs für PR #28 liefen noch. Es gab
+keine offenen Reviewhinweise.
 
 ## People-Meilenstein
 
@@ -142,11 +147,34 @@ retargeten, native Abnahme und CI wiederholen und erst dann mergen.
 Letzte rein lesende Diagnose in dieser Entwicklungskette:
 
 - Steam-Build `23583635`, Profil `fm26-steam-23583635`, exakter Treffer;
-- Bridge-Version `0.4.0` verwaltet und hashverifiziert installiert;
+- FM26 lief mit realem `fm.exe` PID `172108`, vom Nutzer selbst gestartet;
+- Bridge-Version `0.4.0` weiterhin verwaltet und hashverifiziert installiert;
 - Pluginpfad:
   `/home/maxi/.local/share/Steam/steamapps/common/Football Manager 26/BepInEx/plugins/BestScout`;
-- bei der letzten Diagnose kein FM26-Prozess und keine Bridge-Runtime;
+- BepInEx 6 fand 0.4.0, verwarf den net8-Build aber vor `Load()` im .NET-6.0.7-
+  Host mit einer `NullableContextAttribute`-TypeLoadException; deshalb existierte
+  kein Descriptor und keine Bridge-Runtime;
 - `reader_allowed=false`, `editor_allowed=false`.
+
+Der korrigierte, noch nicht installierte Kandidat liegt auf
+`agent/live-domain-readers`, Commit `760c945`, Draft-PR #28:
+https://github.com/maxionice/bestscout/pull/28
+
+- Bridge `0.5.0` zielt auf `net6.0` und enthält die beiden Compiler-only-
+  Nullable-Attribute assembly-lokal;
+- authentifizierter, single-flight Property-Sampler für exakt die acht
+  katalogisierten Referenzfamilien, maximal 32 IDs, fünf Sekunden Timeout und
+  Cleanup jedes geöffneten Channels;
+- `domain_read=false`, `domain_write=false`, keine Snapshot-Publikation;
+- Release-DLL: 86.528 Bytes, SHA-256
+  `7957a581325ea63c230d2b5df7fde5cff34247526921256321435ea02609278e`;
+- 113 Rust-Tests, 59 Vitest-Tests, Workspace-Clippy, TypeScript/Vite und
+  reproduzierbarer net6-Bridge-Rebuild grün.
+
+Weil FM bei Fertigstellung weiter lief, wurden installierte DLL und Manifest
+bewusst nicht verändert. Nach einem normalen, vom Nutzer ausgeführten FM-Ende
+darf 0.5.0 über den verwalteten Lifecycle aktualisiert werden; FM nicht selbst
+beenden.
 
 Sicherheitsregeln:
 
@@ -161,24 +189,40 @@ Sicherheitsregeln:
 
 ```bash
 cd /home/maxi/Dokumente/bestscout
-git switch agent/competitions-fixtures-stages
+git switch agent/live-domain-readers
 git status -sb
 git diff --check
 gh pr view 25 --json url,state,isDraft,mergeable,headRefOid,statusCheckRollup
 gh pr view 26 --json url,state,isDraft,mergeable,baseRefName,headRefOid,statusCheckRollup
 gh pr view 27 --json url,state,isDraft,mergeable,baseRefName,headRefOid,statusCheckRollup
+gh pr view 28 --json url,state,isDraft,mergeable,baseRefName,headRefOid,statusCheckRollup
 gh pr checks 25
 gh pr checks 26
 gh pr checks 27
+gh pr checks 28
 ```
 
 Danach die In-App-Browseransicht prüfen. Ist sie weiter nicht verfügbar, die
 drei nativen Gates offen lassen und den nächsten unabhängigen Roadmap-Block
 auf einem eigenen gestapelten Branch fortsetzen.
 
-FM-Live-Arbeit nur nach einem vom Nutzer selbst ausgeführten Neustart und
-geladenem Spielstand rein lesend mit folgendem Einstieg fortsetzen:
+FM-Live-Arbeit erst fortsetzen, nachdem der Nutzer FM normal beendet hat. Dann
+erneut Prozessfreiheit prüfen, den net6-Kandidaten bauen und ausschließlich über
+den verwalteten Lifecycle installieren:
+
+```bash
+dotnet build bridge/BestScout.Bridge/BestScout.Bridge.csproj -t:Rebuild -c Release \
+  -p:FM26Root="/home/maxi/.local/share/Steam/steamapps/common/Football Manager 26"
+cargo run -p bestscout-live --bin bestscout-bridge -- install \
+  --game-root "/home/maxi/.local/share/Steam/steamapps/common/Football Manager 26" \
+  --artifact bridge/BestScout.Bridge/bin/Release/net6.0/BestScout.Bridge.dll
+```
+
+Danach FM weiterhin nicht selbst starten. Erst nach einem vom Nutzer selbst
+ausgeführten Neustart und geladenem Spielstand rein lesend einsteigen:
 
 ```bash
 cargo run -p bestscout-live --bin bestscout-diagnose
+cargo run -p bestscout-live --bin bestscout-reference-catalog -- \
+  --game-root "/home/maxi/.local/share/Steam/steamapps/common/Football Manager 26"
 ```

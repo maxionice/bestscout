@@ -39,7 +39,7 @@ snapshot and runs full schema and relationship validation before returning data
 to Tauri. Domain publication remains disabled until its FM26 adapter is
 validated.
 
-Before any entity channel is opened, bridge version 0.4 runs a bounded probe on
+Before any entity channel is opened, bridge version 0.5 runs a bounded probe on
 Unity's main thread. It requires a completed FM initialiser, exactly one live game
 interop subsystem, the database-record reference factory and non-empty metadata
 for the game, person, club, competition, person-search and database-summary
@@ -51,6 +51,16 @@ It contains no save entities, is capped at 10,000 properties per family and
 20,000 overall, and is independently checked by Rust for schema, state, exact
 reference set, lengths, counts and duplicates. This catalog is adapter discovery
 evidence, not permission to perform domain reads.
+
+Property mapping uses a second, explicitly requested diagnostic gate. The caller
+may sample no more than 32 distinct IDs from one catalog family, with a bounded
+record index only for person, club or competition references. Requests are
+serialized and opened only on Unity's main thread. Every channel is closed after
+completion, failure or five seconds; returned strings, types, sizes and errors are
+bounded and independently validated by Rust. The sampler retains only its latest
+request, does not enumerate records, cannot write, cannot publish a snapshot and
+does not alter either live capability bit. Its purpose is to replace guessed
+field names with exact runtime evidence before an entity adapter is implemented.
 
 The repository will not redistribute Football Manager assemblies. Bridge builds
 must reference files from the user's own installation, and the protocol must bind

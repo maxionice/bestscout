@@ -15,7 +15,7 @@ use crate::{
 
 use crate::discovery::{discover_processes, inspect_installation};
 
-pub const BRIDGE_VERSION: &str = "0.4.0";
+pub const BRIDGE_VERSION: &str = "0.5.0";
 const MANIFEST_SCHEMA_VERSION: u32 = 1;
 const BRIDGE_FILENAME: &str = "BestScout.Bridge.dll";
 const MANIFEST_FILENAME: &str = "bestscout-install.json";

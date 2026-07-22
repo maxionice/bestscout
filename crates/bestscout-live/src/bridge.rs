@@ -4,6 +4,7 @@ use std::{
     io::{self, BufRead, BufReader, Read, Write},
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
     path::{Path, PathBuf},
+    thread,
     time::{Duration, SystemTime},
 };
 
@@ -28,6 +29,10 @@ const MAXIMUM_COMPETITIONS: u32 = 20_000;
 const MAXIMUM_REFERENCE_TYPES: usize = 8;
 const MAXIMUM_PROPERTIES_PER_REFERENCE: u32 = 10_000;
 const MAXIMUM_TOTAL_REFERENCE_PROPERTIES: u32 = 20_000;
+const MAXIMUM_REFERENCE_SAMPLE_PROPERTIES: usize = 32;
+const MAXIMUM_REFERENCE_SAMPLE_ENTITY_INDEX: u32 = 5_000_000;
+const REFERENCE_SAMPLE_POLL_INTERVAL: Duration = Duration::from_millis(50);
+const REFERENCE_SAMPLE_TIMEOUT: Duration = Duration::from_secs(8);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BridgeDescriptor {
@@ -126,6 +131,60 @@ pub struct ReferenceCatalogStatus {
     pub state: ReferenceCatalogState,
     pub references: Vec<ReferenceTypeCatalog>,
     pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReferenceSampleState {
+    Queued,
+    Running,
+    Completed,
+    TimedOut,
+    Failed,
+}
+
+impl ReferenceSampleState {
+    fn is_terminal(self) -> bool {
+        matches!(self, Self::Completed | Self::TimedOut | Self::Failed)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReferenceSampleProperty {
+    pub property_id: u32,
+    pub description: String,
+    pub received: bool,
+    pub is_null: Option<bool>,
+    pub value_type: Option<String>,
+    pub value_text: Option<String>,
+    pub reported_size: Option<i64>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReferenceSampleStatus {
+    pub schema_version: u32,
+    pub request_id: String,
+    pub state: ReferenceSampleState,
+    pub family: String,
+    pub entity_index: Option<u32>,
+    pub requested_at_utc: String,
+    pub updated_at_utc: String,
+    pub finished_at_utc: Option<String>,
+    pub properties: Vec<ReferenceSampleProperty>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct ReferenceSampleStartRequest<'a> {
+    family: &'a str,
+    entity_index: Option<u32>,
+    property_ids: &'a [u32],
+}
+
+#[derive(Debug, Serialize)]
+struct ReferenceSampleStatusRequest<'a> {
+    request_id: &'a str,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -234,6 +293,10 @@ pub enum BridgeError {
     InvalidDomainRoots(String),
     #[error("bridge reference catalog is invalid: {0}")]
     InvalidReferenceCatalog(String),
+    #[error("bridge reference sample is invalid: {0}")]
+    InvalidReferenceSample(String),
+    #[error("bridge reference sample did not finish within 8 seconds")]
+    ReferenceSampleTimeout,
     #[error("bridge snapshot page is invalid: {0}")]
     InvalidPage(String),
     #[error("live snapshot failed canonical validation with {0} issue(s)")]
@@ -302,6 +365,63 @@ impl BridgeClient {
         let catalog = self.request("reference_catalog", None)?;
         validate_reference_catalog(&catalog)?;
         Ok(catalog)
+    }
+
+    pub fn start_reference_sample(
+        &self,
+        family: &str,
+        entity_index: Option<u32>,
+        property_ids: &[u32],
+    ) -> Result<ReferenceSampleStatus, BridgeError> {
+        validate_reference_sample_request(family, entity_index, property_ids)?;
+        let parameters = serde_json::to_value(ReferenceSampleStartRequest {
+            family,
+            entity_index,
+            property_ids,
+        })
+        .map_err(BridgeError::EncodeRequest)?;
+        let status = self.request("reference_sample_start", Some(&parameters))?;
+        validate_reference_sample(&status)?;
+        Ok(status)
+    }
+
+    pub fn reference_sample_status(
+        &self,
+        request_id: &str,
+    ) -> Result<ReferenceSampleStatus, BridgeError> {
+        if request_id.is_empty() || request_id.len() > 128 {
+            return Err(BridgeError::InvalidReferenceSample(
+                "request_id must contain between 1 and 128 bytes".to_owned(),
+            ));
+        }
+        let parameters = serde_json::to_value(ReferenceSampleStatusRequest { request_id })
+            .map_err(BridgeError::EncodeRequest)?;
+        let status = self.request("reference_sample_status", Some(&parameters))?;
+        validate_reference_sample(&status)?;
+        if status.request_id != request_id {
+            return Err(BridgeError::InvalidReferenceSample(
+                "sample status returned a different request_id".to_owned(),
+            ));
+        }
+        Ok(status)
+    }
+
+    pub fn sample_reference(
+        &self,
+        family: &str,
+        entity_index: Option<u32>,
+        property_ids: &[u32],
+    ) -> Result<ReferenceSampleStatus, BridgeError> {
+        let mut status = self.start_reference_sample(family, entity_index, property_ids)?;
+        let started = std::time::Instant::now();
+        while !status.state.is_terminal() {
+            if started.elapsed() >= REFERENCE_SAMPLE_TIMEOUT {
+                return Err(BridgeError::ReferenceSampleTimeout);
+            }
+            thread::sleep(REFERENCE_SAMPLE_POLL_INTERVAL);
+            status = self.reference_sample_status(&status.request_id)?;
+        }
+        Ok(status)
     }
 
     pub fn snapshot_manifest(&self) -> Result<SnapshotManifest, BridgeError> {
@@ -693,6 +813,141 @@ fn validate_reference_catalog(catalog: &ReferenceCatalogStatus) -> Result<(), Br
     Ok(())
 }
 
+fn validate_reference_sample_request(
+    family: &str,
+    entity_index: Option<u32>,
+    property_ids: &[u32],
+) -> Result<(), BridgeError> {
+    let indexed = matches!(family, "person" | "club" | "competition");
+    let singleton = matches!(
+        family,
+        "game" | "person_search" | "person_summary" | "club_summary" | "competition_summary"
+    );
+    if (!indexed && !singleton)
+        || (indexed && entity_index.is_none())
+        || (singleton && entity_index.is_some())
+        || entity_index.is_some_and(|index| index > MAXIMUM_REFERENCE_SAMPLE_ENTITY_INDEX)
+        || property_ids.is_empty()
+        || property_ids.len() > MAXIMUM_REFERENCE_SAMPLE_PROPERTIES
+        || property_ids.iter().collect::<HashSet<_>>().len() != property_ids.len()
+    {
+        return Err(BridgeError::InvalidReferenceSample(
+            "family, entity index or property IDs violate request bounds".to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_reference_sample(status: &ReferenceSampleStatus) -> Result<(), BridgeError> {
+    validate_reference_sample_request(
+        &status.family,
+        status.entity_index,
+        &status
+            .properties
+            .iter()
+            .map(|property| property.property_id)
+            .collect::<Vec<_>>(),
+    )?;
+    let timestamp_valid = |timestamp: &str| !timestamp.is_empty() && timestamp.len() <= 128;
+    if status.schema_version != 1
+        || status.request_id.is_empty()
+        || status.request_id.len() > 128
+        || !timestamp_valid(&status.requested_at_utc)
+        || !timestamp_valid(&status.updated_at_utc)
+        || status
+            .finished_at_utc
+            .as_deref()
+            .is_some_and(|timestamp| !timestamp_valid(timestamp))
+        || status.error.as_ref().is_some_and(|error| error.len() > 512)
+    {
+        return Err(BridgeError::InvalidReferenceSample(
+            "sample metadata exceeds protocol bounds".to_owned(),
+        ));
+    }
+
+    for property in &status.properties {
+        if property.description.is_empty()
+            || property.description.len() > 1_024
+            || property
+                .value_type
+                .as_ref()
+                .is_some_and(|value_type| value_type.len() > 256)
+            || property
+                .value_text
+                .as_ref()
+                .is_some_and(|value| value.len() > 2_048)
+            || property
+                .error
+                .as_ref()
+                .is_some_and(|error| error.len() > 512)
+            || property
+                .reported_size
+                .is_some_and(|size| size.unsigned_abs() > 1_099_511_627_776)
+        {
+            return Err(BridgeError::InvalidReferenceSample(
+                "sample property exceeds protocol bounds".to_owned(),
+            ));
+        }
+        if !property.received
+            && (property.is_null.is_some()
+                || property.value_type.is_some()
+                || property.value_text.is_some()
+                || property.reported_size.is_some()
+                || property.error.is_some())
+        {
+            return Err(BridgeError::InvalidReferenceSample(
+                "an unreceived property contains value metadata".to_owned(),
+            ));
+        }
+        if property.received
+            && property.is_null == Some(true)
+            && (property.value_type.is_some() || property.value_text.is_some())
+        {
+            return Err(BridgeError::InvalidReferenceSample(
+                "a null property contains a type or value".to_owned(),
+            ));
+        }
+    }
+
+    let all_received = status.properties.iter().all(|property| property.received);
+    match status.state {
+        ReferenceSampleState::Queued => {
+            if status.finished_at_utc.is_some()
+                || status.error.is_some()
+                || status.properties.iter().any(|property| property.received)
+            {
+                return Err(BridgeError::InvalidReferenceSample(
+                    "queued sample contains runtime results".to_owned(),
+                ));
+            }
+        }
+        ReferenceSampleState::Running => {
+            if status.finished_at_utc.is_some() || status.error.is_some() {
+                return Err(BridgeError::InvalidReferenceSample(
+                    "running sample contains terminal metadata".to_owned(),
+                ));
+            }
+        }
+        ReferenceSampleState::Completed => {
+            if status.finished_at_utc.is_none() || status.error.is_some() || !all_received {
+                return Err(BridgeError::InvalidReferenceSample(
+                    "completed sample is incomplete or contains a terminal error".to_owned(),
+                ));
+            }
+        }
+        ReferenceSampleState::TimedOut | ReferenceSampleState::Failed => {
+            if status.finished_at_utc.is_none()
+                || status.error.as_ref().is_none_or(String::is_empty)
+            {
+                return Err(BridgeError::InvalidReferenceSample(
+                    "failed or timed-out sample lacks terminal metadata".to_owned(),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn probe_bridge(root: &Path) -> Result<BridgeProbe, BridgeError> {
     let client = BridgeClient::from_installation(root)?;
     let health = client.health()?;
@@ -1025,6 +1280,124 @@ mod tests {
 
         assert_eq!(catalog.state, ReferenceCatalogState::CatalogReady);
         assert_eq!(catalog.references.len(), MAXIMUM_REFERENCE_TYPES);
+    }
+
+    fn reference_sample(state: ReferenceSampleState) -> ReferenceSampleStatus {
+        let terminal = state.is_terminal();
+        let completed = state == ReferenceSampleState::Completed;
+        ReferenceSampleStatus {
+            schema_version: 1,
+            request_id: "sample-1".to_owned(),
+            state,
+            family: "person".to_owned(),
+            entity_index: Some(42),
+            requested_at_utc: "2026-07-22T08:00:00Z".to_owned(),
+            updated_at_utc: "2026-07-22T08:00:01Z".to_owned(),
+            finished_at_utc: terminal.then(|| "2026-07-22T08:00:01Z".to_owned()),
+            properties: vec![ReferenceSampleProperty {
+                property_id: 7,
+                description: "Name".to_owned(),
+                received: completed,
+                is_null: completed.then_some(false),
+                value_type: completed.then(|| "System.String".to_owned()),
+                value_text: completed.then(|| "Ada Example".to_owned()),
+                reported_size: completed.then_some(11),
+                error: None,
+            }],
+            error: matches!(
+                state,
+                ReferenceSampleState::TimedOut | ReferenceSampleState::Failed
+            )
+            .then(|| "sample_failed".to_owned()),
+        }
+    }
+
+    #[test]
+    fn validates_reference_sample_states_and_bounds() {
+        let completed = reference_sample(ReferenceSampleState::Completed);
+        validate_reference_sample(&completed).unwrap();
+
+        let mut queued = reference_sample(ReferenceSampleState::Queued);
+        validate_reference_sample(&queued).unwrap();
+        queued.properties[0].received = true;
+        assert!(matches!(
+            validate_reference_sample(&queued),
+            Err(BridgeError::InvalidReferenceSample(_))
+        ));
+
+        let mut oversized = completed.clone();
+        oversized.properties[0].value_text = Some("x".repeat(2_049));
+        assert!(matches!(
+            validate_reference_sample(&oversized),
+            Err(BridgeError::InvalidReferenceSample(_))
+        ));
+
+        let mut invalid_index = completed;
+        invalid_index.entity_index = None;
+        assert!(matches!(
+            validate_reference_sample(&invalid_index),
+            Err(BridgeError::InvalidReferenceSample(_))
+        ));
+    }
+
+    #[test]
+    fn performs_authenticated_reference_sample_start_and_poll() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            for state in [
+                ReferenceSampleState::Queued,
+                ReferenceSampleState::Completed,
+            ] {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut line = String::new();
+                BufReader::new(stream.try_clone().unwrap())
+                    .read_line(&mut line)
+                    .unwrap();
+                let request: Value = serde_json::from_str(&line).unwrap();
+                assert_eq!(request["token"], "test-token");
+                match state {
+                    ReferenceSampleState::Queued => {
+                        assert_eq!(request["method"], "reference_sample_start");
+                        assert_eq!(request["parameters"]["family"], "person");
+                        assert_eq!(request["parameters"]["entity_index"], 42);
+                        assert_eq!(
+                            request["parameters"]["property_ids"],
+                            serde_json::json!([7])
+                        );
+                    }
+                    ReferenceSampleState::Completed => {
+                        assert_eq!(request["method"], "reference_sample_status");
+                        assert_eq!(request["parameters"]["request_id"], "sample-1");
+                    }
+                    _ => unreachable!(),
+                }
+                writeln!(
+                    stream,
+                    "{}",
+                    serde_json::json!({
+                        "protocol_version": 1,
+                        "id": request["id"],
+                        "ok": true,
+                        "result": reference_sample(state),
+                        "error": null
+                    })
+                )
+                .unwrap();
+            }
+        });
+
+        let path = temporary_descriptor(port, 4246);
+        let client = BridgeClient::from_descriptor(&path).unwrap();
+        let status = client.sample_reference("person", Some(42), &[7]).unwrap();
+        fs::remove_file(path).unwrap();
+        server.join().unwrap();
+
+        assert_eq!(status.state, ReferenceSampleState::Completed);
+        assert_eq!(
+            status.properties[0].value_text.as_deref(),
+            Some("Ada Example")
+        );
     }
 
     #[test]
