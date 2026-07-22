@@ -34,6 +34,28 @@ internal sealed record CapabilityResult(
     [property: JsonPropertyName("domain_read")] bool DomainRead,
     [property: JsonPropertyName("domain_write")] bool DomainWrite);
 
+internal sealed record DomainReferenceMetadata(
+    [property: JsonPropertyName("game_properties")] int GameProperties,
+    [property: JsonPropertyName("person_properties")] int PersonProperties,
+    [property: JsonPropertyName("club_properties")] int ClubProperties,
+    [property: JsonPropertyName("competition_properties")] int CompetitionProperties,
+    [property: JsonPropertyName("person_search_properties")] int PersonSearchProperties,
+    [property: JsonPropertyName("person_summary_properties")] int PersonSummaryProperties,
+    [property: JsonPropertyName("club_summary_properties")] int ClubSummaryProperties,
+    [property: JsonPropertyName("competition_summary_properties")] int CompetitionSummaryProperties);
+
+internal sealed record DomainRootStatus(
+    [property: JsonPropertyName("schema_version")] int SchemaVersion,
+    [property: JsonPropertyName("checked_at_utc")] DateTimeOffset CheckedAtUtc,
+    [property: JsonPropertyName("state")] string State,
+    [property: JsonPropertyName("initialiser_count")] int InitialiserCount,
+    [property: JsonPropertyName("initialisation_complete")] bool InitialisationComplete,
+    [property: JsonPropertyName("context_module_count")] int ContextModuleCount,
+    [property: JsonPropertyName("interop_subsystem_count")] int InteropSubsystemCount,
+    [property: JsonPropertyName("database_factory_available")] bool DatabaseFactoryAvailable,
+    [property: JsonPropertyName("reference_metadata")] DomainReferenceMetadata ReferenceMetadata,
+    [property: JsonPropertyName("error")] string? Error);
+
 internal sealed record SnapshotPageRequest(
     [property: JsonPropertyName("snapshot_id")] string SnapshotId,
     [property: JsonPropertyName("entity_kind")] string EntityKind,

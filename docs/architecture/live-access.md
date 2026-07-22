@@ -39,6 +39,16 @@ snapshot and runs full schema and relationship validation before returning data
 to Tauri. Domain publication remains disabled until its FM26 adapter is
 validated.
 
+Before any entity channel is opened, bridge version 0.3 runs a bounded probe on
+Unity's main thread. It requires a completed FM initialiser, exactly one live game
+interop subsystem, the database-record reference factory and non-empty metadata
+for the game, person, club, competition, person-search and database-summary
+references. The authenticated `domain_roots` response contains only state,
+counts and a bounded error; it does not expose save data or numeric property IDs.
+Rust validates every count and the complete `roots_resolved` invariant set before
+showing the result. This is a prerequisite for, not permission to perform,
+domain reads.
+
 The repository will not redistribute Football Manager assemblies. Bridge builds
 must reference files from the user's own installation, and the protocol must bind
 to loopback with per-launch authentication. The native read-only adapter remains

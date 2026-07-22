@@ -247,6 +247,7 @@ mod tests {
                 domain_read: read,
                 domain_write: write,
             },
+            domain_roots: None,
         }
     }
 

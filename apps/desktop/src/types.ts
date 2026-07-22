@@ -402,6 +402,27 @@ export type LiveEnvironment = {
   bridge: {
     health: { bridge_version: string; pid: number; read_only: boolean };
     capabilities: { health: boolean; domain_read: boolean; domain_write: boolean };
+    domain_roots?: {
+      schema_version: number;
+      checked_at_utc: string;
+      state: "not_started" | "waiting_for_game" | "roots_resolved" | "probe_failed";
+      initialiser_count: number;
+      initialisation_complete: boolean;
+      context_module_count: number;
+      interop_subsystem_count: number;
+      database_factory_available: boolean;
+      reference_metadata: {
+        game_properties: number;
+        person_properties: number;
+        club_properties: number;
+        competition_properties: number;
+        person_search_properties: number;
+        person_summary_properties: number;
+        club_summary_properties: number;
+        competition_summary_properties: number;
+      };
+      error: string | null;
+    };
   } | null;
   process_access: {
     inspection: {

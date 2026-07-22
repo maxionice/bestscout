@@ -21,10 +21,43 @@
       <HintPath>$(FM26Root)/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="FMGame">
+      <HintPath>$(FM26Root)/BepInEx/interop/FMGame.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="FM.UI">
+      <HintPath>$(FM26Root)/BepInEx/interop/FM.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="FM.GamePlugin">
+      <HintPath>$(FM26Root)/BepInEx/interop/FM.GamePlugin.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SI.Core">
+      <HintPath>$(FM26Root)/BepInEx/interop/SI.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SI.Interop">
+      <HintPath>$(FM26Root)/BepInEx/interop/SI.Interop.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SI.Bindable.Reference.Core">
+      <HintPath>$(FM26Root)/BepInEx/interop/SI.Bindable.Reference.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(FM26Root)/BepInEx/interop/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2Cppmscorlib">
+      <HintPath>$(FM26Root)/BepInEx/interop/Il2Cppmscorlib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <Target Name="ValidateFM26Root" BeforeTargets="ResolveReferences">
     <Error Condition="'$(FM26Root)' == ''" Text="Set FM26Root to your Football Manager 26 installation." />
     <Error Condition="!Exists('$(FM26Root)/BepInEx/core/BepInEx.Unity.IL2CPP.dll')" Text="FM26Root does not contain a BepInEx IL2CPP installation." />
+    <Error Condition="!Exists('$(FM26Root)/BepInEx/interop/FM.UI.dll')" Text="FM26Root does not contain generated FM26 interop assemblies." />
   </Target>
 </Project>

@@ -20,6 +20,8 @@ and editing tools while remaining local, transparent and safe.
 - Bounded read-only Linux process inspection with no write API
 - Real Proton game-process selection with a two-byte PE-signature access probe
 - Authenticated loopback bridge scaffold for BepInEx/IL2CPP
+- Read-only main-thread probe for FM26 initialisation, interop, database-factory
+  and typed person/club/competition reference roots
 - Bounded paginated live-snapshot protocol with end-to-end canonical validation
 - Schema-versioned player, staff, club and competition models
 - Validated global search and composable player-query engine

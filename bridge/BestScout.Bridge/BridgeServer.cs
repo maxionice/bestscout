@@ -18,16 +18,22 @@ internal sealed class BridgeServer : IDisposable
     private readonly string _descriptorPath;
     private readonly ManualLogSource _log;
     private readonly DomainSnapshotStore _snapshots;
+    private readonly DomainRootProbeStore _domainRoots;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly byte[] _tokenBytes = RandomNumberGenerator.GetBytes(32);
     private TcpListener? _listener;
     private Task? _acceptLoop;
 
-    internal BridgeServer(string configDirectory, ManualLogSource log, DomainSnapshotStore snapshots)
+    internal BridgeServer(
+        string configDirectory,
+        ManualLogSource log,
+        DomainSnapshotStore snapshots,
+        DomainRootProbeStore domainRoots)
     {
         _descriptorPath = Path.Combine(configDirectory, "bestscout-bridge.json");
         _log = log;
         _snapshots = snapshots;
+        _domainRoots = domainRoots;
     }
 
     internal void Start()
@@ -138,6 +144,7 @@ internal sealed class BridgeServer : IDisposable
         {
             "health" => Success(request.Id, new HealthResult(Plugin.PluginVersion, Environment.ProcessId, true)),
             "capabilities" => Success(request.Id, new CapabilityResult(true, _snapshots.IsAvailable, false)),
+            "domain_roots" => Success(request.Id, _domainRoots.Get()),
             "snapshot_manifest" => SnapshotManifest(request.Id),
             "snapshot_page" => SnapshotPage(request),
             _ => Error(request.Id, "unknown_method"),
