@@ -213,6 +213,17 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
         }
     }
 
+    for player in &snapshot.players {
+        if let Some(transfer) = player
+            .details
+            .future_transfer
+            .as_ref()
+            .filter(|transfer| transfer.kind == TransferKind::Swap)
+        {
+            validate_reciprocal_swap(&mut issues, player, transfer, snapshot);
+        }
+    }
+
     for staff in &snapshot.staff {
         if staff.name.trim().is_empty() {
             issue(
@@ -362,6 +373,57 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
             .iter()
             .all(|issue| issue.severity != IssueSeverity::Error),
         issues,
+    }
+}
+
+fn validate_reciprocal_swap(
+    issues: &mut Vec<SnapshotIssue>,
+    player: &Player,
+    transfer: &crate::FutureTransfer,
+    snapshot: &DatabaseSnapshot,
+) {
+    let reciprocal = transfer
+        .swap_player_id
+        .as_deref()
+        .and_then(|partner_id| snapshot.players.iter().find(|item| item.id == partner_id))
+        .and_then(|partner| {
+            partner
+                .details
+                .future_transfer
+                .as_ref()
+                .map(|partner_transfer| (partner, partner_transfer))
+        });
+    let player_club_id = player
+        .details
+        .contract
+        .as_ref()
+        .and_then(|contract| contract.club_id.as_deref());
+    let valid = reciprocal.is_some_and(|(partner, partner_transfer)| {
+        let partner_club_id = partner
+            .details
+            .contract
+            .as_ref()
+            .and_then(|contract| contract.club_id.as_deref());
+        partner_transfer.kind == TransferKind::Swap
+            && partner_transfer.id != transfer.id
+            && partner_transfer.swap_player_id.as_deref() == Some(player.id.as_str())
+            && transfer.from_club_id.as_deref() == player_club_id
+            && Some(transfer.to_club_id.as_str()) == partner_club_id
+            && partner_transfer.from_club_id.as_deref() == partner_club_id
+            && Some(partner_transfer.to_club_id.as_str()) == player_club_id
+            && transfer.arranged_on == partner_transfer.arranged_on
+            && transfer.effective_on == partner_transfer.effective_on
+            && transfer.status == partner_transfer.status
+    });
+    if !valid {
+        issue(
+            issues,
+            "non_reciprocal_swap",
+            "player",
+            &player.id,
+            "details.future_transfer",
+            "a swap must have one inverse agreement with matching clubs, players, dates and status",
+        );
     }
 }
 
@@ -910,7 +972,7 @@ fn issue(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Attribute, synthetic_snapshot};
+    use crate::{Attribute, FutureTransfer, TransferStatus, synthetic_snapshot};
 
     #[test]
     fn accepts_the_synthetic_reference_snapshot() {
@@ -949,5 +1011,31 @@ mod tests {
         ] {
             assert!(report.issues.iter().any(|issue| issue.code == code));
         }
+    }
+
+    #[test]
+    fn rejects_a_one_sided_future_swap() {
+        let mut snapshot = synthetic_snapshot();
+        snapshot.players[0].details.future_transfer = Some(FutureTransfer {
+            id: "half-swap".into(),
+            kind: TransferKind::Swap,
+            from_club_id: Some("club-nordhafen".into()),
+            to_club_id: "club-suedstadt".into(),
+            arranged_on: GameDate::new(2026, 7, 22),
+            effective_on: GameDate::new(2026, 8, 1).unwrap(),
+            fee: Some(0.0),
+            loan_end: None,
+            wage_contribution_percent: None,
+            swap_player_id: Some("player-milo".into()),
+            status: TransferStatus::Agreed,
+        });
+        let report = validate_snapshot(&snapshot);
+        assert!(!report.valid);
+        assert!(
+            report
+                .issues
+                .iter()
+                .any(|issue| issue.code == "non_reciprocal_swap")
+        );
     }
 }

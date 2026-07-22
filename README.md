@@ -49,8 +49,8 @@ and editing tools while remaining local, transparent and safe.
   monitor-only policies, unresolved-rule blocking and journaled correction
 - Canonical fitness, morale, injury and ban model with deterministic squad
   availability, a full HeroUI medical workspace and journaled correction actions
-- Canonical immediate, future and loan transfers with validated routes,
-  destination contracts and a journaled HeroUI Transfer Center
+- Canonical immediate, future, loan and reciprocal swap transfers with validated
+  routes, two-sided destination contracts and a journaled HeroUI Transfer Center
 - Explainable development probability and projected CA/attribute peaks with
   configurable Wonderkid, bargain, free-agent and expiring-contract smart lists
 - Reproducible AppImage, DEB and RPM builds with bundle validation and SHA-256

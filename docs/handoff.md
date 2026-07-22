@@ -52,11 +52,14 @@ Der aktive Branch enthält bereits folgende Implementierung:
   Abschluss;
 - atomare Änderung von Spielerverein, Vertrag und Zukunftstransfer mit exakten
   `expected_before`-Werten;
-- bewusste Sperre für einen halben Swap: der Abschluss eines Tauschtransfers wird
-  abgelehnt, bis die reziproke Zwei-Spieler-Transaktion existiert;
+- reziproke Sofort- und Zukunftstausche mit explizitem Partner und zwei
+  Zielverträgen;
+- atomare Zwei-Spieler-Vorschau für Tauschvereinbarung, gemeinsames Storno und
+  fälligen Abschluss; einseitige Tauscheinträge sind snapshotweit ungültig;
 - Tauri-Command `prepare_transfer_action`;
 - vollständiges dunkles HeroUI-v3 Transfer Center mit Spieler- und Zielauswahl,
-  permanent/Leihe/ablösefrei, Vertragsparametern, Vorschau und Journal-Commit;
+  permanent/Leihe/ablösefrei/Tausch, beiden Zielverträgen, Vorschau und
+  Journal-Commit;
 - Transferspalten in Datenbank und Spielersuche sowie JSON-Zugriff im Editor;
 - Architektur- und Acceptance-Dokumente unter
   `docs/architecture/transfers.md` und `docs/acceptance/transfers.md`.
@@ -82,29 +85,31 @@ cargo clippy --workspace --all-targets -- -D warnings
 cd apps/desktop && npm test && npm run build
 ```
 
-Ergebnis:
+Ergebnis nach Abschluss der reziproken Tauschaktionen:
 
-- 84 Rust-Tests bestanden;
-- 38 Vitest-/DOM-Tests bestanden;
+- 89 Rust-Tests bestanden;
+- 40 Vitest-/DOM-Tests bestanden;
 - Clippy mit `-D warnings` bestanden;
 - TypeScript- und Vite-Produktionsbuild bestanden;
 - keine Diff-Whitespace-Fehler.
 
-Der anschließend gestartete Befehl
+Der zuvor unterbrochene Befehl
 
 ```bash
 scripts/build-linux-packages.sh
 ```
 
-wurde auf Wunsch des Nutzers während der nativen Kompilierung mit Exit-Code 130
-abgebrochen. Das war eine kontrollierte Pause, kein Fehlerbefund. AppImage, DEB
-und RPM gelten für den Transfer-WIP daher noch nicht als abgenommen und müssen
-beim Fortsetzen neu gebaut werden. Build-Zwischenstände liegen nur im
-git-ignorierten `target/`-Verzeichnis.
+wurde nach der Wiederaufnahme vollständig neu ausgeführt. Bundle-Konfiguration,
+Signaturen, Größen und Inhalte wurden durch den Paket-Verifikator akzeptiert:
 
-Eine visuelle Browser-Abnahme war nicht möglich, weil die In-App-Browserliste in
-dieser Sitzung leer war. Nicht auf einen fremden Browser-Backend ausweichen. Die
-native Tauri-Sichtprüfung bleibt offen.
+- AppImage: `4fe8be90305735ba44f798dc00f71f7807b6aa7e73f40e330b825901be0414a0`
+- DEB: `4c84225c7b8140fb0477b35668b2355ebf8d29c8c0700f1f2380ea77ab0882c2`
+- RPM: `8bc8745ed98aa603382dadc7d9d6155d5a278945e5b52cf003e474891c7bcc6d`
+
+Eine visuelle Browser-Abnahme war erneut nicht möglich, weil die verbindliche
+In-App-Browserliste auch nach dem dokumentierten Verbindungscheck leer (`[]`)
+blieb. Es wurde nicht auf ein fremdes Browser-Backend ausgewichen. Die native
+Tauri-Sichtprüfung bleibt offen.
 
 ## FM26- und Bridge-Status
 
@@ -145,7 +150,7 @@ Der Nutzer beendet FM normal. Erst danach den Status erneut prüfen.
    git diff --check
    ```
 
-2. Transfer-WIP vollständig erneut prüfen:
+2. Bei weiteren Änderungen den Transfer-Stand erneut prüfen:
 
    ```bash
    cargo fmt --all -- --check
@@ -166,20 +171,10 @@ Der Nutzer beendet FM normal. Erst danach den Status erneut prüfen.
    Scrollbereiche, Datums-/Zahlenfelder, Zukunftstransfer, Leihe, Storno,
    fälliger Abschluss, Vorschau und Commit-Status. Keine echte Live-Mutation.
 
-4. Reciprocal Swap fertigstellen:
-
-   - einen expliziten Swap-Partner und zwei Zielverträge erfassen;
-   - beide Spieler in einer einzigen `EditTransaction` ändern;
-   - alle Erwartungen aus derselben Vorschau lesen;
-   - bei fehlendem Spieler, gleichem Verein, stale preview oder ungültigem Vertrag
-     die gesamte Aktion ablehnen;
-   - UI- und Core-Tests für Sofort-Swap und fälligen Zukunfts-Swap ergänzen;
-   - erst danach den offenen Swap-Punkt in der Acceptance schließen.
-
-5. Nach grüner Paketprüfung den Branch committen, pushen, Draft-PR öffnen, alle
+4. Nach grüner Paketprüfung den Branch committen, pushen, Draft-PR öffnen, alle
    GitHub-Jobs abwarten und erst vollständig grün mergen.
 
-6. Bridge-Arbeit nur nach normal beendetem FM:
+5. Bridge-Arbeit nur nach normal beendetem FM:
 
    ```bash
    cargo run -p bestscout-live --bin bestscout-diagnose
@@ -201,7 +196,6 @@ Die wichtigsten offenen Bereiche nach Transfer/Bridge sind:
 
 - echte Live-Domänenwurzeln und kanonisches Lesen aller Entitäten;
 - feldgenaue Live-Writes mit Main-Thread-Scheduling und Read-back;
-- reziproke Swaps;
 - Staff, Registrierungen und Beziehungen;
 - Wettbewerbe, Tabellen, Punkte, Fixtures und Stages;
 - Clubfarben/Kits und Clubbeziehungen;

@@ -16,6 +16,8 @@ status. Snapshot validation enforces:
 - valid and ordered game dates;
 - finite bounded fees and a 0–100 wage contribution;
 - an end date only for loans and a partner only for swaps;
+- a reciprocal inverse agreement for every swap, with matching players, clubs,
+  dates and lifecycle state;
 - zero fee for a free transfer;
 - globally unique transfer IDs.
 
@@ -26,20 +28,28 @@ dedicated Transfer Center.
 ## Actions
 
 `prepare_transfer_action` supports an immediate move, arranging or replacing a
-future agreement, cancelling an agreement and completing a due agreement.
+future agreement, cancelling an agreement and completing a due agreement. It
+also supports immediate reciprocal swaps, atomic future-swap arrangement and
+atomic completion of a due future swap.
 Immediate and completed moves update the player-facing club name, canonical
 contract and future-transfer record atomically. The destination contract club ID
 is derived from the selected destination instead of trusting conflicting UI
 input.
 
 Completion requires a canonical in-game date at or after the effective date. A
-loan requires a loan contract. Swap records are validated and preserved, but
-completion is explicitly rejected until the reciprocal two-player action is
-implemented; BestScout never performs only half of a swap.
+loan requires a loan contract. A swap requires two different contracted players
+at different clubs and two complete permanent target contracts. Both club names,
+both contracts and both future-transfer records are changed by the same editor
+transaction. Future swaps use two unique inverse records; arrangement,
+cancellation and due completion always touch both records together. The ordinary
+single-player commands reject swap records, so BestScout cannot prepare half of
+a swap through the transfer API.
 
 Each changed field carries the exact value read for preview as
 `expected_before`. Applying the prepared transaction therefore rejects stale
-club, contract or agreement data and leaves the source snapshot untouched.
+club, contract or agreement data from either player and leaves the source
+snapshot untouched. Whole-snapshot validation additionally rejects a one-sided
+swap created through the generic editor.
 
 ## Safety and live boundary
 

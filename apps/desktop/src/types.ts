@@ -359,7 +359,28 @@ export type TransferCommand =
   | { kind: "move_now"; player_id: string; destination_club_id: string; contract: Contract }
   | { kind: "arrange_future"; player_id: string; transfer: FutureTransfer }
   | { kind: "cancel_future"; player_id: string }
-  | { kind: "complete_future"; player_id: string; contract: Contract };
+  | { kind: "complete_future"; player_id: string; contract: Contract }
+  | {
+      kind: "swap_now";
+      player_id: string;
+      swap_player_id: string;
+      player_contract: Contract;
+      swap_player_contract: Contract;
+    }
+  | {
+      kind: "arrange_future_swap";
+      player_id: string;
+      swap_player_id: string;
+      transfer: FutureTransfer;
+      reciprocal_transfer: FutureTransfer;
+    }
+  | {
+      kind: "complete_future_swap";
+      player_id: string;
+      swap_player_id: string;
+      player_contract: Contract;
+      swap_player_contract: Contract;
+    };
 
 export type TransferActionRequest = {
   transaction_id: string;

@@ -46,7 +46,8 @@
 - [ ] Clubs, finance and facilities
 - [x] Preset manager and validated, filtered mass edit
 - [x] Canonical immediate, future and loan transfer planning/completion
-- [ ] Reciprocal player swaps and live transfer field adapter acceptance
+- [x] Reciprocal immediate and future player swaps with atomic cancellation/completion
+- [ ] Live transfer field adapter acceptance
 
 ## 0.7 — Advanced editor
 

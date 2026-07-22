@@ -88,7 +88,103 @@ describe("transfer center", () => {
     await waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
     expect(prepare.mock.calls[0][1].command).toEqual({ kind: "cancel_future", player_id: "101" });
   });
+
+  it("requires an explicit destination player and prepares an atomic immediate swap", async () => {
+    const swapping = swapSnapshot();
+    const transaction = transferTransaction();
+    const prepared: PreparedTransferAction = {
+      command: {
+        kind: "swap_now", player_id: "101", swap_player_id: "102",
+        player_contract: swapping.players[0].details!.contract!,
+        swap_player_contract: swapping.players[1].details!.contract!,
+      },
+      transaction,
+      preview: applied(transaction, swapping),
+    };
+    const prepare = vi.fn(async (_snapshot: DatabaseSnapshot, _request: TransferActionRequest) => prepared);
+
+    render(<TransferWorkspace snapshot={swapping} onSnapshotChange={() => undefined} gateway={gatewayWith({ prepare })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Transferziel Fußballclub Südstadt" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tausch" }));
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Transfervorschau erstellen" }).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Tauschpartner Mateo Silva" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sofort wechseln" }));
+    fireEvent.click(screen.getByRole("button", { name: "Transfervorschau erstellen" }));
+
+    await waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
+    expect(prepare.mock.calls[0][1].command).toMatchObject({
+      kind: "swap_now",
+      player_id: "101",
+      swap_player_id: "102",
+      player_contract: { club_id: "club-suedstadt", starts_on: snapshot.game_date },
+      swap_player_contract: { club_id: "club-nordhafen", starts_on: snapshot.game_date },
+    });
+  });
+
+  it("prepares both contracts when a reciprocal future swap becomes due", async () => {
+    const planned = swapSnapshot();
+    planned.game_date = { year: 2026, month: 8, day: 1 };
+    const [first, reciprocal] = reciprocalSwapTransfers();
+    planned.players[0].details!.future_transfer = first;
+    planned.players[1].details!.future_transfer = reciprocal;
+    const transaction = transferTransaction();
+    const prepared: PreparedTransferAction = {
+      command: {
+        kind: "complete_future_swap", player_id: "101", swap_player_id: "102",
+        player_contract: planned.players[0].details!.contract!,
+        swap_player_contract: planned.players[1].details!.contract!,
+      },
+      transaction,
+      preview: applied(transaction, planned),
+    };
+    const prepare = vi.fn(async (_snapshot: DatabaseSnapshot, _request: TransferActionRequest) => prepared);
+
+    render(<TransferWorkspace snapshot={planned} onSnapshotChange={() => undefined} gateway={gatewayWith({ prepare })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Transfer abschließen" }));
+
+    await waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
+    expect(prepare.mock.calls[0][1].command).toMatchObject({
+      kind: "complete_future_swap",
+      player_id: "101",
+      swap_player_id: "102",
+      player_contract: { club_id: "club-suedstadt", starts_on: first.effective_on },
+      swap_player_contract: { club_id: "club-nordhafen", starts_on: first.effective_on },
+    });
+  });
 });
+
+function swapSnapshot(): DatabaseSnapshot {
+  const result = structuredClone(snapshot);
+  result.players[1].club = "Fußballclub Südstadt";
+  result.players[1].details!.contract = {
+    club_id: "club-suedstadt",
+    starts_on: { year: 2024, month: 7, day: 1 },
+    expires_on: { year: 2029, month: 6, day: 30 },
+    contract_type: "full_time",
+    wage: 24_000,
+    release_clause: null,
+    squad_status: "First team",
+  };
+  return result;
+}
+
+function reciprocalSwapTransfers(): [FutureTransfer, FutureTransfer] {
+  const common = {
+    kind: "swap" as const,
+    arranged_on: { year: 2026, month: 7, day: 22 },
+    effective_on: { year: 2026, month: 8, day: 1 },
+    loan_end: null,
+    wage_contribution_percent: null,
+    status: "agreed" as const,
+  };
+  return [{
+    ...common, id: "swap-101-102-a", from_club_id: "club-nordhafen", to_club_id: "club-suedstadt",
+    fee: 2_000_000, swap_player_id: "102",
+  }, {
+    ...common, id: "swap-101-102-b", from_club_id: "club-suedstadt", to_club_id: "club-nordhafen",
+    fee: 0, swap_player_id: "101",
+  }];
+}
 
 function futureTransfer(): FutureTransfer {
   return {

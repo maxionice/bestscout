@@ -40,18 +40,27 @@ export function TransferWorkspace({
   liveWriteEnabled?: boolean;
   gateway?: TransferGateway;
 }) {
-  const [playerId, setPlayerId] = useState<string | null>(snapshot?.players[0]?.id ?? null);
-  const [destinationId, setDestinationId] = useState<string | null>(null);
+  const initialPlayer = snapshot?.players[0] ?? null;
+  const initialTransfer = initialPlayer?.details?.future_transfer;
+  const initialSwapPlayer = initialTransfer?.kind === "swap"
+    ? snapshot?.players.find((player) => player.id === initialTransfer.swap_player_id)
+    : null;
+  const [playerId, setPlayerId] = useState<string | null>(initialPlayer?.id ?? null);
+  const [destinationId, setDestinationId] = useState<string | null>(initialTransfer?.to_club_id ?? null);
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<PlanMode>("arrange_future");
-  const [transferKind, setTransferKind] = useState<Exclude<TransferKind, "swap">>("permanent");
+  const [transferKind, setTransferKind] = useState<TransferKind>(initialTransfer?.kind ?? "permanent");
+  const [swapPlayerId, setSwapPlayerId] = useState<string | null>(initialSwapPlayer?.id ?? null);
   const [effectiveDate, setEffectiveDate] = useState("2026-08-01");
   const [loanEnd, setLoanEnd] = useState("2027-06-30");
   const [contractEnd, setContractEnd] = useState("2030-06-30");
   const [fee, setFee] = useState(0);
-  const [wage, setWage] = useState(0);
+  const [wage, setWage] = useState(initialPlayer?.details?.contract?.wage ?? initialPlayer?.wage ?? 0);
   const [wageContribution, setWageContribution] = useState(0);
   const [squadStatus, setSquadStatus] = useState("First team");
+  const [swapWage, setSwapWage] = useState(initialSwapPlayer?.details?.contract?.wage ?? initialSwapPlayer?.wage ?? 0);
+  const [swapContractEnd, setSwapContractEnd] = useState("2030-06-30");
+  const [swapSquadStatus, setSwapSquadStatus] = useState("First team");
   const [prepared, setPrepared] = useState<PreparedTransferAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("Transferparameter festlegen und sicher prüfen");
@@ -61,6 +70,11 @@ export function TransferWorkspace({
   const currentClubId = selected?.details?.contract?.club_id ?? null;
   const destination = snapshot?.clubs.find((club) => club.id === destinationId) ?? null;
   const destinationOptions = (snapshot?.clubs ?? []).filter((club) => club.id !== currentClubId);
+  const swapPlayer = snapshot?.players.find((player) => player.id === swapPlayerId) ?? null;
+  const swapCandidates = (snapshot?.players ?? []).filter((player) =>
+    player.id !== selected?.id
+    && player.details?.contract?.club_id === destinationId,
+  );
   const planned = (snapshot?.players ?? []).filter((player) => player.details?.future_transfer);
   const filteredPlayers = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("de");
@@ -70,13 +84,19 @@ export function TransferWorkspace({
   const gameDate = snapshot?.game_date ?? fallbackDate();
 
   function selectPlayer(next: Player) {
+    const futureTransfer = next.details?.future_transfer;
+    const futureSwapPlayer = futureTransfer?.kind === "swap"
+      ? snapshot?.players.find((player) => player.id === futureTransfer.swap_player_id)
+      : null;
     setPlayerId(next.id);
-    setDestinationId(null);
+    setDestinationId(futureTransfer?.to_club_id ?? null);
+    setSwapPlayerId(futureSwapPlayer?.id ?? null);
     setPrepared(null);
     setError("");
     setWage(next.details?.contract?.wage ?? next.wage ?? 0);
-    const plannedKind = next.details?.future_transfer?.kind;
-    if (plannedKind && plannedKind !== "swap") setTransferKind(plannedKind);
+    setSwapWage(futureSwapPlayer?.details?.contract?.wage ?? futureSwapPlayer?.wage ?? 0);
+    const plannedKind = futureTransfer?.kind;
+    if (plannedKind) setTransferKind(plannedKind);
   }
 
   function changeMode(next: PlanMode) {
@@ -85,7 +105,7 @@ export function TransferWorkspace({
     setError("");
   }
 
-  function changeKind(next: Exclude<TransferKind, "swap">) {
+  function changeKind(next: TransferKind) {
     setTransferKind(next);
     setPrepared(null);
     setError("");
@@ -127,6 +147,55 @@ export function TransferWorkspace({
     if (!selected || !destination) throw new Error("Spieler und Zielverein auswählen");
     const effective = parseDate(mode === "move_now" ? formatInputDate(gameDate) : effectiveDate, "Transferdatum");
     const contract = buildContract(destination.id, effective);
+    if (transferKind === "swap") {
+      if (!currentClubId) throw new Error("Der gewählte Spieler benötigt einen aktuellen Vertragsverein");
+      if (!swapPlayer || swapPlayer.details?.contract?.club_id !== destination.id) {
+        throw new Error("Einen Tauschpartner mit Vertrag beim Zielverein auswählen");
+      }
+      const swapPlayerContract = buildSwapPlayerContract(currentClubId, effective);
+      if (mode === "move_now") {
+        return {
+          kind: "swap_now",
+          player_id: selected.id,
+          swap_player_id: swapPlayer.id,
+          player_contract: contract,
+          swap_player_contract: swapPlayerContract,
+        };
+      }
+      const transfer: FutureTransfer = {
+        id: newId(`future-swap-${selected.id}`),
+        kind: "swap",
+        from_club_id: currentClubId,
+        to_club_id: destination.id,
+        arranged_on: gameDate,
+        effective_on: effective,
+        fee,
+        loan_end: null,
+        wage_contribution_percent: null,
+        swap_player_id: swapPlayer.id,
+        status: "agreed",
+      };
+      const reciprocalTransfer: FutureTransfer = {
+        id: newId(`future-swap-${swapPlayer.id}`),
+        kind: "swap",
+        from_club_id: destination.id,
+        to_club_id: currentClubId,
+        arranged_on: gameDate,
+        effective_on: effective,
+        fee: 0,
+        loan_end: null,
+        wage_contribution_percent: null,
+        swap_player_id: selected.id,
+        status: "agreed",
+      };
+      return {
+        kind: "arrange_future_swap",
+        player_id: selected.id,
+        swap_player_id: swapPlayer.id,
+        transfer,
+        reciprocal_transfer: reciprocalTransfer,
+      };
+    }
     if (mode === "move_now") {
       return { kind: "move_now", player_id: selected.id, destination_club_id: destination.id, contract };
     }
@@ -158,6 +227,18 @@ export function TransferWorkspace({
     };
   }
 
+  function buildSwapPlayerContract(clubId: string, startsOn: GameDate): Contract {
+    return {
+      club_id: clubId,
+      starts_on: startsOn,
+      expires_on: parseDate(swapContractEnd, "Partner-Vertragsende"),
+      contract_type: "full_time",
+      wage: swapWage,
+      release_clause: null,
+      squad_status: swapSquadStatus.trim() || null,
+    };
+  }
+
   async function commit() {
     if (!snapshot || !prepared) return;
     setBusy(true);
@@ -182,6 +263,19 @@ export function TransferWorkspace({
     const transfer = selected?.details?.future_transfer;
     if (!selected || !transfer) return;
     try {
+      if (transfer.kind === "swap") {
+        const partner = snapshot?.players.find((player) => player.id === transfer.swap_player_id);
+        const originClubId = selected.details?.contract?.club_id;
+        if (!partner || !originClubId) throw new Error("Die reziproke Tauschvereinbarung ist unvollständig");
+        void prepare({
+          kind: "complete_future_swap",
+          player_id: selected.id,
+          swap_player_id: partner.id,
+          player_contract: buildContract(transfer.to_club_id, transfer.effective_on, "swap"),
+          swap_player_contract: buildSwapPlayerContract(originClubId, transfer.effective_on),
+        });
+        return;
+      }
       const contract = buildContract(transfer.to_club_id, transfer.effective_on, transfer.kind);
       void prepare({ kind: "complete_future", player_id: selected.id, contract });
     } catch (reason) {
@@ -227,8 +321,9 @@ export function TransferWorkspace({
             <div><span>VON</span><strong>{selected?.club ?? "Vereinslos"}</strong><small>{currentClubId ?? "Ohne Vertragsverein-ID"}</small></div><ArrowRight size={18} /><div><span>NACH</span><strong>{destination?.name ?? "Zielverein wählen"}</strong><small>{destination?.id ?? "–"}</small></div>
           </div>
           <div className="transfer-mode-tabs" role="group" aria-label="Transferzeitpunkt"><Button variant={mode === "arrange_future" ? "primary" : "secondary"} onPress={() => changeMode("arrange_future")}><CalendarClock size={14} /> Zukunft planen</Button><Button variant={mode === "move_now" ? "primary" : "secondary"} onPress={() => changeMode("move_now")}><ArrowRightLeft size={14} /> Sofort wechseln</Button></div>
-          <section className="transfer-section"><header><strong>Zielverein</strong><span>{destinationOptions.length}</span></header><div className="transfer-club-list">{destinationOptions.map((club) => <Button key={club.id} variant={destinationId === club.id ? "primary" : "secondary"} aria-label={`Transferziel ${club.name}`} onPress={() => { setDestinationId(club.id); setPrepared(null); }}><Building2 size={13} /><span><strong>{club.name}</strong><small>{club.competition ?? club.nation ?? "–"}</small></span>{destinationId === club.id && <Check size={12} />}</Button>)}</div></section>
-          <section className="transfer-section"><header><strong>Transferart</strong></header><div className="transfer-kind-tabs">{(["permanent", "loan", "free_transfer"] as const).map((kind) => <Button key={kind} size="sm" variant={transferKind === kind ? "primary" : "ghost"} onPress={() => changeKind(kind)}>{kindLabel(kind)}</Button>)}</div></section>
+          <section className="transfer-section"><header><strong>Zielverein</strong><span>{destinationOptions.length}</span></header><div className="transfer-club-list">{destinationOptions.map((club) => <Button key={club.id} variant={destinationId === club.id ? "primary" : "secondary"} aria-label={`Transferziel ${club.name}`} onPress={() => { setDestinationId(club.id); setSwapPlayerId(null); setPrepared(null); }}><Building2 size={13} /><span><strong>{club.name}</strong><small>{club.competition ?? club.nation ?? "–"}</small></span>{destinationId === club.id && <Check size={12} />}</Button>)}</div></section>
+          <section className="transfer-section"><header><strong>Transferart</strong></header><div className="transfer-kind-tabs">{(["permanent", "loan", "free_transfer", "swap"] as const).map((kind) => <Button key={kind} size="sm" variant={transferKind === kind ? "primary" : "ghost"} onPress={() => changeKind(kind)}>{kindLabel(kind)}</Button>)}</div></section>
+          {transferKind === "swap" && <section className="transfer-section transfer-swap-section"><header><strong>Tauschpartner beim Zielverein</strong><span>{swapCandidates.length}</span></header><div className="transfer-swap-list">{swapCandidates.length ? swapCandidates.map((player) => <Button key={player.id} variant={swapPlayerId === player.id ? "primary" : "secondary"} aria-label={`Tauschpartner ${player.name}`} onPress={() => { setSwapPlayerId(player.id); setSwapWage(player.details?.contract?.wage ?? player.wage ?? 0); setPrepared(null); }}><span className="transfer-avatar">{initials(player.name)}</span><span><strong>{player.name}</strong><small>{player.positions.join(" · ")} · {formatMoney(player.value)}</small></span>{swapPlayerId === player.id && <Check size={12} />}</Button>) : <p>Für dieses Ziel ist kein Spieler mit kanonischem Vereinsvertrag geladen.</p>}</div></section>}
           <div className="transfer-form-grid">
             {mode === "arrange_future" && <label><span>Transferdatum</span><input aria-label="Transferdatum" type="date" value={effectiveDate} onChange={(event) => { setEffectiveDate(event.target.value); setPrepared(null); }} /></label>}
             {transferKind !== "free_transfer" && <NumberInput label="Gebühr" value={fee} onChange={(value) => { setFee(value); setPrepared(null); }} maximum={1_000_000_000_000} />}
@@ -236,8 +331,9 @@ export function TransferWorkspace({
             <label><span>Vertragsende</span><input aria-label="Vertragsende" type="date" value={contractEnd} onChange={(event) => { setContractEnd(event.target.value); setPrepared(null); }} /></label>
             {transferKind === "loan" && <><label><span>Leihende</span><input aria-label="Leihende" type="date" value={loanEnd} onChange={(event) => { setLoanEnd(event.target.value); setPrepared(null); }} /></label><NumberInput label="Gehaltsanteil Prozent" value={wageContribution} onChange={(value) => { setWageContribution(value); setPrepared(null); }} maximum={100} /></>}
             <TextField aria-label="Kaderstatus" value={squadStatus} onChange={(value) => { setSquadStatus(value); setPrepared(null); }}><span className="transfer-input-label">Kaderstatus</span><Input /></TextField>
+            {transferKind === "swap" && <><NumberInput label="Partner-Wochengehalt" value={swapWage} onChange={(value) => { setSwapWage(value); setPrepared(null); }} maximum={100_000_000} /><label><span>Partner-Vertragsende</span><input aria-label="Partner-Vertragsende" type="date" value={swapContractEnd} onChange={(event) => { setSwapContractEnd(event.target.value); setPrepared(null); }} /></label><TextField aria-label="Partner-Kaderstatus" value={swapSquadStatus} onChange={(value) => { setSwapSquadStatus(value); setPrepared(null); }}><span className="transfer-input-label">Partner-Kaderstatus</span><Input /></TextField></>}
           </div>
-          <Button className="w-full" isDisabled={busy || !selected || !destination} onPress={() => prepare()}><ShieldCheck size={15} /> {busy ? "Validiere …" : "Transfervorschau erstellen"}</Button>
+          <Button className="w-full" isDisabled={busy || !selected || !destination || (transferKind === "swap" && !swapPlayer)} onPress={() => prepare()}><ShieldCheck size={15} /> {busy ? "Validiere …" : "Transfervorschau erstellen"}</Button>
         </Card.Content>
       </Card>
 
@@ -260,7 +356,8 @@ function NumberInput({ label, value, onChange, maximum }: { label: string; value
 
 function FutureTransferCard({ transfer, snapshot }: { transfer: FutureTransfer; snapshot: DatabaseSnapshot }) {
   const destination = snapshot.clubs.find((club) => club.id === transfer.to_club_id);
-  return <div className="future-transfer-card"><header><CalendarClock size={16} /><div><strong>{kindLabel(transfer.kind)}</strong><span>{transfer.status}</span></div></header><div><span>Ziel</span><strong>{destination?.name ?? transfer.to_club_id}</strong></div><div><span>Datum</span><strong>{formatGameDate(transfer.effective_on)}</strong></div><div><span>Gebühr</span><strong>{formatMoney(transfer.fee)}</strong></div>{transfer.loan_end && <div><span>Leihende</span><strong>{formatGameDate(transfer.loan_end)}</strong></div>}<code>{transfer.id}</code></div>;
+  const swapPlayer = snapshot.players.find((player) => player.id === transfer.swap_player_id);
+  return <div className="future-transfer-card"><header><CalendarClock size={16} /><div><strong>{kindLabel(transfer.kind)}</strong><span>{transfer.status}</span></div></header><div><span>Ziel</span><strong>{destination?.name ?? transfer.to_club_id}</strong></div><div><span>Datum</span><strong>{formatGameDate(transfer.effective_on)}</strong></div><div><span>Gebühr</span><strong>{formatMoney(transfer.fee)}</strong></div>{transfer.loan_end && <div><span>Leihende</span><strong>{formatGameDate(transfer.loan_end)}</strong></div>}{transfer.kind === "swap" && <div><span>Tauschpartner</span><strong>{swapPlayer?.name ?? transfer.swap_player_id}</strong></div>}<code>{transfer.id}</code></div>;
 }
 
 function TransferMetric({ icon: Icon, label, value, money = false }: { icon: typeof Users; label: string; value: number; money?: boolean }) {
