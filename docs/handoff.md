@@ -29,8 +29,9 @@ Der aktuelle Stack ist absichtlich linear:
 | #33 | `agent/release-readiness-gates` | PR #32 | harte 1.0-Release-Readiness-Gates |
 | #34 | `agent/club-branding-relationships` | PR #33 | Clubfarben, Trikots und Clubbeziehungen |
 | #35 | `agent/person-appearance-preferred-moves` | PR #34 | Personenprofile und bevorzugte Spielzüge |
+| #36 | `agent/contract-bonuses-clauses` | PR #35 | typisierte Vertragsboni und -klauseln |
 
-PR #25 bis #34 sind offen, Draft, mergebar und vollständig grün. PR #35 wurde
+PR #25 bis #35 sind offen, Draft, mergebar und vollständig grün. PR #36 wurde
 nach vollständiger lokaler Prüfung als Draft geöffnet; dessen GitHub-CI läuft.
 Keine offene Draft-Stufe als bereits in `main` enthalten behandeln.
 
@@ -39,6 +40,8 @@ Keine offene Draft-Stufe als bereits in `main` enthalten behandeln.
 - kanonische Spieler-, Staff-, Club-, Wettbewerbs- und Transfermodelle;
 - kanonische Personenprofile mit weiteren Nationalitäten, begrenztem
   Erscheinungsbild und bevorzugten Spielzügen;
+- rückwärtskompatible Vertragsboni und typisierte Geld-, Prozent- und
+  Zählklauseln samt beidseitiger Transfer-UI;
 - kanonische Clubfarben, vier typisierte Trikotslots und referenzielle
   Clubbeziehungen;
 - Suche, Filter, Rollenratings, Entwicklungs-/Marktlisten und Squad-Analyse;
@@ -65,7 +68,7 @@ Bereichsdokumente bleiben jeweils maßgeblich.
 
 ## Aktueller Prüfstand
 
-Auf `agent/person-appearance-preferred-moves` erfolgreich ausgeführt:
+Auf `agent/contract-bonuses-clauses` erfolgreich ausgeführt:
 
 ```text
 cargo fmt --all -- --check
@@ -80,7 +83,7 @@ scripts/build-linux-packages.sh
 scripts/build-bridge.sh "/path/to/Football Manager 26"
 ```
 
-Ergebnis: 125 Rust-Tests, 65 Vitest-/DOM-Tests, 9 Node-Release-/Doku-Tests,
+Ergebnis: 127 Rust-Tests, 66 Vitest-/DOM-Tests, 9 Node-Release-/Doku-Tests,
 Clippy ohne Warnung, Formatierung, TypeScript/Vite, Linux-Pakete und
 Release-Metadaten grün. Der Readiness-Prüfer meldet exakt 62 noch offene 1.0-
 Gates und blockiert deshalb korrekt einen stabilen Release.
@@ -94,6 +97,12 @@ Checkout-Pfad bytegleich bestätigt:
 | `BestScout.Bridge.deps.json` | 418 | `2fec98e69fe18446e8dd835dad10fe01e98407909f15b45f632a17ebcf85cd22` |
 
 Details: [`bridge-reproducibility.md`](acceptance/bridge-reproducibility.md).
+
+Der lokale Paketbefehl erzeugt frisch AppImage, DEB und RPM. Sein Prüfer listet
+zusätzlich bereits vorhandene optionale Flatpak-/Steam-Deck-Dateien im
+`release-artifacts`-Ordner auf; diese Auflistung ist kein frischer Build- oder
+Hardware-Nachweis. Vor 1.0 muss ein sauberer Release-Output erzwungen und der
+vollständige Satz mit `--require-release-set` geprüft werden.
 
 ## Native UI-Gates
 
