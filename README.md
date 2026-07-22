@@ -24,6 +24,8 @@ and editing tools while remaining local, transparent and safe.
   running-game lock and exact-build gate
 - Read-only main-thread probe for FM26 initialisation, interop, database-factory
   and typed person/club/competition reference roots
+- Authenticated, main-thread reference catalog with exact type-set, size and
+  duplicate validation for the FM26 domain adapter
 - Bounded paginated live-snapshot protocol with end-to-end canonical validation
 - Schema-versioned player, staff, club and competition models
 - Validated global search and composable player-query engine

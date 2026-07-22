@@ -145,6 +145,7 @@ internal sealed class BridgeServer : IDisposable
             "health" => Success(request.Id, new HealthResult(Plugin.PluginVersion, Environment.ProcessId, true)),
             "capabilities" => Success(request.Id, new CapabilityResult(true, _snapshots.IsAvailable, false)),
             "domain_roots" => Success(request.Id, _domainRoots.Get()),
+            "reference_catalog" => Success(request.Id, _domainRoots.GetReferenceCatalog()),
             "snapshot_manifest" => SnapshotManifest(request.Id),
             "snapshot_page" => SnapshotPage(request),
             _ => Error(request.Id, "unknown_method"),

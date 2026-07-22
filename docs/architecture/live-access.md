@@ -39,15 +39,18 @@ snapshot and runs full schema and relationship validation before returning data
 to Tauri. Domain publication remains disabled until its FM26 adapter is
 validated.
 
-Before any entity channel is opened, bridge version 0.3 runs a bounded probe on
+Before any entity channel is opened, bridge version 0.4 runs a bounded probe on
 Unity's main thread. It requires a completed FM initialiser, exactly one live game
 interop subsystem, the database-record reference factory and non-empty metadata
 for the game, person, club, competition, person-search and database-summary
 references. The authenticated `domain_roots` response contains only state,
-counts and a bounded error; it does not expose save data or numeric property IDs.
-Rust validates every count and the complete `roots_resolved` invariant set before
-showing the result. This is a prerequisite for, not permission to perform,
-domain reads.
+counts and a bounded error. After the complete invariant set resolves, the
+main-thread probe records an immutable catalog of numeric property identifiers,
+descriptions and binding types for exactly eight allowlisted reference families.
+It contains no save entities, is capped at 10,000 properties per family and
+20,000 overall, and is independently checked by Rust for schema, state, exact
+reference set, lengths, counts and duplicates. This catalog is adapter discovery
+evidence, not permission to perform domain reads.
 
 The repository will not redistribute Football Manager assemblies. Bridge builds
 must reference files from the user's own installation, and the protocol must bind

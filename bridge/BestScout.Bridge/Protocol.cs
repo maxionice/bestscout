@@ -56,6 +56,25 @@ internal sealed record DomainRootStatus(
     [property: JsonPropertyName("reference_metadata")] DomainReferenceMetadata ReferenceMetadata,
     [property: JsonPropertyName("error")] string? Error);
 
+internal sealed record ReferencePropertyMetadata(
+    [property: JsonPropertyName("property_id")] uint PropertyId,
+    [property: JsonPropertyName("description")] string Description,
+    [property: JsonPropertyName("binding_kind")] string BindingKind,
+    [property: JsonPropertyName("reference_id")] uint ReferenceId,
+    [property: JsonPropertyName("value_type")] string? ValueType);
+
+internal sealed record ReferenceTypeCatalog(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("property_count")] int PropertyCount,
+    [property: JsonPropertyName("properties")] IReadOnlyList<ReferencePropertyMetadata> Properties);
+
+internal sealed record ReferenceCatalogStatus(
+    [property: JsonPropertyName("schema_version")] int SchemaVersion,
+    [property: JsonPropertyName("generated_at_utc")] DateTimeOffset GeneratedAtUtc,
+    [property: JsonPropertyName("state")] string State,
+    [property: JsonPropertyName("references")] IReadOnlyList<ReferenceTypeCatalog> References,
+    [property: JsonPropertyName("error")] string? Error);
+
 internal sealed record SnapshotPageRequest(
     [property: JsonPropertyName("snapshot_id")] string SnapshotId,
     [property: JsonPropertyName("entity_kind")] string EntityKind,

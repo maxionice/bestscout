@@ -12,7 +12,8 @@ mod profile;
 
 pub use bridge::{
     BridgeCapabilities, BridgeClient, BridgeDescriptor, BridgeError, BridgeHealth, BridgeProbe,
-    DomainReferenceMetadata, DomainRootState, DomainRootStatus, SnapshotEntityCounts,
+    DomainReferenceMetadata, DomainRootState, DomainRootStatus, ReferenceCatalogState,
+    ReferenceCatalogStatus, ReferencePropertyMetadata, ReferenceTypeCatalog, SnapshotEntityCounts,
     SnapshotEntityKind, SnapshotManifest, SnapshotPageCounts, probe_bridge,
 };
 pub use deployment::{
