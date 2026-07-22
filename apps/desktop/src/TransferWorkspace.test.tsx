@@ -65,6 +65,40 @@ describe("transfer center", () => {
     expect(screen.getByRole<HTMLButtonElement>("button", { name: "Transfervorschau erstellen" }).disabled).toBe(true);
   });
 
+  it("prepares typed bonuses and clauses as part of an immediate destination contract", async () => {
+    const transaction = transferTransaction();
+    const prepare = vi.fn(async (_snapshot: DatabaseSnapshot, request: TransferActionRequest) => ({
+      command: request.command,
+      transaction,
+      preview: applied(transaction, snapshot),
+    }));
+
+    render(<TransferWorkspace snapshot={snapshot} onSnapshotChange={() => undefined} gateway={gatewayWith({ prepare })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Transferziel Fußballclub Südstadt" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sofort wechseln" }));
+    fireEvent.click(screen.getByRole("button", { name: "Handgeld erhöhen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mindestablöse erhöhen" }));
+    for (let index = 0; index < 12; index += 1) {
+      fireEvent.click(screen.getByRole("button", { name: "Weiterverkaufsanteil Prozent erhöhen" }));
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Transfervorschau erstellen" }));
+
+    await waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
+    expect(prepare.mock.calls[0][1].command).toMatchObject({
+      kind: "move_now",
+      player_id: "101",
+      destination_club_id: "club-suedstadt",
+      contract: {
+        release_clause: 1,
+        bonuses: [{ id: "contract-signing_on_fee-101", kind: "signing_on_fee", amount: 1 }],
+        clauses: [
+          { id: "contract-minimum_fee_release-101", kind: "minimum_fee_release", value: { kind: "money", value: 1 } },
+          { id: "contract-sell_on_profit_percentage-101", kind: "sell_on_profit_percentage", value: { kind: "percentage", value: 12 } },
+        ],
+      },
+    });
+  });
+
   it("prepares cancellation only for the selected existing agreement", async () => {
     const planned = structuredClone(snapshot);
     if (planned.players[0].details) planned.players[0].details.future_transfer = futureTransfer();

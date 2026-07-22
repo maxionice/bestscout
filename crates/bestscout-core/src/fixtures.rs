@@ -47,6 +47,16 @@ pub fn synthetic_snapshot() -> DatabaseSnapshot {
                         wage: Some(18_500.0),
                         release_clause: Some(42_000_000.0),
                         squad_status: Some("First team".into()),
+                        bonuses: vec![crate::ContractBonus {
+                            id: "bonus-ada-appearance".into(),
+                            kind: crate::ContractBonusKind::AppearanceFee,
+                            amount: 2_500.0,
+                        }],
+                        clauses: vec![crate::ContractClause {
+                            id: "clause-ada-sell-on".into(),
+                            kind: crate::ContractClauseKind::SellOnProfitPercentage,
+                            value: crate::ContractClauseValue::Percentage(15),
+                        }],
                     }),
                     future_transfer: None,
                     fitness: PlayerFitness {

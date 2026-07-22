@@ -50,6 +50,7 @@
 - [x] Preset manager and validated, filtered mass edit
 - [x] Canonical immediate, future and loan transfer planning/completion
 - [x] Reciprocal immediate and future player swaps with atomic cancellation/completion
+- [x] Typed contract bonuses, release/sell-on/wage clauses and extension triggers
 - [ ] Live transfer field adapter acceptance
 
 ## 0.7 — Advanced editor

@@ -28,6 +28,14 @@ const tauriGateway: TransferGateway = {
 };
 
 type PlanMode = "move_now" | "arrange_future";
+type ContractTermsDraft = {
+  signingOnFee: number;
+  appearanceFee: number;
+  goalBonus: number;
+  minimumFeeRelease: number;
+  sellOnProfitPercentage: number;
+  yearlyWageRisePercentage: number;
+};
 
 export function TransferWorkspace({
   snapshot,
@@ -58,9 +66,11 @@ export function TransferWorkspace({
   const [wage, setWage] = useState(initialPlayer?.details?.contract?.wage ?? initialPlayer?.wage ?? 0);
   const [wageContribution, setWageContribution] = useState(0);
   const [squadStatus, setSquadStatus] = useState("First team");
+  const [contractTerms, setContractTerms] = useState<ContractTermsDraft>(() => termsDraft());
   const [swapWage, setSwapWage] = useState(initialSwapPlayer?.details?.contract?.wage ?? initialSwapPlayer?.wage ?? 0);
   const [swapContractEnd, setSwapContractEnd] = useState("2030-06-30");
   const [swapSquadStatus, setSwapSquadStatus] = useState("First team");
+  const [swapContractTerms, setSwapContractTerms] = useState<ContractTermsDraft>(() => termsDraft());
   const [prepared, setPrepared] = useState<PreparedTransferAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("Transferparameter festlegen und sicher prüfen");
@@ -94,7 +104,9 @@ export function TransferWorkspace({
     setPrepared(null);
     setError("");
     setWage(next.details?.contract?.wage ?? next.wage ?? 0);
+    setContractTerms(termsDraft());
     setSwapWage(futureSwapPlayer?.details?.contract?.wage ?? futureSwapPlayer?.wage ?? 0);
+    setSwapContractTerms(termsDraft());
     const plannedKind = futureTransfer?.kind;
     if (plannedKind) setTransferKind(plannedKind);
   }
@@ -216,26 +228,30 @@ export function TransferWorkspace({
   }
 
   function buildContract(clubId: string, startsOn: GameDate, kind: TransferKind = transferKind): Contract {
+    const terms = structuredTerms(selected?.id ?? "player", contractTerms);
     return {
       club_id: clubId,
       starts_on: startsOn,
       expires_on: parseDate(contractEnd, "Vertragsende"),
       contract_type: kind === "loan" ? "loan" : "full_time",
       wage,
-      release_clause: null,
+      release_clause: contractTerms.minimumFeeRelease || null,
       squad_status: squadStatus.trim() || null,
+      ...terms,
     };
   }
 
   function buildSwapPlayerContract(clubId: string, startsOn: GameDate): Contract {
+    const terms = structuredTerms(swapPlayer?.id ?? "swap-player", swapContractTerms);
     return {
       club_id: clubId,
       starts_on: startsOn,
       expires_on: parseDate(swapContractEnd, "Partner-Vertragsende"),
       contract_type: "full_time",
       wage: swapWage,
-      release_clause: null,
+      release_clause: swapContractTerms.minimumFeeRelease || null,
       squad_status: swapSquadStatus.trim() || null,
+      ...terms,
     };
   }
 
@@ -323,7 +339,7 @@ export function TransferWorkspace({
           <div className="transfer-mode-tabs" role="group" aria-label="Transferzeitpunkt"><Button variant={mode === "arrange_future" ? "primary" : "secondary"} onPress={() => changeMode("arrange_future")}><CalendarClock size={14} /> Zukunft planen</Button><Button variant={mode === "move_now" ? "primary" : "secondary"} onPress={() => changeMode("move_now")}><ArrowRightLeft size={14} /> Sofort wechseln</Button></div>
           <section className="transfer-section"><header><strong>Zielverein</strong><span>{destinationOptions.length}</span></header><div className="transfer-club-list">{destinationOptions.map((club) => <Button key={club.id} variant={destinationId === club.id ? "primary" : "secondary"} aria-label={`Transferziel ${club.name}`} onPress={() => { setDestinationId(club.id); setSwapPlayerId(null); setPrepared(null); }}><Building2 size={13} /><span><strong>{club.name}</strong><small>{club.competition ?? club.nation ?? "–"}</small></span>{destinationId === club.id && <Check size={12} />}</Button>)}</div></section>
           <section className="transfer-section"><header><strong>Transferart</strong></header><div className="transfer-kind-tabs">{(["permanent", "loan", "free_transfer", "swap"] as const).map((kind) => <Button key={kind} size="sm" variant={transferKind === kind ? "primary" : "ghost"} onPress={() => changeKind(kind)}>{kindLabel(kind)}</Button>)}</div></section>
-          {transferKind === "swap" && <section className="transfer-section transfer-swap-section"><header><strong>Tauschpartner beim Zielverein</strong><span>{swapCandidates.length}</span></header><div className="transfer-swap-list">{swapCandidates.length ? swapCandidates.map((player) => <Button key={player.id} variant={swapPlayerId === player.id ? "primary" : "secondary"} aria-label={`Tauschpartner ${player.name}`} onPress={() => { setSwapPlayerId(player.id); setSwapWage(player.details?.contract?.wage ?? player.wage ?? 0); setPrepared(null); }}><span className="transfer-avatar">{initials(player.name)}</span><span><strong>{player.name}</strong><small>{player.positions.join(" · ")} · {formatMoney(player.value)}</small></span>{swapPlayerId === player.id && <Check size={12} />}</Button>) : <p>Für dieses Ziel ist kein Spieler mit kanonischem Vereinsvertrag geladen.</p>}</div></section>}
+          {transferKind === "swap" && <section className="transfer-section transfer-swap-section"><header><strong>Tauschpartner beim Zielverein</strong><span>{swapCandidates.length}</span></header><div className="transfer-swap-list">{swapCandidates.length ? swapCandidates.map((player) => <Button key={player.id} variant={swapPlayerId === player.id ? "primary" : "secondary"} aria-label={`Tauschpartner ${player.name}`} onPress={() => { setSwapPlayerId(player.id); setSwapWage(player.details?.contract?.wage ?? player.wage ?? 0); setSwapContractTerms(termsDraft()); setPrepared(null); }}><span className="transfer-avatar">{initials(player.name)}</span><span><strong>{player.name}</strong><small>{player.positions.join(" · ")} · {formatMoney(player.value)}</small></span>{swapPlayerId === player.id && <Check size={12} />}</Button>) : <p>Für dieses Ziel ist kein Spieler mit kanonischem Vereinsvertrag geladen.</p>}</div></section>}
           <div className="transfer-form-grid">
             {mode === "arrange_future" && <label><span>Transferdatum</span><input aria-label="Transferdatum" type="date" value={effectiveDate} onChange={(event) => { setEffectiveDate(event.target.value); setPrepared(null); }} /></label>}
             {transferKind !== "free_transfer" && <NumberInput label="Gebühr" value={fee} onChange={(value) => { setFee(value); setPrepared(null); }} maximum={1_000_000_000_000} />}
@@ -333,6 +349,8 @@ export function TransferWorkspace({
             <TextField aria-label="Kaderstatus" value={squadStatus} onChange={(value) => { setSquadStatus(value); setPrepared(null); }}><span className="transfer-input-label">Kaderstatus</span><Input /></TextField>
             {transferKind === "swap" && <><NumberInput label="Partner-Wochengehalt" value={swapWage} onChange={(value) => { setSwapWage(value); setPrepared(null); }} maximum={100_000_000} /><label><span>Partner-Vertragsende</span><input aria-label="Partner-Vertragsende" type="date" value={swapContractEnd} onChange={(event) => { setSwapContractEnd(event.target.value); setPrepared(null); }} /></label><TextField aria-label="Partner-Kaderstatus" value={swapSquadStatus} onChange={(value) => { setSwapSquadStatus(value); setPrepared(null); }}><span className="transfer-input-label">Partner-Kaderstatus</span><Input /></TextField></>}
           </div>
+          <ContractTermsFields title="Vertragsboni & Klauseln" draft={contractTerms} onChange={(value) => { setContractTerms(value); setPrepared(null); }} />
+          {transferKind === "swap" && <ContractTermsFields title="Partner-Boni & Klauseln" prefix="Partner-" draft={swapContractTerms} onChange={(value) => { setSwapContractTerms(value); setPrepared(null); }} />}
           <Button className="w-full" isDisabled={busy || !selected || !destination || (transferKind === "swap" && !swapPlayer)} onPress={() => prepare()}><ShieldCheck size={15} /> {busy ? "Validiere …" : "Transfervorschau erstellen"}</Button>
         </Card.Content>
       </Card>
@@ -352,6 +370,18 @@ export function TransferWorkspace({
 
 function NumberInput({ label, value, onChange, maximum }: { label: string; value: number; onChange: (value: number) => void; maximum: number }) {
   return <label><span>{label}</span><NumberField aria-label={label} value={value} minValue={0} maxValue={maximum} onChange={onChange}><NumberField.Group><NumberField.Input /><NumberField.DecrementButton aria-label={`${label} verringern`}>−</NumberField.DecrementButton><NumberField.IncrementButton aria-label={`${label} erhöhen`}>+</NumberField.IncrementButton></NumberField.Group></NumberField></label>;
+}
+
+function ContractTermsFields({ title, prefix = "", draft, onChange }: { title: string; prefix?: string; draft: ContractTermsDraft; onChange: (value: ContractTermsDraft) => void }) {
+  const update = (field: keyof ContractTermsDraft, value: number) => onChange({ ...draft, [field]: value });
+  return <section className="transfer-section"><header><strong>{title}</strong></header><div className="transfer-form-grid">
+    <NumberInput label={`${prefix}Handgeld`} value={draft.signingOnFee} onChange={(value) => update("signingOnFee", value)} maximum={1_000_000_000_000} />
+    <NumberInput label={`${prefix}Einsatzprämie`} value={draft.appearanceFee} onChange={(value) => update("appearanceFee", value)} maximum={1_000_000_000_000} />
+    <NumberInput label={`${prefix}Torprämie`} value={draft.goalBonus} onChange={(value) => update("goalBonus", value)} maximum={1_000_000_000_000} />
+    <NumberInput label={`${prefix}Mindestablöse`} value={draft.minimumFeeRelease} onChange={(value) => update("minimumFeeRelease", value)} maximum={1_000_000_000_000} />
+    <NumberInput label={`${prefix}Weiterverkaufsanteil Prozent`} value={draft.sellOnProfitPercentage} onChange={(value) => update("sellOnProfitPercentage", value)} maximum={100} />
+    <NumberInput label={`${prefix}Jährliche Gehaltssteigerung Prozent`} value={draft.yearlyWageRisePercentage} onChange={(value) => update("yearlyWageRisePercentage", value)} maximum={100} />
+  </div></section>;
 }
 
 function FutureTransferCard({ transfer, snapshot }: { transfer: FutureTransfer; snapshot: DatabaseSnapshot }) {
@@ -374,6 +404,33 @@ function formatInputDate(date: GameDate) { return `${date.year}-${String(date.mo
 function formatGameDate(date: GameDate) { return `${String(date.day).padStart(2, "0")}.${String(date.month).padStart(2, "0")}.${date.year}`; }
 function formatMoney(value: number | null) { return value == null ? "–" : new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }).format(value); }
 function initials(name: string) { return name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toLocaleUpperCase("de"); }
+function termsDraft(): ContractTermsDraft {
+  return {
+    signingOnFee: 0,
+    appearanceFee: 0,
+    goalBonus: 0,
+    minimumFeeRelease: 0,
+    sellOnProfitPercentage: 0,
+    yearlyWageRisePercentage: 0,
+  };
+}
+function structuredTerms(personId: string, draft: ContractTermsDraft): Pick<Contract, "bonuses" | "clauses"> {
+  const id = (kind: string) => `contract-${kind}-${personId}`.slice(0, 128);
+  const bonuses: NonNullable<Contract["bonuses"]> = [
+    ["signing_on_fee", draft.signingOnFee],
+    ["appearance_fee", draft.appearanceFee],
+    ["goal_bonus", draft.goalBonus],
+  ].filter((entry) => Number(entry[1]) > 0).map(([kind, amount]) => ({
+    id: id(String(kind)),
+    kind: kind as NonNullable<Contract["bonuses"]>[number]["kind"],
+    amount: Number(amount),
+  }));
+  const clauses: NonNullable<Contract["clauses"]> = [];
+  if (draft.minimumFeeRelease > 0) clauses.push({ id: id("minimum_fee_release"), kind: "minimum_fee_release", value: { kind: "money", value: draft.minimumFeeRelease } });
+  if (draft.sellOnProfitPercentage > 0) clauses.push({ id: id("sell_on_profit_percentage"), kind: "sell_on_profit_percentage", value: { kind: "percentage", value: draft.sellOnProfitPercentage } });
+  if (draft.yearlyWageRisePercentage > 0) clauses.push({ id: id("yearly_wage_rise_percentage"), kind: "yearly_wage_rise_percentage", value: { kind: "percentage", value: draft.yearlyWageRisePercentage } });
+  return { bonuses, clauses };
+}
 function newId(prefix: string) { return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
 function kindLabel(kind: TransferKind) { return { permanent: "Festtransfer", loan: "Leihe", free_transfer: "Ablösefrei", swap: "Tausch" }[kind]; }
 function compact(value: unknown) { const text = JSON.stringify(value); return text.length > 70 ? `${text.slice(0, 67)}…` : text; }

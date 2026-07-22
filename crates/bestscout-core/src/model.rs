@@ -165,6 +165,59 @@ pub enum ContractType {
     Unknown,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ContractBonusKind {
+    SigningOnFee,
+    LoyaltyBonus,
+    AppearanceFee,
+    UnusedSubstituteFee,
+    GoalBonus,
+    AssistBonus,
+    CleanSheetBonus,
+    InternationalCapBonus,
+    TeamOfYearBonus,
+    PromotionBonus,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ContractBonus {
+    pub id: String,
+    pub kind: ContractBonusKind,
+    pub amount: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ContractClauseKind {
+    MinimumFeeRelease,
+    ForeignClubMinimumFeeRelease,
+    RelegationRelease,
+    NonPromotionRelease,
+    SellOnFeePercentage,
+    SellOnProfitPercentage,
+    YearlyWageRisePercentage,
+    PromotionWageRisePercentage,
+    RelegationWageDropPercentage,
+    OptionalContractExtensionYears,
+    AutomaticExtensionAppearances,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "value", rename_all = "snake_case")]
+pub enum ContractClauseValue {
+    Money(f64),
+    Percentage(u8),
+    Count(u16),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ContractClause {
+    pub id: String,
+    pub kind: ContractClauseKind,
+    pub value: ContractClauseValue,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Contract {
@@ -175,6 +228,8 @@ pub struct Contract {
     pub wage: Option<f64>,
     pub release_clause: Option<f64>,
     pub squad_status: Option<String>,
+    pub bonuses: Vec<ContractBonus>,
+    pub clauses: Vec<ContractClause>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -786,6 +841,32 @@ mod tests {
         assert!(GameDate::new(2027, 2, 29).is_none());
         assert!(GameDate::new(2027, 13, 1).is_none());
         assert!(GameDate::new(2027, 4, 31).is_none());
+    }
+
+    #[test]
+    fn contract_terms_are_backward_compatible_and_strongly_typed() {
+        let legacy: Contract = serde_json::from_value(serde_json::json!({
+            "club_id": "club-1",
+            "contract_type": "full_time",
+            "wage": 12000
+        }))
+        .unwrap();
+        assert!(legacy.bonuses.is_empty());
+        assert!(legacy.clauses.is_empty());
+
+        let clause = ContractClause {
+            id: "sell-on".into(),
+            kind: ContractClauseKind::SellOnProfitPercentage,
+            value: ContractClauseValue::Percentage(15),
+        };
+        assert_eq!(
+            serde_json::to_value(&clause).unwrap(),
+            serde_json::json!({
+                "id": "sell-on",
+                "kind": "sell_on_profit_percentage",
+                "value": { "kind": "percentage", "value": 15 }
+            })
+        );
     }
 
     #[test]

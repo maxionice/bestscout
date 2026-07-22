@@ -25,6 +25,24 @@ Older snapshots remain compatible because `future_transfer` defaults to null.
 The full record is visible in the generic database and editor as well as the
 dedicated Transfer Center.
 
+## Contract terms
+
+Player and staff contracts carry backward-compatible lists of typed bonuses and
+clauses. Ten bonus kinds cover signing, loyalty, appearance, substitute, goal,
+assist, clean-sheet, cap, team-of-the-year and promotion payments. Eleven
+clause kinds cover release values, sell-on percentages, wage changes and
+extension triggers. Clause values are explicitly tagged as money, percentage
+or count; snapshot validation rejects a value category that does not match the
+clause kind.
+
+IDs and kinds are unique per contract, lists contain at most 32 items, monetary
+values are finite and limited to one trillion, percentages are 0–100, extension
+years are 1–5 and appearance triggers are 1–1000. The legacy single release-clause field remains readable for old
+snapshots. The Transfer Center writes a matching typed minimum-fee clause for
+new contracts and offers the common signing, appearance, goal, sell-on and
+annual-rise terms. Every supported term remains available through the generic
+validated editor and searchable database tables.
+
 ## Actions
 
 `prepare_transfer_action` supports an immediate move, arranging or replacing a
@@ -47,6 +65,10 @@ single-player commands reject swap records, so BestScout cannot prepare half of
 a swap through the transfer API. Immediate and completed swaps also clear both
 players' previous competition registrations atomically; arranging or cancelling
 a future swap leaves registrations unchanged.
+
+Target-contract bonus and clause drafts are built for each side independently.
+Stable term IDs make repeated previews deterministic. Staff reassignment keeps
+existing typed terms unless they are intentionally changed through the editor.
 
 Each changed field carries the exact value read for preview as
 `expected_before`. Applying the prepared transaction therefore rejects stale

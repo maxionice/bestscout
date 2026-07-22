@@ -303,6 +303,14 @@ export default function App() {
       case "club": return player.club ?? "–";
       case "nationality": return player.nationality ?? "–";
       case "preferred_foot": return ({ left: "Links", right: "Rechts", both: "Beidfüßig", unknown: "–" } as const)[player.preferred_foot];
+      case "secondary_nationalities": return player.details?.secondary_nationalities?.join(", ") || "–";
+      case "height_cm": return player.details?.appearance?.height_cm ?? "–";
+      case "weight_kg": return player.details?.appearance?.weight_kg ?? "–";
+      case "skin_tone": return player.details?.appearance?.skin_tone ?? "–";
+      case "hair_colour": return player.details?.appearance?.hair_colour ?? "–";
+      case "hair_length": return player.details?.appearance?.hair_length ?? "–";
+      case "ethnicity": return player.details?.appearance?.ethnicity ?? "–";
+      case "preferred_moves": return player.details?.preferred_moves?.map((item) => item.name).join(", ") || "–";
       case "value": return player.value ? money.format(player.value) : "–";
       case "wage": return player.wage ? `${money.format(player.wage)} / W.` : "–";
       case "current_ability": return <span className="ca">{player.current_ability ?? "?"}</span>;
@@ -328,6 +336,8 @@ export default function App() {
       case "contract_wage": return player.details?.contract?.wage == null ? "–" : `${money.format(player.details.contract.wage)} / W.`;
       case "release_clause": return player.details?.contract?.release_clause == null ? "–" : money.format(player.details.contract.release_clause);
       case "squad_status": return player.details?.contract?.squad_status ?? "–";
+      case "contract_bonuses": return player.details?.contract?.bonuses?.map((item) => `${item.kind}: ${money.format(item.amount)}`).join(", ") || "–";
+      case "contract_clauses": return player.details?.contract?.clauses?.map((item) => `${item.kind}: ${item.value.value}${item.value.kind === "percentage" ? "%" : ""}`).join(", ") || "–";
       case "future_transfer_kind": return player.details?.future_transfer?.kind ?? "–";
       case "future_transfer_destination": return player.details?.future_transfer?.to_club_id ?? "–";
       case "future_transfer_date": return formatGameDate(player.details?.future_transfer?.effective_on);

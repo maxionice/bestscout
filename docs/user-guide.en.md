@@ -77,7 +77,8 @@ commands against one canonical snapshot. Every command validates references and
 domain invariants before presenting a preview.
 
 - **Verfügbarkeit** covers fitness, condition, morale, injuries and bans.
-- **Transfers** covers immediate, future, loan and reciprocal swap routes.
+- **Transfers** covers immediate, future, loan and reciprocal swap routes plus
+  typed contract bonuses and money, percentage or count clauses.
 - **People** covers player/staff identity, secondary nationalities, appearance,
   preferred moves, staff assignments, languages, qualifications, registrations
   and relationships. Ethnicity is accepted only as canonical FM data and is
