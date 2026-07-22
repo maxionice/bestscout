@@ -26,15 +26,21 @@ Der aktuelle Stack ist absichtlich linear:
 | #30 | `agent/newgen-facepacks` | PR #29 | sichere Newgen-Facepack-Werkzeuge |
 | #31 | `agent/bilingual-documentation` | PR #30 | deutsche und englische Benutzerdokumentation |
 | #32 | `agent/bridge-reproducibility` | PR #31 | reproduzierbarer lokaler Bridge-Build |
+| #33 | `agent/release-readiness-gates` | PR #32 | harte 1.0-Release-Readiness-Gates |
+| #34 | `agent/club-branding-relationships` | PR #33 | Clubfarben, Trikots und Clubbeziehungen |
+| #35 | `agent/person-appearance-preferred-moves` | PR #34 | Personenprofile und bevorzugte Spielzüge |
 
-PR #25 bis #31 sind offen, Draft, mergebar und vollständig grün. PR #32 wurde
-nach vollständiger lokaler Prüfung als Draft geöffnet; dessen GitHub-CI muss vor
-einer Freigabe ebenfalls vollständig grün sein. Keine offene Draft-Stufe als
-bereits in `main` enthalten behandeln.
+PR #25 bis #34 sind offen, Draft, mergebar und vollständig grün. PR #35 wurde
+nach vollständiger lokaler Prüfung als Draft geöffnet; dessen GitHub-CI läuft.
+Keine offene Draft-Stufe als bereits in `main` enthalten behandeln.
 
 ## Implementierter Stand
 
 - kanonische Spieler-, Staff-, Club-, Wettbewerbs- und Transfermodelle;
+- kanonische Personenprofile mit weiteren Nationalitäten, begrenztem
+  Erscheinungsbild und bevorzugten Spielzügen;
+- kanonische Clubfarben, vier typisierte Trikotslots und referenzielle
+  Clubbeziehungen;
 - Suche, Filter, Rollenratings, Entwicklungs-/Marktlisten und Squad-Analyse;
 - zweiphasige, konfliktgeprüfte Commands für People, Clubs, Wettbewerbe,
   Transfers, Verfügbarkeit, Mass Edit und Freezer;
@@ -45,6 +51,8 @@ bereits in `main` enthalten behandeln.
 - OIDC-/Sigstore-Attestierungsworkflow, der einen Draft-Release erst nach
   vollständigen Artefakten und erfolgreicher unabhängiger Verifikation
   veröffentlicht;
+- ein tag-, versions- und main-gebundener Release-Readiness-Prüfer, der alle
+  Roadmap-, Paritäts- und Acceptance-Gates scannt;
 - topic-parallele deutsche und englische Benutzerhandbücher mit automatischer
   Link- und Vollständigkeitsprüfung;
 - Bridge 0.5.0 für den .NET-6-BepInEx-Host mit authentifiziertem, begrenztem,
@@ -57,7 +65,7 @@ Bereichsdokumente bleiben jeweils maßgeblich.
 
 ## Aktueller Prüfstand
 
-Auf `agent/bridge-reproducibility` erfolgreich ausgeführt:
+Auf `agent/person-appearance-preferred-moves` erfolgreich ausgeführt:
 
 ```text
 cargo fmt --all -- --check
@@ -67,11 +75,15 @@ node --test scripts/*.test.mjs
 npm test --workspace @bestscout/desktop
 npm run build --workspace @bestscout/desktop
 node scripts/verify-release-metadata.mjs
+node scripts/verify-release-readiness.mjs
+scripts/build-linux-packages.sh
 scripts/build-bridge.sh "/path/to/Football Manager 26"
 ```
 
-Ergebnis: 121 Rust-Tests, 62 Vitest-/DOM-Tests, 6 Node-Release-/Doku-Tests,
-Clippy ohne Warnung, Formatierung, TypeScript/Vite und Release-Metadaten grün.
+Ergebnis: 125 Rust-Tests, 65 Vitest-/DOM-Tests, 9 Node-Release-/Doku-Tests,
+Clippy ohne Warnung, Formatierung, TypeScript/Vite, Linux-Pakete und
+Release-Metadaten grün. Der Readiness-Prüfer meldet exakt 62 noch offene 1.0-
+Gates und blockiert deshalb korrekt einen stabilen Release.
 Der Bridge-Build wurde vor und nach Commit sowie in einem zweiten absoluten
 Checkout-Pfad bytegleich bestätigt:
 
