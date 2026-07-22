@@ -103,6 +103,8 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
     let mut relationship_ids = HashSet::new();
     let mut registration_ids = HashSet::new();
     let mut qualification_ids = HashSet::new();
+    let mut stage_ids = HashSet::new();
+    let mut fixture_ids = HashSet::new();
     for player in &snapshot.players {
         if player.name.trim().is_empty() {
             issue(
@@ -554,6 +556,64 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
                 "competition name must not be empty",
             );
         }
+        if competition.name.chars().count() > 128 {
+            issue(
+                &mut issues,
+                "competition_name_too_long",
+                "competition",
+                &competition.id,
+                "name",
+                "competition name must not exceed 128 characters",
+            );
+        }
+        for (field, value, maximum) in [
+            ("short_name", competition.short_name.as_deref(), 32),
+            ("nation", competition.nation.as_deref(), 64),
+            (
+                "current_champion",
+                competition.current_champion.as_deref(),
+                128,
+            ),
+        ] {
+            if value.is_some_and(|value| value.trim().is_empty() || value.chars().count() > maximum)
+            {
+                issue(
+                    &mut issues,
+                    "invalid_competition_text",
+                    "competition",
+                    &competition.id,
+                    field,
+                    format!(
+                        "competition {field} must be non-empty and at most {maximum} characters"
+                    ),
+                );
+            }
+        }
+        if let Some(champion_id) = competition.current_champion_club_id.as_deref() {
+            match snapshot.clubs.iter().find(|club| club.id == champion_id) {
+                None => issue(
+                    &mut issues,
+                    "unknown_champion_reference",
+                    "competition",
+                    &competition.id,
+                    "current_champion_club_id",
+                    "current champion must reference a club in the snapshot",
+                ),
+                Some(club)
+                    if competition.current_champion.as_deref() != Some(club.name.as_str()) =>
+                {
+                    issue(
+                        &mut issues,
+                        "champion_name_mismatch",
+                        "competition",
+                        &competition.id,
+                        "current_champion",
+                        "current champion name must match its referenced club",
+                    );
+                }
+                Some(_) => {}
+            }
+        }
         validate_reputation(
             &mut issues,
             "competition",
@@ -570,6 +630,324 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
                 "level",
                 "competition level must be greater than zero",
             );
+        }
+
+        if competition.stages.len() > 1_000 {
+            issue(
+                &mut issues,
+                "too_many_competition_stages",
+                "competition",
+                &competition.id,
+                "stages",
+                "a competition may not contain more than 1000 stages",
+            );
+        }
+        if competition.fixtures.len() > 100_000 {
+            issue(
+                &mut issues,
+                "too_many_competition_fixtures",
+                "competition",
+                &competition.id,
+                "fixtures",
+                "a competition may not contain more than 100000 fixtures",
+            );
+        }
+        if competition.standings.len() > 10_000 {
+            issue(
+                &mut issues,
+                "too_many_competition_standings",
+                "competition",
+                &competition.id,
+                "standings",
+                "a competition may not contain more than 10000 standing rows",
+            );
+        }
+
+        let mut competition_stage_ids = HashSet::new();
+        let mut stage_orders = HashSet::new();
+        let mut current_stage_count = 0usize;
+        for (index, stage) in competition.stages.iter().enumerate() {
+            let prefix = format!("stages.{index}");
+            if stage.id.trim().is_empty()
+                || stage.id.chars().count() > 128
+                || !stage_ids.insert(stage.id.as_str())
+            {
+                issue(
+                    &mut issues,
+                    "invalid_competition_stage_id",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.id"),
+                    "stage IDs must be non-empty, at most 128 characters and globally unique",
+                );
+            }
+            competition_stage_ids.insert(stage.id.as_str());
+            if stage.name.trim().is_empty() || stage.name.chars().count() > 128 {
+                issue(
+                    &mut issues,
+                    "invalid_competition_stage_name",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.name"),
+                    "stage names must be non-empty and at most 128 characters",
+                );
+            }
+            if stage.order == 0 || !stage_orders.insert(stage.order) {
+                issue(
+                    &mut issues,
+                    "invalid_competition_stage_order",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.order"),
+                    "stage order must be positive and unique within the competition",
+                );
+            }
+            if stage.current {
+                current_stage_count += 1;
+            }
+            validate_date_range(
+                &mut issues,
+                "competition",
+                &competition.id,
+                &prefix,
+                ("starts_on", stage.starts_on),
+                ("ends_on", stage.ends_on),
+            );
+        }
+        if current_stage_count > 1 {
+            issue(
+                &mut issues,
+                "multiple_current_competition_stages",
+                "competition",
+                &competition.id,
+                "stages",
+                "at most one competition stage may be current",
+            );
+        }
+
+        for (index, fixture) in competition.fixtures.iter().enumerate() {
+            let prefix = format!("fixtures.{index}");
+            if fixture.id.trim().is_empty()
+                || fixture.id.chars().count() > 128
+                || !fixture_ids.insert(fixture.id.as_str())
+            {
+                issue(
+                    &mut issues,
+                    "invalid_competition_fixture_id",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.id"),
+                    "fixture IDs must be non-empty, at most 128 characters and globally unique",
+                );
+            }
+            if fixture
+                .stage_id
+                .as_deref()
+                .is_some_and(|id| !competition_stage_ids.contains(id))
+            {
+                issue(
+                    &mut issues,
+                    "unknown_fixture_stage_reference",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.stage_id"),
+                    "fixture stage must belong to the same competition",
+                );
+            }
+            for (field, club_id) in [
+                ("home_club_id", fixture.home_club_id.as_str()),
+                ("away_club_id", fixture.away_club_id.as_str()),
+            ] {
+                if !club_ids.contains(club_id) {
+                    issue(
+                        &mut issues,
+                        "unknown_fixture_club_reference",
+                        "competition",
+                        &competition.id,
+                        format!("{prefix}.{field}"),
+                        "fixture club must reference a club in the snapshot",
+                    );
+                }
+            }
+            if fixture.home_club_id == fixture.away_club_id {
+                issue(
+                    &mut issues,
+                    "identical_fixture_clubs",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.away_club_id"),
+                    "fixture home and away clubs must differ",
+                );
+            }
+            if fixture
+                .scheduled_on
+                .is_some_and(|date| GameDate::new(date.year, date.month, date.day) != Some(date))
+            {
+                issue(
+                    &mut issues,
+                    "invalid_date",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.scheduled_on"),
+                    "fixture date is not a valid calendar date",
+                );
+            }
+            for (field, value, maximum) in [
+                ("round", fixture.round.as_deref(), 64),
+                ("venue", fixture.venue.as_deref(), 128),
+            ] {
+                if value
+                    .is_some_and(|value| value.trim().is_empty() || value.chars().count() > maximum)
+                {
+                    issue(
+                        &mut issues,
+                        "invalid_fixture_text",
+                        "competition",
+                        &competition.id,
+                        format!("{prefix}.{field}"),
+                        format!(
+                            "fixture {field} must be non-empty and at most {maximum} characters"
+                        ),
+                    );
+                }
+            }
+            let paired_scores = fixture.home_score.is_some() == fixture.away_score.is_some();
+            if !paired_scores
+                || fixture
+                    .home_score
+                    .zip(fixture.away_score)
+                    .is_some_and(|(home, away)| home > 99 || away > 99)
+            {
+                issue(
+                    &mut issues,
+                    "invalid_fixture_score",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.home_score"),
+                    "fixture scores must be paired and may not exceed 99",
+                );
+            }
+            match fixture.status {
+                crate::FixtureStatus::Played
+                    if fixture.home_score.is_none() || fixture.away_score.is_none() =>
+                {
+                    issue(
+                        &mut issues,
+                        "missing_played_fixture_score",
+                        "competition",
+                        &competition.id,
+                        format!("{prefix}.home_score"),
+                        "played fixtures require a complete score",
+                    );
+                }
+                crate::FixtureStatus::Scheduled
+                | crate::FixtureStatus::Postponed
+                | crate::FixtureStatus::Cancelled
+                    if fixture.home_score.is_some() =>
+                {
+                    issue(
+                        &mut issues,
+                        "unexpected_fixture_score",
+                        "competition",
+                        &competition.id,
+                        format!("{prefix}.home_score"),
+                        "scheduled, postponed and cancelled fixtures may not have a score",
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        let mut standing_clubs = HashSet::new();
+        let mut standing_positions = HashSet::new();
+        for (index, standing) in competition.standings.iter().enumerate() {
+            let prefix = format!("standings.{index}");
+            let stage_scope = standing.stage_id.as_deref();
+            if stage_scope.is_some_and(|id| !competition_stage_ids.contains(id)) {
+                issue(
+                    &mut issues,
+                    "unknown_standing_stage_reference",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.stage_id"),
+                    "standing stage must belong to the same competition",
+                );
+            }
+            if !club_ids.contains(standing.club_id.as_str()) {
+                issue(
+                    &mut issues,
+                    "unknown_standing_club_reference",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.club_id"),
+                    "standing club must reference a club in the snapshot",
+                );
+            }
+            if !standing_clubs.insert((stage_scope, standing.club_id.as_str())) {
+                issue(
+                    &mut issues,
+                    "duplicate_standing_club",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.club_id"),
+                    "a club may appear once per standing stage",
+                );
+            }
+            if standing.position == 0
+                || !standing_positions.insert((stage_scope, standing.position))
+            {
+                issue(
+                    &mut issues,
+                    "invalid_standing_position",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.position"),
+                    "standing position must be positive and unique per stage",
+                );
+            }
+            let totals = [
+                standing.played,
+                standing.won,
+                standing.drawn,
+                standing.lost,
+                standing.goals_for,
+                standing.goals_against,
+            ];
+            if totals.into_iter().any(|value| value > 10_000)
+                || u32::from(standing.won) + u32::from(standing.drawn) + u32::from(standing.lost)
+                    != u32::from(standing.played)
+            {
+                issue(
+                    &mut issues,
+                    "invalid_standing_totals",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.played"),
+                    "standing totals must be bounded and played must equal won plus drawn plus lost",
+                );
+            }
+            let expected_difference =
+                i32::from(standing.goals_for) - i32::from(standing.goals_against);
+            if i32::from(standing.goal_difference) != expected_difference {
+                issue(
+                    &mut issues,
+                    "invalid_standing_goal_difference",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.goal_difference"),
+                    "goal difference must equal goals for minus goals against",
+                );
+            }
+            if !(-10_000..=10_000).contains(&standing.points) {
+                issue(
+                    &mut issues,
+                    "standing_points_out_of_range",
+                    "competition",
+                    &competition.id,
+                    format!("{prefix}.points"),
+                    "standing points must be between -10000 and 10000",
+                );
+            }
         }
     }
 
@@ -1500,6 +1878,52 @@ mod tests {
             "invalid_professional_status",
             "stadium_capacity_out_of_range",
             "attendance_out_of_range",
+        ] {
+            assert!(
+                report.issues.iter().any(|issue| issue.code == code),
+                "missing expected issue code {code}: {:?}",
+                report.issues
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_competition_stages_fixtures_and_standings() {
+        let mut snapshot = synthetic_snapshot();
+        let competition = &mut snapshot.competitions[0];
+        competition.current_champion = Some("Falscher Titelverteidiger".into());
+        competition.stages[0].name.clear();
+        competition.stages[0].order = 0;
+        competition.stages[0].starts_on = GameDate::new(2027, 6, 1);
+        competition.stages[0].ends_on = GameDate::new(2027, 5, 31);
+        competition.fixtures[0].stage_id = Some("missing-stage".into());
+        competition.fixtures[0].away_club_id = "missing-club".into();
+        competition.fixtures[0].status = crate::FixtureStatus::Played;
+        competition.fixtures[0].home_score = Some(1);
+        competition.fixtures[0].away_score = None;
+        competition.standings[0].stage_id = Some("missing-stage".into());
+        competition.standings[0].club_id = "missing-club".into();
+        competition.standings[0].played = 2;
+        competition.standings[0].goals_for = 3;
+        competition.standings[0].goal_difference = 0;
+        competition.standings[0].points = 10_001;
+
+        let report = validate_snapshot(&snapshot);
+        assert!(!report.valid);
+        for code in [
+            "champion_name_mismatch",
+            "invalid_competition_stage_name",
+            "invalid_competition_stage_order",
+            "invalid_date_range",
+            "unknown_fixture_stage_reference",
+            "unknown_fixture_club_reference",
+            "invalid_fixture_score",
+            "missing_played_fixture_score",
+            "unknown_standing_stage_reference",
+            "unknown_standing_club_reference",
+            "invalid_standing_totals",
+            "invalid_standing_goal_difference",
+            "standing_points_out_of_range",
         ] {
             assert!(
                 report.issues.iter().any(|issue| issue.code == code),

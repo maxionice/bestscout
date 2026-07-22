@@ -11,6 +11,7 @@ import { AvailabilityWorkspace } from "./AvailabilityWorkspace";
 import { demoPlayers } from "./demo";
 import { ComparisonWorkspace } from "./ComparisonWorkspace";
 import { ClubWorkspace } from "./ClubWorkspace";
+import { CompetitionWorkspace } from "./CompetitionWorkspace";
 import { DatabaseWorkspace } from "./DatabaseWorkspace";
 import { EditorWorkspace } from "./EditorWorkspace";
 import { FreezerWorkspace } from "./FreezerWorkspace";
@@ -34,7 +35,7 @@ import type {
 
 const nav = [
   [LayoutDashboard, "Übersicht"], [Sparkles, "Scout-Intel"], [TableProperties, "Datenbank"], [Search, "Spielersuche"], [Users, "Kaderanalyse"],
-  [Star, "Shortlist"], [BarChart3, "Vergleich"], [HeartPulse, "Verfügbarkeit"], [ArrowRightLeft, "Transfers"], [UserRoundCog, "People"], [Building2, "Club-Zentrale"], [PencilLine, "Editor"], [Snowflake, "Freezer"], [Activity, "Live-Spiel"],
+  [Star, "Shortlist"], [BarChart3, "Vergleich"], [HeartPulse, "Verfügbarkeit"], [ArrowRightLeft, "Transfers"], [UserRoundCog, "People"], [Building2, "Club-Zentrale"], [Trophy, "Wettbewerbs-Zentrale"], [PencilLine, "Editor"], [Snowflake, "Freezer"], [Activity, "Live-Spiel"],
 ] as const;
 
 const money = new Intl.NumberFormat("de-DE", { notation: "compact", style: "currency", currency: "EUR", maximumFractionDigits: 1 });
@@ -82,7 +83,7 @@ export default function App() {
   const visibleColumnDefinitions = playerColumns.filter((column) => column.locked || visibleColumns.includes(column.id));
   const [filtered, setFiltered] = useState<PlayerQueryRow[]>(() => locallyRatedRows(demoPlayers, previewRoles[0]));
   const activeFilterCount = Number(u21Only) + Number(freeAgentsOnly) + Number(minPotential > 0) + Number(maxValueMillions > 0);
-  const metricPlayers = (active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers" || active === "People" || active === "Club-Zentrale") && snapshot ? snapshot.players : players;
+  const metricPlayers = (active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers" || active === "People" || active === "Club-Zentrale" || active === "Wettbewerbs-Zentrale") && snapshot ? snapshot.players : players;
 
   useEffect(() => {
     let cancelled = false;
@@ -397,7 +398,7 @@ export default function App() {
         </header>
 
         <section className="metrics" aria-label="Datenübersicht">
-          <Metric label="Spieler im Datensatz" value={metricPlayers.length.toLocaleString("de-DE")} detail={active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers" || active === "People" || active === "Club-Zentrale" ? "Editor-Arbeitskopie" : "Aktueller Import"} />
+          <Metric label="Spieler im Datensatz" value={metricPlayers.length.toLocaleString("de-DE")} detail={active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers" || active === "People" || active === "Club-Zentrale" || active === "Wettbewerbs-Zentrale" ? "Editor-Arbeitskopie" : "Aktueller Import"} />
           <Metric label="U21-Talente" value={metricPlayers.filter((p) => (p.age ?? 99) <= 21).length.toString()} detail="Potenzialanalyse" accent />
           <Metric label="Auf Shortlist" value={shortlist.size.toString()} detail="Lokale Auswahl" />
           <Metric label="Datenabdeckung" value={`${Math.round(metricPlayers.reduce((sum, p) => sum + Object.keys(p.attributes).length, 0) / Math.max(metricPlayers.length, 1) / totalPlayerAttributes * 100)}%`} detail="47 FM26-Attribute" />
@@ -427,6 +428,8 @@ export default function App() {
           <PeopleWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
         ) : active === "Club-Zentrale" ? (
           <ClubWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
+        ) : active === "Wettbewerbs-Zentrale" ? (
+          <CompetitionWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
         ) : active === "Editor" ? (
           <EditorWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
         ) : active === "Freezer" ? (

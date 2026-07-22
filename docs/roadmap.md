@@ -55,7 +55,8 @@
 - [x] Canonical staff, registrations, languages, qualifications and relationships
 - [x] HeroUI People & Registration Center with exact preview, journal and undo
 - [ ] Live staff, registration and relationship field adapter acceptance
-- [ ] Competitions, fixtures and stages
+- [x] Canonical competitions, fixtures, stages and standings center
+- [ ] Live competition, fixture, stage and standings field adapter acceptance
 - [x] Canonical attribute freezer, per-field increase policy and change monitor
 - [ ] Automatic live freezer scheduling and read-back acceptance
 - [ ] Newgen and facepack tooling

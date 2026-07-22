@@ -74,7 +74,9 @@ const competitionGridColumns: GridColumn[] = [
   { id: "id", label: "Datenbank-ID" }, { id: "name", label: "Name" },
   { id: "short_name", label: "Kurzname" }, { id: "nation", label: "Nation" },
   { id: "reputation", label: "Reputation" }, { id: "current_champion", label: "Titelverteidiger" },
-  { id: "level", label: "Ligaebene" },
+  { id: "current_champion_club_id", label: "Titelverteidiger-ID" },
+  { id: "level", label: "Ligaebene" }, { id: "stages", label: "Stufen" },
+  { id: "fixtures", label: "Paarungen" }, { id: "standings", label: "Tabellenzeilen" },
 ];
 
 export function DatabaseWorkspace({ players, snapshot }: { players: Player[]; snapshot: DatabaseSnapshot | null }) {
@@ -319,7 +321,9 @@ function competitionRow(competition: Competition): GridRow {
       id: competition.id, name: <EntityName name={competition.name} subtitle={competition.short_name} />,
       short_name: display(competition.short_name), nation: display(competition.nation),
       reputation: display(competition.reputation), current_champion: display(competition.current_champion),
-      level: display(competition.level),
+      current_champion_club_id: display(competition.current_champion_club_id),
+      level: display(competition.level), stages: display(competition.stages?.length),
+      fixtures: display(competition.fixtures?.length), standings: display(competition.standings?.length),
     },
   };
 }

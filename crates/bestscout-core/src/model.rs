@@ -571,6 +571,71 @@ pub struct Club {
     pub facilities: ClubFacilities,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum CompetitionStageKind {
+    #[default]
+    League,
+    Group,
+    Knockout,
+    Qualifying,
+    Playoff,
+    Final,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompetitionStage {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub kind: CompetitionStageKind,
+    pub order: u16,
+    pub starts_on: Option<GameDate>,
+    pub ends_on: Option<GameDate>,
+    pub current: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum FixtureStatus {
+    #[default]
+    Scheduled,
+    InProgress,
+    Played,
+    Postponed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompetitionFixture {
+    pub id: String,
+    pub stage_id: Option<String>,
+    pub home_club_id: String,
+    pub away_club_id: String,
+    pub scheduled_on: Option<GameDate>,
+    #[serde(default)]
+    pub status: FixtureStatus,
+    pub home_score: Option<u16>,
+    pub away_score: Option<u16>,
+    pub round: Option<String>,
+    pub venue: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompetitionStanding {
+    pub stage_id: Option<String>,
+    pub club_id: String,
+    pub position: u16,
+    pub played: u16,
+    pub won: u16,
+    pub drawn: u16,
+    pub lost: u16,
+    pub goals_for: u16,
+    pub goals_against: u16,
+    pub goal_difference: i16,
+    pub points: i16,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Competition {
     pub id: String,
@@ -579,7 +644,15 @@ pub struct Competition {
     pub nation: Option<String>,
     pub reputation: Option<u16>,
     pub current_champion: Option<String>,
+    #[serde(default)]
+    pub current_champion_club_id: Option<String>,
     pub level: Option<u8>,
+    #[serde(default)]
+    pub stages: Vec<CompetitionStage>,
+    #[serde(default)]
+    pub fixtures: Vec<CompetitionFixture>,
+    #[serde(default)]
+    pub standings: Vec<CompetitionStanding>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -680,6 +753,25 @@ mod tests {
 
         assert!(club.competition_id.is_none());
         assert_eq!(club.competition.as_deref(), Some("Legacy League"));
+    }
+
+    #[test]
+    fn accepts_competition_payloads_without_structured_schedule_data() {
+        let competition: Competition = serde_json::from_value(serde_json::json!({
+            "id": "legacy-league",
+            "name": "Legacy League",
+            "short_name": null,
+            "nation": null,
+            "reputation": null,
+            "current_champion": "Legacy FC",
+            "level": 1
+        }))
+        .unwrap();
+
+        assert!(competition.current_champion_club_id.is_none());
+        assert!(competition.stages.is_empty());
+        assert!(competition.fixtures.is_empty());
+        assert!(competition.standings.is_empty());
     }
 
     #[test]
