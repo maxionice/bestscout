@@ -3,7 +3,7 @@
 Stand: 2026-07-22, Europe/Berlin
 
 Dieses Dokument ist der verbindliche Einstiegspunkt für die nächste
-Arbeitssitzung. Es trennt den stabilen öffentlichen Stand, die zwei
+Arbeitssitzung. Es trennt den stabilen öffentlichen Stand, die drei
 gestapelten kanonischen Editor-Meilensteine und die weiterhin gesperrte
 FM26-Live-Grenze.
 
@@ -16,14 +16,18 @@ FM26-Live-Grenze.
 - People-Branch: `agent/staff-registrations-relationships`
 - People-Head: `e1a1341a0aa6ba20c7cb50ab6f10ca6fb9474dc3`
 - People-Draft-PR: `https://github.com/maxionice/bestscout/pull/25`
-- Aktueller Branch: `agent/club-finance-facilities`
+- Club-Branch: `agent/club-finance-facilities`
 - Club-Produktcommit: `3744a48b8495c985e5fdb8c57acbb6f37853523e`
 - Gestapelter Club-Draft-PR: `https://github.com/maxionice/bestscout/pull/26`
+- Aktueller Branch: `agent/competitions-fixtures-stages`
+- Wettbewerbs-Produktcommit: `47196988e4ed25c030381dff09e25d079cbb69d6`
+- Gestapelter Wettbewerbs-Draft-PR: `https://github.com/maxionice/bestscout/pull/27`
 - PR #26 basiert bewusst auf dem People-Branch, nicht direkt auf `main`.
+- PR #27 basiert bewusst auf dem Club-Branch.
 
-PR #25 und PR #26 waren beim letzten Abruf offen, als Draft markiert und
-mergebar. Auf beiden veröffentlichten Produktständen waren jeweils alle sechs
-GitHub-Actions-Jobs grün. Es gab keine offenen Reviewhinweise.
+PR #25, PR #26 und PR #27 waren beim letzten Abruf offen, als Draft markiert
+und mergebar. Auf allen drei veröffentlichten Produktständen waren jeweils
+alle sechs GitHub-Actions-Jobs grün. Es gab keine offenen Reviewhinweise.
 
 ## People-Meilenstein
 
@@ -61,7 +65,29 @@ Details und offene Gates stehen in
 [`docs/architecture/clubs.md`](architecture/clubs.md) und
 [`docs/acceptance/clubs.md`](acceptance/clubs.md).
 
-## Letzter Prüfstand des Club-Produktcommits
+## Wettbewerbs-Meilenstein
+
+PR #27 ergänzt auf dieser Basis:
+
+- rückwärtskompatible optionale Champion-ID sowie strukturierte Stufen,
+  Paarungen und Tabellenstände;
+- snapshotweite Stufen-/Paarungs-IDs, Referenz-, Datums-, Ergebnis- und
+  Tabelleninvarianten mit Größen- und Werteobergrenzen;
+- fünf zweiphasige `CompetitionCommand`-Aktionen für Profil, Stufen,
+  Paarungs-Upsert/-Löschung und Tabelle;
+- bidirektional atomare Namenssynchronisation zwischen stabil referenzierten
+  Wettbewerben, Clubs und Titelverteidigern;
+- Tauri-Protokoll und gemeinsamer Backup-/Journal-/Read-back-/Undo-Commitpfad;
+- HeroUI-v3 Competition Operations Center mit Profil, Stufen, Spielplan und
+  Tabelle;
+- stale Preview-Verfall, asynchrones Sequenzgate und Snapshot-Resync;
+- erweiterte Datenbankspalten für Champion-ID, Stufen, Paarungen und Tabelle.
+
+Details und offene Gates stehen in
+[`docs/architecture/competitions.md`](architecture/competitions.md) und
+[`docs/acceptance/competitions.md`](acceptance/competitions.md).
+
+## Letzter Prüfstand des Wettbewerbs-Produktcommits
 
 Erfolgreich ausgeführt:
 
@@ -77,38 +103,39 @@ scripts/build-linux-packages.sh
 
 Ergebnisse:
 
-- 69 `bestscout-core`-Tests;
-- 103 Rust-Tests im vollständigen Workspace;
-- 54 Vitest-/DOM-Tests in 11 Dateien;
+- 75 `bestscout-core`-Tests;
+- 109 Rust-Tests im vollständigen Workspace;
+- 59 Vitest-/DOM-Tests in 12 Dateien;
 - Clippy ohne Warnung bei `-D warnings`;
 - TypeScript- und Vite-Produktionsbuild grün;
 - AppImage, DEB und RPM lokal gebaut und durch den Bundle-Verifikator
   akzeptiert;
-- alle sechs GitHub-Actions-Jobs auf `3744a48` erfolgreich.
+- alle sechs GitHub-Actions-Jobs auf `4719698` erfolgreich.
 
 Paket-Hashes:
 
-- AppImage: `324c299edb3481d0f2eec1d283661dcc020712d0035dcb2351bdf8cbf364748a`
-- DEB: `6825f92e06ff539f5bdd24a3d5936a59889d027cabbe5cb5d82a2cef77b0a1da`
-- RPM: `141b0446599e28fb5d80b9a383e655a575b487a9dbc5222ec4205fa6a67b13e3`
+- AppImage: `6ef6f45fa6bb96db4f8ceacdaf1278b1ea5051db0aaa363303f01ad674c7fde1`
+- DEB: `05341352722fb95b31512eff33eaf2fa0583388873b662b1e494a43cb8a7d65b`
+- RPM: `db371d2930c6a6cf6498e29a6b91fda22cf2f4d0900fa503748006134d479e1b`
 
 ## Native UI-Gates
 
 Die verbindliche In-App-Browserliste war bei der letzten Wiederaufnahme erneut
-leer (`[]`). Deshalb wurden weder People noch Club nativ breit/schmal,
-vollständig per Tastatur oder mit langen/leeren/großen Datensätzen abgenommen.
+leer (`[]`). Deshalb wurden People, Club und Wettbewerb nicht nativ
+breit/schmal, vollständig per Tastatur oder mit langen/leeren/großen
+Datensätzen abgenommen.
 
 Bis diese Prüfungen real erfolgt sind:
 
-- beide PRs Draft lassen;
+- alle drei PRs Draft lassen;
 - keinen Merge oder 1.0-Paritätsstatus behaupten;
 - keine manuelle UI-Checkbox als bestanden markieren;
 - nicht auf ein anderes Browser-Backend ausweichen.
 
-Wenn die Ansicht verfügbar ist, zuerst PR #25 nativ abnehmen, freigeben und nach
-grüner aktueller CI nach `main` mergen. Danach PR #26 auf den aktualisierten
-`main`-Stand bringen beziehungsweise retargeten, seine native Abnahme und CI
-wiederholen und erst dann mergen.
+Wenn die Ansicht verfügbar ist, zuerst PR #25 nativ abnehmen, freigeben und
+nach grüner aktueller CI nach `main` mergen. Danach PR #26 und anschließend
+PR #27 jeweils auf den aktualisierten Vorgänger bringen beziehungsweise
+retargeten, native Abnahme und CI wiederholen und erst dann mergen.
 
 ## FM26- und Bridge-Status
 
@@ -134,18 +161,20 @@ Sicherheitsregeln:
 
 ```bash
 cd /home/maxi/Dokumente/bestscout
-git switch agent/club-finance-facilities
+git switch agent/competitions-fixtures-stages
 git status -sb
 git diff --check
 gh pr view 25 --json url,state,isDraft,mergeable,headRefOid,statusCheckRollup
 gh pr view 26 --json url,state,isDraft,mergeable,baseRefName,headRefOid,statusCheckRollup
+gh pr view 27 --json url,state,isDraft,mergeable,baseRefName,headRefOid,statusCheckRollup
 gh pr checks 25
 gh pr checks 26
+gh pr checks 27
 ```
 
 Danach die In-App-Browseransicht prüfen. Ist sie weiter nicht verfügbar, die
-beiden nativen Gates offen lassen und den nächsten unabhängigen kanonischen
-Roadmap-Block auf einem eigenen gestapelten Branch fortsetzen.
+drei nativen Gates offen lassen und den nächsten unabhängigen Roadmap-Block
+auf einem eigenen gestapelten Branch fortsetzen.
 
 FM-Live-Arbeit nur nach einem vom Nutzer selbst ausgeführten Neustart und
 geladenem Spielstand rein lesend mit folgendem Einstieg fortsetzen:
