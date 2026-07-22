@@ -1,9 +1,11 @@
 mod editor_store;
+mod freezer_store;
 
 use bestscout_core::ImportResult;
 use tauri::Manager;
 
 use editor_store::EditorStore;
+use freezer_store::FreezerStore;
 
 #[tauri::command]
 fn parse_csv(contents: String) -> Result<ImportResult, String> {
@@ -118,6 +120,58 @@ fn restore_snapshot_backup(
 }
 
 #[tauri::command]
+fn list_freeze_plans(
+    store: tauri::State<'_, FreezerStore>,
+) -> Result<Vec<bestscout_core::FreezePlan>, String> {
+    store.list()
+}
+
+#[tauri::command]
+fn upsert_freeze_plan(
+    store: tauri::State<'_, FreezerStore>,
+    plan: bestscout_core::FreezePlan,
+) -> Result<(), String> {
+    store.upsert(&plan)
+}
+
+#[tauri::command]
+fn delete_freeze_plan(
+    store: tauri::State<'_, FreezerStore>,
+    plan_id: String,
+) -> Result<(), String> {
+    store.delete(&plan_id)
+}
+
+#[tauri::command]
+async fn evaluate_freeze_plan(
+    snapshot: bestscout_core::DatabaseSnapshot,
+    plan: bestscout_core::FreezePlan,
+    checked_at_utc: String,
+) -> Result<bestscout_core::FreezeReport, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        bestscout_core::evaluate_freeze_plan(&snapshot, &plan, checked_at_utc)
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| format!("Freezer-Prüfung fehlgeschlagen: {error}"))?
+}
+
+#[tauri::command]
+async fn prepare_freeze_correction(
+    snapshot: bestscout_core::DatabaseSnapshot,
+    plan: bestscout_core::FreezePlan,
+    transaction_id: String,
+    created_at_utc: String,
+) -> Result<bestscout_core::PreparedFreezeCorrection, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        bestscout_core::prepare_freeze_correction(&snapshot, &plan, transaction_id, created_at_utc)
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| format!("Freezer-Korrekturvorschau fehlgeschlagen: {error}"))?
+}
+
+#[tauri::command]
 fn inspect_fm26_process(pid: u32) -> Result<bestscout_live::ProcessInspection, String> {
     bestscout_live::inspect_process(pid).map_err(|error| error.to_string())
 }
@@ -213,6 +267,8 @@ pub fn run() {
         .setup(|app| {
             let root = app.path().app_data_dir()?.join("editor");
             app.manage(EditorStore::new(root));
+            let freezer_root = app.path().app_data_dir()?.join("freezer").join("plans");
+            app.manage(FreezerStore::new(freezer_root));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -225,6 +281,11 @@ pub fn run() {
             undo_snapshot_transaction,
             editor_history,
             restore_snapshot_backup,
+            list_freeze_plans,
+            upsert_freeze_plan,
+            delete_freeze_plan,
+            evaluate_freeze_plan,
+            prepare_freeze_correction,
             inspect_fm26_process,
             search_database,
             query_players,

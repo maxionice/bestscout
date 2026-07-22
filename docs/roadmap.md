@@ -50,7 +50,8 @@
 
 - [ ] Staff, registrations and relationships
 - [ ] Competitions, fixtures and stages
-- [ ] Attribute freezer and change monitor
+- [x] Canonical attribute freezer, per-field increase policy and change monitor
+- [ ] Automatic live freezer scheduling and read-back acceptance
 - [ ] Newgen and facepack tooling
 
 ## 0.8 — Linux distribution

@@ -52,6 +52,15 @@ preview. Only the exact prepared transaction can be passed to the existing
 persistent commit command, so mass edits receive the same private before/after
 backups, hash proof, journal and exact undo as a single edit.
 
+## Attribute freezer and monitor
+
+The freezer is another producer of ordinary exact editor transactions. It keeps
+versioned per-field baselines, classifies changes according to exact,
+allow-increase or monitor-only policies, and refuses partial correction when a
+target cannot be resolved. Plans are private native documents rather than
+browser-local preferences. See [attribute freezer architecture](attribute-freezer.md)
+for its validation, persistence and future live scheduling boundaries.
+
 ## Future live commit
 
 A build adapter may expose a live commit only after both the local compatibility

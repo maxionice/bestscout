@@ -164,6 +164,62 @@ export type PreparedMassEdit = {
   preview: AppliedTransaction;
 };
 
+export type FreezePolicy = "exact" | "allow_increase" | "monitor_only";
+
+export type FreezeRule = {
+  entity_kind: EditEntityKind;
+  entity_id: string;
+  field: string;
+  baseline: unknown;
+  policy: FreezePolicy;
+};
+
+export type FreezePlan = {
+  schema_version: 1;
+  id: string;
+  name: string;
+  created_at_utc: string;
+  updated_at_utc: string;
+  snapshot_source: DatabaseSnapshot["source"];
+  enabled: boolean;
+  rules: FreezeRule[];
+};
+
+export type FreezeObservationState =
+  | "unchanged"
+  | "allowed_increase"
+  | "observed_change"
+  | "violation"
+  | "missing_entity"
+  | "missing_field"
+  | "type_mismatch";
+
+export type FreezeObservation = FreezeRule & {
+  current: unknown | null;
+  state: FreezeObservationState;
+  numeric_delta: number | null;
+};
+
+export type FreezeReport = {
+  schema_version: 1;
+  plan_id: string;
+  checked_at_utc: string;
+  snapshot_hash: string;
+  total_rules: number;
+  unchanged_count: number;
+  allowed_increase_count: number;
+  monitored_change_count: number;
+  violation_count: number;
+  unresolved_count: number;
+  observations: FreezeObservation[];
+};
+
+export type PreparedFreezeCorrection = {
+  report: FreezeReport;
+  transaction: EditTransaction | null;
+  preview: AppliedTransaction | null;
+};
+
 export type JournalChange = {
   entity_kind: EditEntityKind;
   entity_id: string;

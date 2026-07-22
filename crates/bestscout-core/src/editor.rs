@@ -501,7 +501,7 @@ fn validate_preset(request: &MassEditRequest) -> Result<(), TransactionError> {
     Ok(())
 }
 
-fn entity_value(
+pub(crate) fn entity_value(
     snapshot: &DatabaseSnapshot,
     kind: EditEntityKind,
     entity_id: &str,
@@ -643,7 +643,7 @@ where
     Ok(before)
 }
 
-fn value_at_path<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
+pub(crate) fn value_at_path<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
     path.split('.')
         .try_fold(value, |current, segment| current.get(segment))
 }
@@ -695,7 +695,7 @@ fn ensure_snapshot_valid(snapshot: &DatabaseSnapshot) -> Result<(), TransactionE
     }
 }
 
-fn is_editable_field(kind: EditEntityKind, field: &str) -> bool {
+pub(crate) fn is_editable_field(kind: EditEntityKind, field: &str) -> bool {
     match kind {
         EditEntityKind::Player => {
             is_attribute_path(field)

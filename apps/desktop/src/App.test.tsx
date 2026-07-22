@@ -34,6 +34,15 @@ describe("BestScout desktop", () => {
     expect(screen.getByRole("group", { name: "Editor-Entitätstyp wählen" })).toBeTruthy();
   });
 
+  it("opens the attribute freezer and change monitor workspace", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Freezer" }));
+    expect(screen.getByRole("heading", { name: "Freezer" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Attribute Freezer & Change Monitor" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Baseline erfassen" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Change Monitor" })).toBeTruthy();
+  });
+
   it("opens the scout intelligence workspace", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Scout-Intel" }));
