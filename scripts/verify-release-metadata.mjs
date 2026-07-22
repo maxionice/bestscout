@@ -20,6 +20,10 @@ const rustToolchain = text("rust-toolchain.toml");
 const flatpakManifest = text("packaging/flatpak/io.github.maxionice.bestscout.yml");
 const flatpakMetadata = text("packaging/flatpak/io.github.maxionice.bestscout.metainfo.xml");
 const desktopEntry = text("packaging/flatpak/io.github.maxionice.bestscout.desktop");
+const releaseWorkflow = text(".github/workflows/release.yml");
+const deckLauncher = text("packaging/steam-deck/launch-bestscout.sh");
+const deckEnglish = text("packaging/steam-deck/README-DECK.en.md");
+const deckGerman = text("packaging/steam-deck/README-DECK.de.md");
 const workspaceVersion = workspaceCargo.match(/\[workspace\.package\][\s\S]*?\nversion\s*=\s*"([^"]+)"/)?.[1];
 const versions = new Set([
   rootPackage.version,
@@ -68,6 +72,36 @@ if (!flatpakMetadata.includes(`<release version="${[...versions][0]}"`)) {
 }
 if (!desktopEntry.includes("Exec=bestscout") || !desktopEntry.includes("Terminal=false")) {
   fail("the Flatpak desktop entry is incomplete");
+}
+if (!deckLauncher.startsWith("#!/usr/bin/env bash\n") || !deckLauncher.includes("@APPIMAGE@")) {
+  fail("the Steam Deck launcher template is incomplete");
+}
+if (!deckEnglish.includes("@APPIMAGE@") || !deckGerman.includes("@APPIMAGE@")) {
+  fail("the bilingual Steam Deck instructions are incomplete");
+}
+
+const attestAction =
+  "actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0";
+for (const required of [
+  "id-token: write",
+  "attestations: write",
+  "releaseDraft: true",
+  attestAction,
+  "subject-checksums: release-artifacts/SHA256SUMS",
+  "--write-checksums --require-release-set",
+  'gh release edit "$GITHUB_REF_NAME" --draft=false',
+]) {
+  if (!releaseWorkflow.includes(required)) {
+    fail(`release workflow is missing signed-release gate: ${required}`);
+  }
+}
+if (releaseWorkflow.includes("releaseDraft: false")) {
+  fail("the release must remain draft until checksums and provenance pass");
+}
+const attestAt = releaseWorkflow.indexOf(attestAction);
+const publishAt = releaseWorkflow.indexOf('gh release edit "$GITHUB_REF_NAME" --draft=false');
+if (attestAt < 0 || publishAt <= attestAt) {
+  fail("the release is published before signed provenance is generated");
 }
 
 const version = [...versions][0];
