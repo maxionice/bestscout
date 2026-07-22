@@ -14,7 +14,8 @@ externe Voraussetzungen und die exakte Reihenfolge zum Weitermachen.
 - Stabiler Remote-Branch: `main`
 - Aktueller stabiler Commit: `bf21187ea25f2c21d468550766455d75425077dd`
 - Aktiver Arbeitsbranch: `agent/transfer-center`
-- Der Transfer-Block ist ein lokaler WIP-Checkpoint und noch nicht gemergt.
+- Der Transfer-Block ist als öffentlicher Draft-PR #24 veröffentlicht und noch
+  nicht gemergt: `https://github.com/maxionice/bestscout/pull/24`.
 
 Zuletzt gemergte Meilensteine:
 
@@ -38,7 +39,7 @@ PR #23 ist vollständig gemergt. Enthalten sind:
 
 Öffentlicher PR: `https://github.com/maxionice/bestscout/pull/23`
 
-## Aktueller WIP: Transfer Center
+## Aktueller PR: Transfer Center
 
 Der aktive Branch enthält bereits folgende Implementierung:
 
@@ -171,8 +172,8 @@ Der Nutzer beendet FM normal. Erst danach den Status erneut prüfen.
    Scrollbereiche, Datums-/Zahlenfelder, Zukunftstransfer, Leihe, Storno,
    fälliger Abschluss, Vorschau und Commit-Status. Keine echte Live-Mutation.
 
-4. Nach grüner Paketprüfung den Branch committen, pushen, Draft-PR öffnen, alle
-   GitHub-Jobs abwarten und erst vollständig grün mergen.
+4. Für PR #24 alle GitHub-Jobs abwarten, erst vollständig grün als bereit
+   markieren und anschließend per Squash-Merge übernehmen.
 
 5. Bridge-Arbeit nur nach normal beendetem FM:
 
