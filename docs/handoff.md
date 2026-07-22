@@ -15,7 +15,8 @@ People-Meilenstein und die weiterhin gesperrte FM26-Live-Grenze.
 - Aktueller Branch: `agent/staff-registrations-relationships`
 - Aktueller Produktcommit: `898bbf7096a40014deeb02f4ba255939a1452525`
 - Öffentlicher People-Draft-PR: `https://github.com/maxionice/bestscout/pull/25`
-- PR-Zustand beim Pausieren: offen, Draft und mergebar; GitHub-CI läuft noch
+- PR-Zustand beim letzten Abruf: offen, Draft und mergebar; alle sechs
+  GitHub-CI-Jobs auf `beba87c` sind grün
 
 Die historische WIP-Aufnahme und ihr Abschlussbefund stehen in
 [`docs/worklog/2026-07-22-people-wip.md`](worklog/2026-07-22-people-wip.md).
@@ -73,6 +74,8 @@ Ergebnisse:
 - Clippy ohne Warnung bei `-D warnings`;
 - TypeScript- und Vite-Produktionsbuild grün;
 - AppImage, DEB und RPM durch den Bundle-Verifikator akzeptiert.
+- GitHub Actions auf dem veröffentlichten Head `beba87c`: zweimal Frontend,
+  zweimal Rust und zweimal Linux-Bundles erfolgreich.
 
 Paket-Hashes:
 
@@ -107,17 +110,17 @@ Sicherheitsregeln:
 
 ## Offene Gates dieses Meilensteins
 
-- Dokumentationscommit dieses Pausenstands auf PR #25 berücksichtigen;
-- GitHub-Actions auf dem neuesten PR-Commit vollständig grün abwarten;
 - native breite/schmale Tauri-Sicht, Tastatur, Fokus und lange/leere Listen
   prüfen, sobald eine geeignete Ansicht verfügbar ist;
 - erst nach diesen Gates als gemergten kanonischen Meilenstein behandeln;
 - Live-People-Feldadapter bleiben ein separater Roadmap-Punkt.
 
-Beim letzten Abruf am 2026-07-22 waren beide Frontend-Jobs grün; die beiden
-Rust- und Linux-Bundle-Jobs liefen noch. Dieser Zwischenstand ist keine
-CI-Abnahme. Vor Merge immer den neuesten Commit und sämtliche Checks des PR
-erneut prüfen.
+Beim letzten Abruf am 2026-07-22 waren alle sechs Checks auf dem veröffentlichten
+Head `beba87c` erfolgreich. PR #25 hatte keine Kommentare, Reviews oder offenen
+Review-Threads. Die verbindliche In-App-Browserliste war bei der Wiederaufnahme
+erneut leer (`[]`); deshalb sind weder die native UI-Abnahme noch die Freigabe
+des Drafts oder der Merge erfolgt. Vor Merge immer den neuesten Commit und
+sämtliche Checks des PR erneut prüfen.
 
 ## Exakte Wiederaufnahme
 
@@ -130,11 +133,11 @@ gh pr view 25 --json url,state,isDraft,mergeable,statusCheckRollup
 gh pr checks 25
 ```
 
-Zuerst prüfen, ob der Pausen-Dokumentationscommit auf dem Remote-Branch liegt.
-Danach Checks und Reviewzustand von PR #25 prüfen. Nur bei vollständig grüner
-CI und nach der noch offenen nativen UI-Abnahme den Draft freigeben und mergen.
-Nach dem Merge `main` aktualisieren und diesen Handoff auf den neuen stabilen
-Commit setzen.
+Zuerst prüfen, ob der neueste Dokumentationscommit auf dem Remote-Branch liegt.
+Danach Checks und Reviewzustand von PR #25 erneut prüfen. Nur bei vollständig
+grüner CI und nach der noch offenen nativen UI-Abnahme den Draft freigeben und
+mergen. Nach dem Merge `main` aktualisieren und diesen Handoff auf den neuen
+stabilen Commit setzen.
 
 FM-Live-Arbeit nur nach einem vom Nutzer selbst ausgeführten Neustart und
 geladenem Spielstand rein lesend mit folgendem Einstieg fortsetzen:

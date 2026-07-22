@@ -326,9 +326,9 @@ Paketartefakte:
 - RPM: `5ccb06faa35b0e54956a9137a54ecaf1796eaafe4b9b170da9174aa29b94f44b`
 
 Offen bleiben die native breite/schmale Sicht- und Tastaturprüfung, weil die
-verbindliche In-App-Browserliste leer (`[]`) war, die GitHub-CI-Abnahme sowie
-sämtliche echten FM26-Live-Feldadapter. Diese offenen Punkte werden nicht durch
-die grüne kanonische Testmatrix ersetzt.
+verbindliche In-App-Browserliste leer (`[]`) war, sowie sämtliche echten
+FM26-Live-Feldadapter. Diese offenen Punkte werden nicht durch die grüne
+kanonische Testmatrix oder die inzwischen grüne GitHub-CI ersetzt.
 
 ## Pausenstand und öffentliche Übergabe
 
@@ -336,8 +336,10 @@ die grüne kanonische Testmatrix ersetzt.
 - Öffentlicher Draft-PR: `https://github.com/maxionice/bestscout/pull/25`
 - Branch: `agent/staff-registrations-relationships`
 - Basis: `main` auf `cb2191b225145098e285d733ebab57d0dca1423e`
-- PR war beim Abruf offen, als Draft markiert und mergebar.
-- Beide Frontend-Jobs waren grün; Rust- und Linux-Bundle-Jobs liefen noch.
+- PR war beim letzten Abruf offen, als Draft markiert und mergebar.
+- Alle sechs GitHub-Actions-Jobs auf `beba87c` waren grün: jeweils zwei
+  Frontend-, Rust- und Linux-Bundle-Jobs.
+- Es gab keine Kommentare, Reviews oder offenen Review-Threads.
 - Es wurde bewusst weder die native UI-Abnahme behauptet noch der PR
   freigegeben oder gemergt.
 - FM26 wurde nicht gestartet, geschlossen oder live verändert.

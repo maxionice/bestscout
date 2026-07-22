@@ -1,7 +1,7 @@
 # People workspace acceptance
 
-Status: kanonische Implementierung und automatisierte Repository-Abnahme
-bestanden. Native Sichtprüfung, GitHub-CI und FM26-Live-Adapter bleiben offen.
+Status: kanonische Implementierung, automatisierte Repository-Abnahme und
+GitHub-CI bestanden. Native Sichtprüfung und FM26-Live-Adapter bleiben offen.
 
 ## Kanonisches Modell
 
@@ -54,7 +54,7 @@ bestanden. Native Sichtprüfung, GitHub-CI und FM26-Live-Adapter bleiben offen.
 - [x] `npm test --workspace @bestscout/desktop`
 - [x] `npm run build --workspace @bestscout/desktop`
 - [x] `scripts/build-linux-packages.sh`
-- [ ] GitHub-Actions-Checks auf dem veröffentlichten PR vollständig grün
+- [x] GitHub-Actions-Checks auf dem veröffentlichten PR vollständig grün
 
 ## Live-FM26-Acceptance
 
