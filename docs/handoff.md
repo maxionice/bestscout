@@ -32,10 +32,11 @@ Der aktuelle Stack ist absichtlich linear:
 | #36 | `agent/contract-bonuses-clauses` | PR #35 | typisierte Vertragsboni und -klauseln |
 | #37 | `agent/release-artifact-freshness` | PR #36 | frische Native-Paketmanifeste ohne optionale Altartefakte |
 | #38 | `agent/release-upload-allowlist` | PR #37 | checksum-basierte Release-Upload-Allowlist |
+| #39 | `agent/ci-native-package-entrypoint` | PR #38 | einheitlicher lokaler und CI-Native-Paketpfad |
 
-PR #25 bis #37 sind offen, Draft, mergebar und vollständig grün. PR #38 wurde
-nach vollständiger lokaler Prüfung als Draft geöffnet; dessen GitHub-CI läuft.
-Keine offene Draft-Stufe als bereits in `main` enthalten behandeln.
+PR #25 bis #37 sind offen, Draft, mergebar und vollständig grün. PR #38 und #39
+wurden nach vollständiger lokaler Prüfung als Draft geöffnet; deren GitHub-CI
+läuft. Keine offene Draft-Stufe als bereits in `main` enthalten behandeln.
 
 ## Implementierter Stand
 
@@ -55,6 +56,8 @@ Keine offene Draft-Stufe als bereits in `main` enthalten behandeln.
 - AppImage, DEB, RPM, Flatpak und Steam-Deck-Edition samt Bundle-Verifikation;
 - native Paketmanifeste, die vorhandene optionale Altartefakte ausdrücklich
   ausschließen und nur die gerade gebauten AppImage-/DEB-/RPM-Dateien ausweisen;
+- ein gemeinsamer, durch Metadatenprüfung fixierter Native-Paketbefehl für lokale
+  Entwicklung und Linux-Bundle-CI;
 - OIDC-/Sigstore-Attestierungsworkflow, der einen Draft-Release erst nach
   vollständigen Artefakten und erfolgreicher unabhängiger Verifikation
   veröffentlicht;
@@ -74,7 +77,7 @@ Bereichsdokumente bleiben jeweils maßgeblich.
 
 ## Aktueller Prüfstand
 
-Auf `agent/release-upload-allowlist` erfolgreich ausgeführt:
+Auf `agent/ci-native-package-entrypoint` erfolgreich ausgeführt:
 
 ```text
 cargo fmt --all -- --check
@@ -115,6 +118,12 @@ Vor dem finalen GitHub-Upload wird dieser Satz aus `SHA256SUMS` erneut
 rekonstruiert und gehasht. Zugelassen sind genau acht Release-Subjects, das
 Manifest und das geparste Sigstore-Bundle. Die Steam-Deck-AppImage muss außerdem
 bytegleich zur aktuellen nativen AppImage sein.
+
+Zwei erfolgreiche Native-Paketläufe mit unveränderten Desktop-Quellen ergaben
+unterschiedliche Paket-Hashes. Die Pakete sind funktional validiert, aber noch
+nicht byte-reproduzierbar; das zugehörige 1.0-Gate bleibt deshalb offen. Als
+nächster unabhängiger Schritt sind `SOURCE_DATE_EPOCH`, Archivzeitstempel und die
+Tauri-/linuxdeploy-Paketstufen gezielt zu isolieren.
 
 ## Native UI-Gates
 
