@@ -11,6 +11,7 @@ pub mod roles;
 pub mod scoring;
 pub mod shortlist;
 pub mod squad;
+pub mod transfers;
 pub mod validation;
 
 pub use availability::{
@@ -40,9 +41,9 @@ pub use intelligence::{
 };
 pub use model::{
     Attribute, BanScope, Club, ClubFacilities, ClubFinances, Competition, Contract, ContractType,
-    DatabaseSnapshot, Foot, GameDate, HiddenAttribute, InjurySeverity, InjuryTreatment, Player,
-    PlayerBan, PlayerDetails, PlayerFitness, PlayerInjury, PlayerStatus, Position, SnapshotSource,
-    Staff, StaffAttribute, StaffRole,
+    DatabaseSnapshot, Foot, FutureTransfer, GameDate, HiddenAttribute, InjurySeverity,
+    InjuryTreatment, Player, PlayerBan, PlayerDetails, PlayerFitness, PlayerInjury, PlayerStatus,
+    Position, SnapshotSource, Staff, StaffAttribute, StaffRole, TransferKind, TransferStatus,
 };
 pub use query::{
     EntityKind, FilterExpression, GlobalSearchQuery, PlayerPredicate, PlayerQuery,
@@ -58,6 +59,10 @@ pub use shortlist::{
 pub use squad::{
     AnalysisBucket, PositionGroupAnalysis, RiskSeverity, SquadAnalysis, SquadPlayerSummary,
     SuccessionRisk, WageOutlier, analyse_squad,
+};
+pub use transfers::{
+    PreparedTransferAction, TransferActionRequest, TransferCommand, TransferError,
+    prepare_transfer_action,
 };
 pub use validation::{
     CURRENT_SCHEMA_VERSION, IssueSeverity, SnapshotIssue, SnapshotValidationReport,

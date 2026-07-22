@@ -728,6 +728,7 @@ pub(crate) fn is_editable_field(kind: EditEntityKind, field: &str) -> bool {
                         | "details.contract.wage"
                         | "details.contract.release_clause"
                         | "details.contract.squad_status"
+                        | "details.future_transfer"
                         | "details.fitness"
                         | "details.fitness.condition"
                         | "details.fitness.match_fitness"

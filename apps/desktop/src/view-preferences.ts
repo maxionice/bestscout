@@ -3,7 +3,7 @@ import type { RolePhase } from "./types";
 export type PlayerColumnDefinition = {
   id: string;
   label: string;
-  category: "Basis" | "Medizin" | "Technik" | "Mental" | "Physis" | "Torwart";
+  category: "Basis" | "Transfer" | "Medizin" | "Technik" | "Mental" | "Physis" | "Torwart";
   attribute?: string;
   locked?: boolean;
   defaultVisible?: boolean;
@@ -39,6 +39,11 @@ const coreColumns: PlayerColumnDefinition[] = [
   { id: "contract_wage", label: "Vertragsgehalt", category: "Basis" },
   { id: "release_clause", label: "Ausstiegsklausel", category: "Basis" },
   { id: "squad_status", label: "Kaderstatus", category: "Basis" },
+  { id: "future_transfer_kind", label: "Transferart", category: "Transfer" },
+  { id: "future_transfer_destination", label: "Transferziel-ID", category: "Transfer" },
+  { id: "future_transfer_date", label: "Transferdatum", category: "Transfer" },
+  { id: "future_transfer_fee", label: "Transfergebühr", category: "Transfer" },
+  { id: "future_transfer_status", label: "Transferstatus", category: "Transfer" },
   { id: "player_status", label: "Verfügbarkeit", category: "Basis" },
   { id: "transfer_listed", label: "Transferliste", category: "Basis" },
   { id: "loan_listed", label: "Leihliste", category: "Basis" },

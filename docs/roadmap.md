@@ -45,7 +45,8 @@
 - [ ] Live player, contract, injury and ban field adapter acceptance
 - [ ] Clubs, finance and facilities
 - [x] Preset manager and validated, filtered mass edit
-- [ ] Immediate and future transfers
+- [x] Canonical immediate, future and loan transfer planning/completion
+- [ ] Reciprocal player swaps and live transfer field adapter acceptance
 
 ## 0.7 — Advanced editor
 

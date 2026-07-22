@@ -198,6 +198,19 @@ async fn prepare_availability_action(
 }
 
 #[tauri::command]
+async fn prepare_transfer_action(
+    snapshot: bestscout_core::DatabaseSnapshot,
+    request: bestscout_core::TransferActionRequest,
+) -> Result<bestscout_core::PreparedTransferAction, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        bestscout_core::prepare_transfer_action(&snapshot, &request)
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| format!("Transfervorschau fehlgeschlagen: {error}"))?
+}
+
+#[tauri::command]
 fn inspect_fm26_process(pid: u32) -> Result<bestscout_live::ProcessInspection, String> {
     bestscout_live::inspect_process(pid).map_err(|error| error.to_string())
 }
@@ -314,6 +327,7 @@ pub fn run() {
             prepare_freeze_correction,
             analyse_player_availability,
             prepare_availability_action,
+            prepare_transfer_action,
             inspect_fm26_process,
             search_database,
             query_players,

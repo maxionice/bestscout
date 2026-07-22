@@ -214,6 +214,11 @@ function playerCell(player: Player, columnId: string): ReactNode {
     case "contract_wage": return player.details?.contract?.wage == null ? "–" : `${money.format(player.details.contract.wage)} / W.`;
     case "release_clause": return formatMoney(player.details?.contract?.release_clause);
     case "squad_status": return display(player.details?.contract?.squad_status);
+    case "future_transfer_kind": return display(player.details?.future_transfer?.kind);
+    case "future_transfer_destination": return display(player.details?.future_transfer?.to_club_id);
+    case "future_transfer_date": return formatGameDate(player.details?.future_transfer?.effective_on);
+    case "future_transfer_fee": return formatMoney(player.details?.future_transfer?.fee);
+    case "future_transfer_status": return display(player.details?.future_transfer?.status);
     case "player_status": return playerStatus(player);
     case "transfer_listed": return booleanLabel(player.details?.status?.transfer_listed);
     case "loan_listed": return booleanLabel(player.details?.status?.loan_listed);

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{DatabaseSnapshot, GameDate, Player};
+use crate::{DatabaseSnapshot, GameDate, Player, TransferKind};
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
@@ -89,6 +89,12 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
         .iter()
         .map(|competition| competition.id.as_str())
         .collect();
+    let player_ids: HashSet<_> = snapshot
+        .players
+        .iter()
+        .map(|player| player.id.as_str())
+        .collect();
+    let mut future_transfer_ids = HashSet::new();
     for player in &snapshot.players {
         if player.name.trim().is_empty() {
             issue(
@@ -182,6 +188,16 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
             }
         }
         validate_player_availability(&mut issues, player, &competition_ids);
+        if let Some(transfer) = &player.details.future_transfer {
+            validate_future_transfer(
+                &mut issues,
+                player,
+                transfer,
+                &club_ids,
+                &player_ids,
+                &mut future_transfer_ids,
+            );
+        }
         if let Some(contract) = &player.details.contract {
             validate_contract(
                 &mut issues,
@@ -346,6 +362,152 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
             .iter()
             .all(|issue| issue.severity != IssueSeverity::Error),
         issues,
+    }
+}
+
+fn validate_future_transfer<'a>(
+    issues: &mut Vec<SnapshotIssue>,
+    player: &Player,
+    transfer: &'a crate::FutureTransfer,
+    club_ids: &HashSet<&str>,
+    player_ids: &HashSet<&str>,
+    transfer_ids: &mut HashSet<&'a str>,
+) {
+    let prefix = "details.future_transfer";
+    if transfer.id.trim().is_empty()
+        || transfer.id.len() > 128
+        || !transfer_ids.insert(transfer.id.as_str())
+    {
+        issue(
+            issues,
+            "invalid_future_transfer_id",
+            "player",
+            &player.id,
+            format!("{prefix}.id"),
+            "future transfer ID must be non-empty, bounded and unique in the snapshot",
+        );
+    }
+    if transfer.to_club_id.trim().is_empty() || !club_ids.contains(transfer.to_club_id.as_str()) {
+        issue(
+            issues,
+            "unknown_club_reference",
+            "player",
+            &player.id,
+            format!("{prefix}.to_club_id"),
+            "future transfer destination must reference a club in the snapshot",
+        );
+    }
+    if transfer
+        .from_club_id
+        .as_deref()
+        .is_some_and(|id| !club_ids.contains(id))
+    {
+        issue(
+            issues,
+            "unknown_club_reference",
+            "player",
+            &player.id,
+            format!("{prefix}.from_club_id"),
+            "future transfer origin must reference a club in the snapshot",
+        );
+    }
+    if transfer.from_club_id.as_deref() == Some(transfer.to_club_id.as_str()) {
+        issue(
+            issues,
+            "invalid_transfer_route",
+            "player",
+            &player.id,
+            format!("{prefix}.to_club_id"),
+            "future transfer origin and destination must differ",
+        );
+    }
+    validate_date_range(
+        issues,
+        "player",
+        &player.id,
+        prefix,
+        ("arranged_on", transfer.arranged_on),
+        ("effective_on", Some(transfer.effective_on)),
+    );
+    validate_date_range(
+        issues,
+        "player",
+        &player.id,
+        prefix,
+        ("effective_on", Some(transfer.effective_on)),
+        ("loan_end", transfer.loan_end),
+    );
+    if transfer
+        .fee
+        .is_some_and(|fee| !fee.is_finite() || !(0.0..=1_000_000_000_000.0).contains(&fee))
+    {
+        issue(
+            issues,
+            "transfer_fee_out_of_range",
+            "player",
+            &player.id,
+            format!("{prefix}.fee"),
+            "transfer fee must be finite and between zero and one trillion",
+        );
+    }
+    if transfer
+        .wage_contribution_percent
+        .is_some_and(|percentage| percentage > 100)
+    {
+        issue(
+            issues,
+            "wage_contribution_out_of_range",
+            "player",
+            &player.id,
+            format!("{prefix}.wage_contribution_percent"),
+            "wage contribution must be between zero and 100 percent",
+        );
+    }
+    match transfer.kind {
+        TransferKind::Loan if transfer.loan_end.is_none() => issue(
+            issues,
+            "missing_loan_end",
+            "player",
+            &player.id,
+            format!("{prefix}.loan_end"),
+            "a future loan requires an end date",
+        ),
+        TransferKind::Loan => {}
+        _ if transfer.loan_end.is_some() || transfer.wage_contribution_percent.is_some() => issue(
+            issues,
+            "invalid_loan_terms",
+            "player",
+            &player.id,
+            format!("{prefix}.loan_end"),
+            "loan terms are only valid for a loan transfer",
+        ),
+        _ => {}
+    }
+    let valid_swap = transfer
+        .swap_player_id
+        .as_deref()
+        .is_some_and(|id| id != player.id && player_ids.contains(id));
+    if (transfer.kind == TransferKind::Swap && !valid_swap)
+        || (transfer.kind != TransferKind::Swap && transfer.swap_player_id.is_some())
+    {
+        issue(
+            issues,
+            "invalid_swap_player",
+            "player",
+            &player.id,
+            format!("{prefix}.swap_player_id"),
+            "swap transfers require one different player in the snapshot; other kinds cannot set one",
+        );
+    }
+    if transfer.kind == TransferKind::FreeTransfer && transfer.fee.is_some_and(|fee| fee != 0.0) {
+        issue(
+            issues,
+            "invalid_free_transfer_fee",
+            "player",
+            &player.id,
+            format!("{prefix}.fee"),
+            "a free transfer cannot contain a non-zero fee",
+        );
     }
 }
 

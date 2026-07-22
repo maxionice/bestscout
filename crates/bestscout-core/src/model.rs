@@ -177,6 +177,41 @@ pub struct Contract {
     pub squad_status: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TransferKind {
+    #[default]
+    Permanent,
+    Loan,
+    FreeTransfer,
+    Swap,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TransferStatus {
+    #[default]
+    Agreed,
+    Confirmed,
+    Completed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FutureTransfer {
+    pub id: String,
+    pub kind: TransferKind,
+    pub from_club_id: Option<String>,
+    pub to_club_id: String,
+    pub arranged_on: Option<GameDate>,
+    pub effective_on: GameDate,
+    pub fee: Option<f64>,
+    pub loan_end: Option<GameDate>,
+    pub wage_contribution_percent: Option<u8>,
+    pub swap_player_id: Option<String>,
+    pub status: TransferStatus,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct PlayerStatus {
@@ -284,6 +319,7 @@ pub struct PlayerDetails {
     pub professionalism: Option<u8>,
     pub ambition: Option<u8>,
     pub contract: Option<Contract>,
+    pub future_transfer: Option<FutureTransfer>,
     pub fitness: PlayerFitness,
     pub morale: Option<u8>,
     pub happiness: Option<u8>,
@@ -485,6 +521,7 @@ mod tests {
         assert_eq!(details.reputation, Some(4200));
         assert!(!details.status.injured);
         assert!(details.contract.is_none());
+        assert!(details.future_transfer.is_none());
         assert!(details.fitness.condition.is_none());
         assert!(details.injuries.is_empty());
         assert!(details.bans.is_empty());
