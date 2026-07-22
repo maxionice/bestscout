@@ -120,6 +120,7 @@ for (const required of [
   "--write-checksums --require-release-set",
   "SOURCE_DATE_EPOCH=$source_date_epoch",
   "run: scripts/normalize-linux-packages.sh",
+  "args: --bundles appimage,deb,rpm -- --locked",
   "scripts/list-release-assets.mjs",
   "--expected-subjects 8",
   '"${release_assets[@]}" --clobber',
@@ -141,8 +142,16 @@ if (!localBuildScript.includes("--write-checksums --native-only")) {
 if (
   !localBuildScript.includes('SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"')
   || !localBuildScript.includes("scripts/normalize-linux-packages.sh")
+  || !localBuildScript.includes("build --bundles appimage,deb,rpm -- --locked")
 ) {
-  fail("the local package build must pin and normalize reproducible timestamps");
+  fail("the local package build must pin timestamps, lock dependencies and normalize packages");
+}
+const normalizationCargoCommands = normalizePackageScript.match(/^cargo run\b.*$/gm) ?? [];
+if (
+  normalizationCargoCommands.length !== 2
+  || normalizationCargoCommands.some((command) => !command.includes(" --locked "))
+) {
+  fail("every package-normalization Cargo command must enforce Cargo.lock");
 }
 for (const required of [
   "--bin bestscout-reproducible-deb",

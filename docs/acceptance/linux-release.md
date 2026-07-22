@@ -20,8 +20,10 @@ does not claim FM26 live-adapter or native Steam Deck hardware acceptance.
 - The Linux bundle CI job calls the same local packaging entrypoint rather than
   maintaining a second build recipe; release metadata validation enforces this.
 - Native builds pin the timestamp, timezone and locale to the source commit.
-  AppImage consumes `SOURCE_DATE_EPOCH`; bounded DEB and RPM normalization removes
-  current archive/build timestamps before signature and checksum verification.
+  Tauri and both normalization helpers enforce the committed `Cargo.lock`;
+  AppImage consumes `SOURCE_DATE_EPOCH`, while bounded DEB and RPM normalization
+  removes current archive/build timestamps before signature and checksum
+  verification.
 - The tag workflow creates a draft before uploads, validates and checksums the
   complete set, generates SLSA provenance with the commit-pinned
   `actions/attest@v4.2.0`, verifies every subject and publishes only at the final

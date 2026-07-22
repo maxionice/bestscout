@@ -60,7 +60,8 @@ Draft-Stufe als bereits in `main` enthalten behandeln.
 - ein gemeinsamer, durch Metadatenprüfung fixierter Native-Paketbefehl für lokale
   Entwicklung und Linux-Bundle-CI;
 - commit-gepinnte, byte-reproduzierbare AppImage-, DEB- und RPM-Builds mit
-  begrenzter Pure-Rust-Normalisierung der DEB- und RPM-Metadaten;
+  erzwungenem Cargo-Lockfile und begrenzter Pure-Rust-Normalisierung der DEB-
+  und RPM-Metadaten;
 - OIDC-/Sigstore-Attestierungsworkflow, der einen Draft-Release erst nach
   vollständigen Artefakten und erfolgreicher unabhängiger Verifikation
   veröffentlicht;

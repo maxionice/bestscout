@@ -68,7 +68,7 @@ jobs:
         with:
           projectPath: apps/desktop
           tauriScript: npm run tauri
-          args: --bundles appimage,deb,rpm
+          args: --bundles appimage,deb,rpm -- --locked
           tagName: ${{ github.ref_name }}
           releaseName: BestScout ${{ github.ref_name }}
           generateReleaseNotes: true

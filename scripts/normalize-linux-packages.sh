@@ -14,12 +14,14 @@ bestscout_version="$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json'
 deb_name="BestScout_${bestscout_version}_amd64"
 rpm_name="BestScout-${bestscout_version}-1.x86_64"
 
-cargo run --quiet --release -p bestscout-packaging --bin bestscout-reproducible-deb -- \
+cargo run --locked --quiet --release -p bestscout-packaging \
+  --bin bestscout-reproducible-deb -- \
   --package-directory "target/release/bundle/deb/$deb_name" \
   --output "target/release/bundle/deb/$deb_name.deb" \
   --source-date-epoch "$SOURCE_DATE_EPOCH"
 
-cargo run --quiet --release -p bestscout-packaging --bin bestscout-packaging -- \
+cargo run --locked --quiet --release -p bestscout-packaging \
+  --bin bestscout-packaging -- \
   --source-date-epoch "$SOURCE_DATE_EPOCH" \
   --config apps/desktop/src-tauri/tauri.conf.json \
   --binary target/release/bestscout-desktop \
