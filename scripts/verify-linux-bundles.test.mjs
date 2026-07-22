@@ -22,28 +22,33 @@ function boundedFile(magic) {
   return Buffer.concat([magic, Buffer.alloc(100_000)]);
 }
 
+function prepareNativeBundles(fixtureRoot) {
+  const bundleRoot = resolve(fixtureRoot, "bundle");
+  const outputRoot = resolve(fixtureRoot, "release");
+  for (const directory of ["appimage", "deb", "rpm"]) {
+    mkdirSync(resolve(bundleRoot, directory), { recursive: true });
+  }
+  mkdirSync(outputRoot, { recursive: true });
+  writeFileSync(
+    resolve(bundleRoot, "appimage/BestScout.AppImage"),
+    boundedFile(Buffer.from([0x7f, 0x45, 0x4c, 0x46])),
+    { mode: 0o755 },
+  );
+  writeFileSync(
+    resolve(bundleRoot, "deb/BestScout.deb"),
+    boundedFile(Buffer.from("!<arch>\n")),
+  );
+  writeFileSync(
+    resolve(bundleRoot, "rpm/BestScout.rpm"),
+    boundedFile(Buffer.from([0xed, 0xab, 0xee, 0xdb])),
+  );
+  return { bundleRoot, outputRoot };
+}
+
 test("verifies and checksums the complete release set", () => {
   const fixtureRoot = mkdtempSync(resolve(tmpdir(), "bestscout-release-set-"));
   try {
-    const bundleRoot = resolve(fixtureRoot, "bundle");
-    const outputRoot = resolve(fixtureRoot, "release");
-    for (const directory of ["appimage", "deb", "rpm"]) {
-      mkdirSync(resolve(bundleRoot, directory), { recursive: true });
-    }
-    mkdirSync(outputRoot, { recursive: true });
-    writeFileSync(
-      resolve(bundleRoot, "appimage/BestScout.AppImage"),
-      boundedFile(Buffer.from([0x7f, 0x45, 0x4c, 0x46])),
-      { mode: 0o755 },
-    );
-    writeFileSync(
-      resolve(bundleRoot, "deb/BestScout.deb"),
-      boundedFile(Buffer.from("!<arch>\n")),
-    );
-    writeFileSync(
-      resolve(bundleRoot, "rpm/BestScout.rpm"),
-      boundedFile(Buffer.from([0xed, 0xab, 0xee, 0xdb])),
-    );
+    const { bundleRoot, outputRoot } = prepareNativeBundles(fixtureRoot);
     writeFileSync(resolve(outputRoot, "BestScout_1.0.0_x86_64.flatpak"), Buffer.alloc(100_001));
     prepareSteamDeck({
       version: "1.0.0",
@@ -71,6 +76,66 @@ test("verifies and checksums the complete release set", () => {
       .split("\n");
     assert.equal(checksums.length, 8);
     assert.ok(checksums.every((line) => /^[a-f0-9]{64}  [^/]+$/.test(line)));
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test("native-only checksums exclude pre-existing optional artifacts", () => {
+  const fixtureRoot = mkdtempSync(resolve(tmpdir(), "bestscout-native-only-"));
+  try {
+    const { bundleRoot, outputRoot } = prepareNativeBundles(fixtureRoot);
+    writeFileSync(resolve(outputRoot, "BestScout_1.0.0_x86_64.flatpak"), Buffer.alloc(100_001));
+    prepareSteamDeck({
+      version: "1.0.0",
+      bundleRoot: resolve(bundleRoot, "appimage"),
+      outputRoot,
+      templates,
+    });
+
+    const output = execFileSync(
+      process.execPath,
+      [
+        verifier,
+        "--bundle-root", bundleRoot,
+        "--output-root", outputRoot,
+        "--version", "1.0.0",
+        "--write-checksums",
+        "--native-only",
+      ],
+      { encoding: "utf8" },
+    );
+    const report = JSON.parse(output);
+    const names = report.bundles.map(({ name }) => name);
+    assert.deepEqual(names, ["BestScout.AppImage", "BestScout.deb", "BestScout.rpm"]);
+    const checksums = readFileSync(resolve(outputRoot, "SHA256SUMS"), "utf8")
+      .trim()
+      .split("\n");
+    assert.equal(checksums.length, 3);
+    assert.ok(checksums.every((line) => !/flatpak|SteamDeck/.test(line)));
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test("native-only rejects the complete release-set gate", () => {
+  const fixtureRoot = mkdtempSync(resolve(tmpdir(), "bestscout-native-conflict-"));
+  try {
+    const { bundleRoot, outputRoot } = prepareNativeBundles(fixtureRoot);
+    assert.throws(
+      () => execFileSync(
+        process.execPath,
+        [
+          verifier,
+          "--bundle-root", bundleRoot,
+          "--output-root", outputRoot,
+          "--native-only",
+          "--require-release-set",
+        ],
+        { encoding: "utf8", stdio: "pipe" },
+      ),
+      /--native-only cannot be combined with --require-release-set/,
+    );
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }

@@ -23,6 +23,7 @@ const flatpakManifest = text("packaging/flatpak/io.github.maxionice.bestscout.ym
 const flatpakMetadata = text("packaging/flatpak/io.github.maxionice.bestscout.metainfo.xml");
 const desktopEntry = text("packaging/flatpak/io.github.maxionice.bestscout.desktop");
 const releaseWorkflow = text(".github/workflows/release.yml");
+const localBuildScript = text("scripts/build-linux-packages.sh");
 const deckLauncher = text("packaging/steam-deck/launch-bestscout.sh");
 const deckEnglish = text("packaging/steam-deck/README-DECK.en.md");
 const deckGerman = text("packaging/steam-deck/README-DECK.de.md");
@@ -123,6 +124,9 @@ for (const required of [
 }
 if (releaseWorkflow.includes("releaseDraft: false")) {
   fail("the release must remain draft until checksums and provenance pass");
+}
+if (!localBuildScript.includes("--write-checksums --native-only")) {
+  fail("the local native build must exclude pre-existing optional release artifacts");
 }
 const attestAt = releaseWorkflow.indexOf(attestAction);
 const publishAt = releaseWorkflow.indexOf('gh release edit "$GITHUB_REF_NAME" --draft=false');

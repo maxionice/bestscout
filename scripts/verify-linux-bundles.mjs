@@ -12,6 +12,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const { values: options } = parseArgs({
   options: {
     "bundle-root": { type: "string" },
+    "native-only": { type: "boolean", default: false },
     "output-root": { type: "string" },
     "require-release-set": { type: "boolean", default: false },
     version: { type: "string" },
@@ -23,6 +24,10 @@ const bundleRoot = resolve(options["bundle-root"] ?? resolve(root, "target/relea
 const outputRoot = resolve(options["output-root"] ?? resolve(root, "release-artifacts"));
 const writeChecksums = options["write-checksums"];
 const requireReleaseSet = options["require-release-set"];
+const nativeOnly = options["native-only"];
+if (nativeOnly && requireReleaseSet) {
+  throw new Error("--native-only cannot be combined with --require-release-set");
+}
 const version = options.version ?? JSON.parse(
   readFileSync(resolve(root, "apps/desktop/src-tauri/tauri.conf.json"), "utf8"),
 ).version;
@@ -60,7 +65,7 @@ for (const [extension, magic] of expected) {
   }
 }
 
-const flatpaks = (() => {
+const flatpaks = nativeOnly ? [] : (() => {
   try {
     return readdirSync(outputRoot)
       .filter((name) => name.endsWith(".flatpak"))
@@ -80,7 +85,7 @@ if (requireReleaseSet && flatpaks.length !== 1) {
 }
 
 const deckNames = Object.values(steamDeckNames(version));
-const deckFiles = deckNames
+const deckFiles = nativeOnly ? [] : deckNames
   .map((name) => resolve(outputRoot, name))
   .filter((path) => {
     try {
