@@ -1,4 +1,5 @@
 pub mod availability;
+pub mod clubs;
 pub mod comparison;
 pub mod editor;
 pub mod fixtures;
@@ -20,6 +21,9 @@ pub use availability::{
     AvailabilityCriteria, AvailabilityError, AvailabilityIssue, AvailabilityIssueKind,
     AvailabilityReport, AvailabilityState, PlayerAvailability, PreparedAvailabilityAction,
     analyse_player_availability, prepare_availability_action,
+};
+pub use clubs::{
+    ClubActionRequest, ClubCommand, ClubError, PreparedClubAction, prepare_club_action,
 };
 pub use comparison::{SimilarPlayer, find_similar_players};
 pub use editor::{

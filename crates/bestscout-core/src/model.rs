@@ -560,6 +560,8 @@ pub struct Club {
     pub short_name: Option<String>,
     pub nation: Option<String>,
     pub competition: Option<String>,
+    #[serde(default)]
+    pub competition_id: Option<String>,
     pub reputation: Option<u16>,
     pub professional_status: Option<String>,
     pub stadium: Option<String>,
@@ -656,6 +658,28 @@ mod tests {
         assert!(staff.details.responsibilities.is_empty());
         assert!(staff.details.qualifications.is_empty());
         assert!(staff.details.note.is_none());
+    }
+
+    #[test]
+    fn accepts_club_payloads_without_a_competition_reference_id() {
+        let club: Club = serde_json::from_value(serde_json::json!({
+            "id": "legacy-club",
+            "name": "Legacy Club",
+            "short_name": null,
+            "nation": null,
+            "competition": "Legacy League",
+            "reputation": null,
+            "professional_status": null,
+            "stadium": null,
+            "stadium_capacity": null,
+            "average_attendance": null,
+            "finances": {},
+            "facilities": {}
+        }))
+        .unwrap();
+
+        assert!(club.competition_id.is_none());
+        assert_eq!(club.competition.as_deref(), Some("Legacy League"));
     }
 
     #[test]

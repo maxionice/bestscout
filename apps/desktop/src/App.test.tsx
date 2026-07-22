@@ -52,6 +52,15 @@ describe("BestScout desktop", () => {
     expect(screen.getByText("Sichere Arbeitskopie")).toBeTruthy();
   });
 
+  it("opens the journaled club operations center", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Club-Zentrale" }));
+    expect(screen.getByRole("heading", { name: "Club-Zentrale" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Club Operations Center" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Club-Bereich" })).toBeTruthy();
+    expect(screen.getByText("Sichere Arbeitskopie")).toBeTruthy();
+  });
+
   it("opens the scout intelligence workspace", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Scout-Intel" }));

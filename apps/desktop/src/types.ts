@@ -172,29 +172,34 @@ export type Staff = {
   };
 };
 
+export type ClubFinances = {
+  balance: number | null;
+  transfer_budget: number | null;
+  wage_budget: number | null;
+  debt: number | null;
+};
+
+export type ClubFacilities = {
+  training: number | null;
+  youth: number | null;
+  youth_recruitment: number | null;
+  junior_coaching: number | null;
+};
+
 export type Club = {
   id: string;
   name: string;
   short_name: string | null;
   nation: string | null;
   competition: string | null;
+  competition_id?: string | null;
   reputation: number | null;
   professional_status?: string | null;
   stadium?: string | null;
   stadium_capacity?: number | null;
   average_attendance?: number | null;
-  finances?: {
-    balance: number | null;
-    transfer_budget: number | null;
-    wage_budget: number | null;
-    debt: number | null;
-  };
-  facilities?: {
-    training: number | null;
-    youth: number | null;
-    youth_recruitment: number | null;
-    junior_coaching: number | null;
-  };
+  finances?: ClubFinances;
+  facilities?: ClubFacilities;
 };
 
 export type Competition = {
@@ -481,6 +486,39 @@ export type PeopleActionRequest = {
 
 export type PreparedPeopleAction = {
   command: PeopleCommand;
+  transaction: EditTransaction;
+  preview: AppliedTransaction;
+};
+
+export type ClubCommand =
+  | {
+      kind: "update_identity";
+      club_id: string;
+      name: string;
+      short_name: string | null;
+      nation: string | null;
+      competition_id: string | null;
+      reputation: number | null;
+      professional_status: string | null;
+    }
+  | {
+      kind: "update_stadium";
+      club_id: string;
+      stadium: string | null;
+      stadium_capacity: number | null;
+      average_attendance: number | null;
+    }
+  | { kind: "update_finances"; club_id: string; finances: ClubFinances }
+  | { kind: "update_facilities"; club_id: string; facilities: ClubFacilities };
+
+export type ClubActionRequest = {
+  transaction_id: string;
+  created_at_utc: string;
+  command: ClubCommand;
+};
+
+export type PreparedClubAction = {
+  command: ClubCommand;
   transaction: EditTransaction;
   preview: AppliedTransaction;
 };

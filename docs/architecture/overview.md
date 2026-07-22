@@ -30,6 +30,11 @@ languages, registrations, qualifications and relationships is documented in
 the [People architecture](people.md). Its explicit open gates are tracked in
 the [People acceptance record](../acceptance/people.md).
 
+The canonical club command layer, competition references, finance/stadium/
+facility validation and the specialized UI are documented in the
+[club architecture](clubs.md). Native and live gates remain separate in the
+[club acceptance record](../acceptance/clubs.md).
+
 ## Canonical snapshots and queries
 
 All adapters produce a schema-versioned `DatabaseSnapshot` containing players,

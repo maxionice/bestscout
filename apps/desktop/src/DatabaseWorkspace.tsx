@@ -61,7 +61,7 @@ const staffGridColumns: GridColumn[] = [
 const clubGridColumns: GridColumn[] = [
   { id: "id", label: "Datenbank-ID" }, { id: "name", label: "Name" },
   { id: "short_name", label: "Kurzname" }, { id: "nation", label: "Nation" },
-  { id: "competition", label: "Wettbewerb" }, { id: "reputation", label: "Reputation" },
+  { id: "competition", label: "Wettbewerb" }, { id: "competition_id", label: "Wettbewerb-ID" }, { id: "reputation", label: "Reputation" },
   { id: "professional_status", label: "Profistatus" }, { id: "stadium", label: "Stadion" },
   { id: "stadium_capacity", label: "Kapazität" }, { id: "average_attendance", label: "Zuschauerschnitt" },
   { id: "balance", label: "Kontostand" }, { id: "transfer_budget", label: "Transferbudget" },
@@ -299,6 +299,7 @@ function clubRow(club: Club): GridRow {
     cells: {
       id: club.id, name: <EntityName name={club.name} subtitle={club.short_name} />,
       short_name: display(club.short_name), nation: display(club.nation), competition: display(club.competition),
+      competition_id: display(club.competition_id),
       reputation: display(club.reputation), professional_status: professionalStatusLabel(club.professional_status),
       stadium: display(club.stadium), stadium_capacity: formatNumber(club.stadium_capacity),
       average_attendance: formatNumber(club.average_attendance), balance: formatMoney(club.finances?.balance),

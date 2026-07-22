@@ -54,6 +54,8 @@ and editing tools while remaining local, transparent and safe.
 - Canonical staff assignments, profile data, languages, qualifications,
   competition registrations and typed relationships with a journaled HeroUI
   People & Registration Center
+- Referentially validated club identity, competition, finance, stadium and
+  facilities commands with a journaled HeroUI Club Operations Center
 - Explainable development probability and projected CA/attribute peaks with
   configurable Wonderkid, bargain, free-agent and expiring-contract smart lists
 - Reproducible AppImage, DEB and RPM builds with bundle validation and SHA-256

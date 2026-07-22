@@ -43,7 +43,8 @@
 - [x] HeroUI v3 editor workspace with preview, history, restore and undo
 - [x] Canonical player fitness, morale, injury and ban analysis/editing workspace
 - [ ] Live player, contract, injury and ban field adapter acceptance
-- [ ] Clubs, finance and facilities
+- [x] Canonical clubs, finance, stadium and facilities center
+- [ ] Live club, finance, stadium and facilities field adapter acceptance
 - [x] Preset manager and validated, filtered mass edit
 - [x] Canonical immediate, future and loan transfer planning/completion
 - [x] Reciprocal immediate and future player swaps with atomic cancellation/completion
