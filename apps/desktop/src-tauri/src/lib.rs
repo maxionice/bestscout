@@ -172,6 +172,32 @@ async fn prepare_freeze_correction(
 }
 
 #[tauri::command]
+async fn analyse_player_availability(
+    snapshot: bestscout_core::DatabaseSnapshot,
+    criteria: bestscout_core::AvailabilityCriteria,
+) -> Result<bestscout_core::AvailabilityReport, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        bestscout_core::analyse_player_availability(&snapshot, criteria)
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| format!("Verfügbarkeitsanalyse fehlgeschlagen: {error}"))?
+}
+
+#[tauri::command]
+async fn prepare_availability_action(
+    snapshot: bestscout_core::DatabaseSnapshot,
+    request: bestscout_core::AvailabilityActionRequest,
+) -> Result<bestscout_core::PreparedAvailabilityAction, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        bestscout_core::prepare_availability_action(&snapshot, &request)
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| format!("Verfügbarkeitsvorschau fehlgeschlagen: {error}"))?
+}
+
+#[tauri::command]
 fn inspect_fm26_process(pid: u32) -> Result<bestscout_live::ProcessInspection, String> {
     bestscout_live::inspect_process(pid).map_err(|error| error.to_string())
 }
@@ -286,6 +312,8 @@ pub fn run() {
             delete_freeze_plan,
             evaluate_freeze_plan,
             prepare_freeze_correction,
+            analyse_player_availability,
+            prepare_availability_action,
             inspect_fm26_process,
             search_database,
             query_players,

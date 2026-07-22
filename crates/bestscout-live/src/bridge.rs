@@ -343,6 +343,7 @@ impl BridgeClient {
         let snapshot = DatabaseSnapshot {
             schema_version: manifest.schema_version,
             source: SnapshotSource::Live,
+            game_date: None,
             players,
             staff,
             clubs,

@@ -2,14 +2,15 @@ use std::collections::BTreeMap;
 
 use crate::{
     Attribute, Club, ClubFacilities, ClubFinances, Competition, Contract, ContractType,
-    DatabaseSnapshot, Foot, GameDate, Player, PlayerDetails, PlayerStatus, SnapshotSource, Staff,
-    StaffAttribute, StaffRole,
+    DatabaseSnapshot, Foot, GameDate, Player, PlayerDetails, PlayerFitness, PlayerStatus,
+    SnapshotSource, Staff, StaffAttribute, StaffRole,
 };
 
 pub fn synthetic_snapshot() -> DatabaseSnapshot {
     DatabaseSnapshot {
         schema_version: 1,
         source: SnapshotSource::Synthetic,
+        game_date: GameDate::new(2026, 7, 22),
         players: vec![
             Player {
                 id: "player-ada".into(),
@@ -43,6 +44,16 @@ pub fn synthetic_snapshot() -> DatabaseSnapshot {
                         release_clause: Some(42_000_000.0),
                         squad_status: Some("First team".into()),
                     }),
+                    fitness: PlayerFitness {
+                        condition: Some(92),
+                        match_fitness: Some(88),
+                        fatigue: Some(18),
+                        jadedness: Some(10),
+                    },
+                    morale: Some(16),
+                    happiness: Some(17),
+                    injuries: Vec::new(),
+                    bans: Vec::new(),
                     status: PlayerStatus::default(),
                     tags: vec!["wonderkid".into()],
                     note: None,

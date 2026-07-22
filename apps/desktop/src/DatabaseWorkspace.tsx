@@ -220,6 +220,14 @@ function playerCell(player: Player, columnId: string): ReactNode {
     case "injured": return booleanLabel(player.details?.status?.injured);
     case "suspended": return booleanLabel(player.details?.status?.suspended);
     case "unavailable": return booleanLabel(player.details?.status?.unavailable);
+    case "condition": return display(player.details?.fitness?.condition);
+    case "match_fitness": return display(player.details?.fitness?.match_fitness);
+    case "fatigue": return display(player.details?.fitness?.fatigue);
+    case "jadedness": return display(player.details?.fitness?.jadedness);
+    case "morale": return display(player.details?.morale);
+    case "happiness": return display(player.details?.happiness);
+    case "active_injuries": return player.details?.injuries?.map((injury) => injury.name).join(", ") || "–";
+    case "active_bans": return player.details?.bans?.map((ban) => ban.reason).join(", ") || "–";
     case "tags": return player.details?.tags.join(", ") || "–";
     case "note": return display(player.details?.note);
     default: return attribute(player.attributes[columnId.replace("attribute:", "")]);

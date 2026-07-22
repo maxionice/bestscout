@@ -1,3 +1,4 @@
+pub mod availability;
 pub mod comparison;
 pub mod editor;
 pub mod fixtures;
@@ -12,6 +13,12 @@ pub mod shortlist;
 pub mod squad;
 pub mod validation;
 
+pub use availability::{
+    AVAILABILITY_SCHEMA_VERSION, AvailabilityAction, AvailabilityActionRequest,
+    AvailabilityCriteria, AvailabilityError, AvailabilityIssue, AvailabilityIssueKind,
+    AvailabilityReport, AvailabilityState, PlayerAvailability, PreparedAvailabilityAction,
+    analyse_player_availability, prepare_availability_action,
+};
 pub use comparison::{SimilarPlayer, find_similar_players};
 pub use editor::{
     AppliedTransaction, EDITOR_SCHEMA_VERSION, EditEntityKind, EditOperation, EditTransaction,
@@ -32,9 +39,10 @@ pub use intelligence::{
     ScoutIntelligenceReport, analyse_scout_intelligence,
 };
 pub use model::{
-    Attribute, Club, ClubFacilities, ClubFinances, Competition, Contract, ContractType,
-    DatabaseSnapshot, Foot, GameDate, HiddenAttribute, Player, PlayerDetails, PlayerStatus,
-    Position, SnapshotSource, Staff, StaffAttribute, StaffRole,
+    Attribute, BanScope, Club, ClubFacilities, ClubFinances, Competition, Contract, ContractType,
+    DatabaseSnapshot, Foot, GameDate, HiddenAttribute, InjurySeverity, InjuryTreatment, Player,
+    PlayerBan, PlayerDetails, PlayerFitness, PlayerInjury, PlayerStatus, Position, SnapshotSource,
+    Staff, StaffAttribute, StaffRole,
 };
 pub use query::{
     EntityKind, FilterExpression, GlobalSearchQuery, PlayerPredicate, PlayerQuery,
