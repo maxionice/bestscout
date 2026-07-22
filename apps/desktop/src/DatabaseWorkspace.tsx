@@ -43,6 +43,10 @@ const staffGridColumns: GridColumn[] = [
   { id: "id", label: "Datenbank-ID" }, { id: "name", label: "Name" },
   { id: "age", label: "Alter" }, { id: "club", label: "Verein" },
   { id: "nationality", label: "Nation" }, { id: "roles", label: "Rollen" },
+  { id: "secondary_nationalities", label: "Weitere Nationen" },
+  { id: "height_cm", label: "Größe (cm)" }, { id: "weight_kg", label: "Gewicht (kg)" },
+  { id: "skin_tone", label: "Hautton" }, { id: "hair_colour", label: "Haarfarbe" },
+  { id: "hair_length", label: "Haarlänge" }, { id: "ethnicity", label: "Ethnizität" },
   { id: "current_ability", label: "CA" }, { id: "potential_ability", label: "PA" },
   { id: "reputation", label: "Reputation" }, { id: "contract_starts", label: "Vertragsbeginn" },
   { id: "contract_expires", label: "Vertragsende" }, { id: "contract_club_id", label: "Vertragsverein-ID" },
@@ -203,7 +207,15 @@ function playerCell(player: Player, columnId: string, snapshot: DatabaseSnapshot
     case "age": return display(player.age);
     case "club": return display(player.club);
     case "nationality": return display(player.nationality);
+    case "secondary_nationalities": return player.details?.secondary_nationalities?.join(", ") || "–";
     case "preferred_foot": return footLabel(player.preferred_foot);
+    case "height_cm": return display(player.details?.appearance?.height_cm);
+    case "weight_kg": return display(player.details?.appearance?.weight_kg);
+    case "skin_tone": return display(player.details?.appearance?.skin_tone);
+    case "hair_colour": return appearanceLabel(player.details?.appearance?.hair_colour);
+    case "hair_length": return appearanceLabel(player.details?.appearance?.hair_length);
+    case "ethnicity": return display(player.details?.appearance?.ethnicity);
+    case "preferred_moves": return player.details?.preferred_moves?.map((item) => item.name).join(", ") || "–";
     case "value": return formatMoney(player.value);
     case "wage": return player.wage == null ? "–" : `${money.format(player.wage)} / W.`;
     case "current_ability": return ability(player.current_ability, "ca");
@@ -257,6 +269,13 @@ function staffRow(staff: Staff, snapshot: DatabaseSnapshot | null): GridRow {
     id: staff.id,
     name: <EntityName name={staff.name} subtitle={staff.nationality} />,
     age: display(staff.age), club: display(staff.club), nationality: display(staff.nationality),
+    secondary_nationalities: staff.details?.secondary_nationalities?.join(", ") || "–",
+    height_cm: display(staff.details?.appearance?.height_cm),
+    weight_kg: display(staff.details?.appearance?.weight_kg),
+    skin_tone: display(staff.details?.appearance?.skin_tone),
+    hair_colour: appearanceLabel(staff.details?.appearance?.hair_colour),
+    hair_length: appearanceLabel(staff.details?.appearance?.hair_length),
+    ethnicity: display(staff.details?.appearance?.ethnicity),
     roles: staff.roles.map(roleLabel).join(" · ") || "–",
     current_ability: ability(staff.current_ability, "ca"),
     potential_ability: ability(staff.potential_ability, "potential"),
@@ -381,6 +400,11 @@ function contractTypeLabel(type: Contract["contract_type"]) {
 
 function roleLabel(role: string) {
   return ({ assistant_manager: "Co-Trainer", coach: "Trainer", manager: "Trainer", goalkeeping_coach: "Torwarttrainer", fitness_coach: "Fitnesstrainer", performance_analyst: "Leistungsanalyst", recruitment_analyst: "Rekrutierungsanalyst", scout: "Scout", director_of_football: "Sportdirektor", technical_director: "Technischer Direktor", head_of_youth_development: "Nachwuchsleiter", physio: "Physiotherapeut", sports_scientist: "Sportwissenschaftler" } as Record<string, string>)[role] ?? role;
+}
+
+function appearanceLabel(value: string | null | undefined) {
+  if (!value || value === "unknown") return "–";
+  return ({ black: "Schwarz", brown: "Braun", blond: "Blond", red: "Rot", grey: "Grau", white: "Weiß", other: "Andere", bald: "Glatze", short: "Kurz", medium: "Mittel", long: "Lang" } as Record<string, string>)[value] ?? value;
 }
 
 function professionalStatusLabel(status: string | null | undefined) {

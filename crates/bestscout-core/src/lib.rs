@@ -58,11 +58,12 @@ pub use model::{
     Attribute, BanScope, Club, ClubBranding, ClubFacilities, ClubFinances, ClubKit, ClubKitKind,
     ClubRelationship, ClubRelationshipKind, Competition, CompetitionFixture, CompetitionStage,
     CompetitionStageKind, CompetitionStanding, Contract, ContractType, DatabaseSnapshot,
-    FixtureStatus, Foot, FutureTransfer, GameDate, HiddenAttribute, InjurySeverity,
-    InjuryTreatment, LanguageSkill, PersonRelationship, Player, PlayerBan, PlayerDetails,
-    PlayerFitness, PlayerInjury, PlayerRegistration, PlayerStatus, Position, RegistrationStatus,
-    RelationshipKind, RelationshipTargetKind, SnapshotSource, Staff, StaffAttribute, StaffDetails,
-    StaffQualification, StaffResponsibility, StaffRole, TransferKind, TransferStatus,
+    FixtureStatus, Foot, FutureTransfer, GameDate, HairColour, HairLength, HiddenAttribute,
+    InjurySeverity, InjuryTreatment, LanguageSkill, PersonAppearance, PersonRelationship, Player,
+    PlayerBan, PlayerDetails, PlayerFitness, PlayerInjury, PlayerRegistration, PlayerStatus,
+    Position, PreferredMove, RegistrationStatus, RelationshipKind, RelationshipTargetKind,
+    SnapshotSource, Staff, StaffAttribute, StaffDetails, StaffQualification, StaffResponsibility,
+    StaffRole, TransferKind, TransferStatus,
 };
 pub use people::{
     PeopleActionRequest, PeopleCommand, PeopleError, PreparedPeopleAction, prepare_people_action,

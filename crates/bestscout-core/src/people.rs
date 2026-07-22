@@ -4,14 +4,32 @@ use thiserror::Error;
 
 use crate::{
     AppliedTransaction, Contract, DatabaseSnapshot, EDITOR_SCHEMA_VERSION, EditEntityKind,
-    EditOperation, EditTransaction, FieldExpectation, LanguageSkill, PersonRelationship,
-    PlayerRegistration, StaffQualification, StaffResponsibility, StaffRole, TransactionError,
-    apply_transaction, editor::entity_value, editor::value_at_path, validate_snapshot,
+    EditOperation, EditTransaction, FieldExpectation, Foot, LanguageSkill, PersonAppearance,
+    PersonRelationship, PlayerRegistration, PreferredMove, StaffQualification, StaffResponsibility,
+    StaffRole, TransactionError, apply_transaction, editor::entity_value, editor::value_at_path,
+    validate_snapshot,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PeopleCommand {
+    UpdatePlayerIdentity {
+        player_id: String,
+        name: String,
+        nationality: Option<String>,
+        secondary_nationalities: Vec<String>,
+        positions: Vec<String>,
+        preferred_foot: Foot,
+        appearance: PersonAppearance,
+        preferred_moves: Vec<PreferredMove>,
+    },
+    UpdateStaffIdentity {
+        staff_id: String,
+        name: String,
+        nationality: Option<String>,
+        secondary_nationalities: Vec<String>,
+        appearance: PersonAppearance,
+    },
     UpdateStaffAssignment {
         staff_id: String,
         roles: Vec<StaffRole>,
@@ -100,6 +118,69 @@ pub fn prepare_people_action(
 
     let mut operations = Vec::new();
     match &request.command {
+        PeopleCommand::UpdatePlayerIdentity {
+            player_id,
+            name,
+            nationality,
+            secondary_nationalities,
+            positions,
+            preferred_foot,
+            appearance,
+            preferred_moves,
+        } => {
+            player(snapshot, player_id)?;
+            for (field, value) in [
+                ("name", serde_json::to_value(name)),
+                ("nationality", serde_json::to_value(nationality)),
+                ("positions", serde_json::to_value(positions)),
+                ("preferred_foot", serde_json::to_value(preferred_foot)),
+                (
+                    "details.secondary_nationalities",
+                    serde_json::to_value(secondary_nationalities),
+                ),
+                ("details.appearance", serde_json::to_value(appearance)),
+                (
+                    "details.preferred_moves",
+                    serde_json::to_value(preferred_moves),
+                ),
+            ] {
+                add_change(
+                    snapshot,
+                    &mut operations,
+                    EditEntityKind::Player,
+                    player_id,
+                    field,
+                    value.map_err(TransactionError::SnapshotSerialization)?,
+                )?;
+            }
+        }
+        PeopleCommand::UpdateStaffIdentity {
+            staff_id,
+            name,
+            nationality,
+            secondary_nationalities,
+            appearance,
+        } => {
+            staff(snapshot, staff_id)?;
+            for (field, value) in [
+                ("name", serde_json::to_value(name)),
+                ("nationality", serde_json::to_value(nationality)),
+                (
+                    "details.secondary_nationalities",
+                    serde_json::to_value(secondary_nationalities),
+                ),
+                ("details.appearance", serde_json::to_value(appearance)),
+            ] {
+                add_change(
+                    snapshot,
+                    &mut operations,
+                    EditEntityKind::Staff,
+                    staff_id,
+                    field,
+                    value.map_err(TransactionError::SnapshotSerialization)?,
+                )?;
+            }
+        }
         PeopleCommand::UpdateStaffAssignment {
             staff_id,
             roles,
@@ -457,6 +538,12 @@ fn add_change(
 
 fn command_reason(command: &PeopleCommand) -> String {
     match command {
+        PeopleCommand::UpdatePlayerIdentity { player_id, .. } => {
+            format!("Update player identity for {player_id}")
+        }
+        PeopleCommand::UpdateStaffIdentity { staff_id, .. } => {
+            format!("Update staff identity for {staff_id}")
+        }
         PeopleCommand::UpdateStaffAssignment { staff_id, .. } => {
             format!("Update staff assignment for {staff_id}")
         }
@@ -496,9 +583,10 @@ fn command_reason(command: &PeopleCommand) -> String {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ContractType, GameDate, LanguageSkill, PersonRelationship, PlayerRegistration,
-        RegistrationStatus, RelationshipKind, RelationshipTargetKind, StaffResponsibility,
-        StaffRole, apply_transaction, synthetic_snapshot,
+        ContractType, GameDate, HairColour, HairLength, LanguageSkill, PersonAppearance,
+        PersonRelationship, PlayerRegistration, PreferredMove, RegistrationStatus,
+        RelationshipKind, RelationshipTargetKind, StaffResponsibility, StaffRole,
+        apply_transaction, synthetic_snapshot,
     };
 
     use super::*;
@@ -575,6 +663,78 @@ mod tests {
         assert_eq!(
             prepared.preview.snapshot.staff[0].details.note.as_deref(),
             Some("Leitet die internationale Rekrutierung")
+        );
+    }
+
+    #[test]
+    fn updates_player_and_staff_identity_profiles_atomically() {
+        let snapshot = synthetic_snapshot();
+        let appearance = PersonAppearance {
+            height_cm: Some(181),
+            weight_kg: Some(73),
+            skin_tone: Some(5),
+            hair_colour: HairColour::Black,
+            hair_length: HairLength::Short,
+            ethnicity: Some("Central European".into()),
+        };
+        let preferred_moves = vec![PreferredMove {
+            id: "switches_ball".into(),
+            name: "Switches ball to other flank".into(),
+        }];
+        let prepared = prepare_people_action(
+            &snapshot,
+            &request(PeopleCommand::UpdatePlayerIdentity {
+                player_id: "player-ada".into(),
+                name: "Ada Muster".into(),
+                nationality: Some("Deutschland".into()),
+                secondary_nationalities: vec!["Schweiz".into(), "Österreich".into()],
+                positions: vec!["M (Z)".into()],
+                preferred_foot: crate::Foot::Both,
+                appearance: appearance.clone(),
+                preferred_moves: preferred_moves.clone(),
+            }),
+        )
+        .unwrap();
+        assert!(
+            prepared.transaction.operations.iter().all(|operation| {
+                matches!(operation.expected_before, FieldExpectation::Exact(_))
+            })
+        );
+        let player = &prepared.preview.snapshot.players[0];
+        assert_eq!(player.name, "Ada Muster");
+        assert_eq!(player.preferred_foot, crate::Foot::Both);
+        assert_eq!(player.details.appearance, appearance);
+        assert_eq!(player.details.preferred_moves, preferred_moves);
+
+        let prepared = prepare_people_action(
+            &prepared.preview.snapshot,
+            &request(PeopleCommand::UpdateStaffIdentity {
+                staff_id: "staff-lina".into(),
+                name: "Lina Taktik".into(),
+                nationality: Some("Österreich".into()),
+                secondary_nationalities: vec!["Deutschland".into(), "Schweiz".into()],
+                appearance: PersonAppearance {
+                    hair_colour: HairColour::Brown,
+                    ..prepared.preview.snapshot.staff[0]
+                        .details
+                        .appearance
+                        .clone()
+                },
+            }),
+        )
+        .unwrap();
+        assert_eq!(
+            prepared.preview.snapshot.staff[0]
+                .details
+                .secondary_nationalities,
+            vec!["Deutschland", "Schweiz"]
+        );
+        assert_eq!(
+            prepared.preview.snapshot.staff[0]
+                .details
+                .appearance
+                .hair_colour,
+            HairColour::Brown
         );
     }
 

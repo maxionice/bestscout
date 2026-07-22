@@ -78,8 +78,10 @@ domain invariants before presenting a preview.
 
 - **Verfügbarkeit** covers fitness, condition, morale, injuries and bans.
 - **Transfers** covers immediate, future, loan and reciprocal swap routes.
-- **People** covers staff assignments, languages, qualifications, registrations
-  and relationships.
+- **People** covers player/staff identity, secondary nationalities, appearance,
+  preferred moves, staff assignments, languages, qualifications, registrations
+  and relationships. Ethnicity is accepted only as canonical FM data and is
+  never inferred.
 - **Club-Zentrale** covers identity, competition links, finance, stadium,
   facilities, `#RRGGBB` club colours, four typed kit slots and club
   relationships.

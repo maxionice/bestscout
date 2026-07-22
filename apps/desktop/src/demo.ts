@@ -7,6 +7,16 @@ const attributes = (passing: number, vision: number, pace: number, technique: nu
 });
 
 const details = (expiresYear: number, expiresMonth = 6, expiresDay = 30) => ({
+  secondary_nationalities: [],
+  appearance: {
+    height_cm: null,
+    weight_kg: null,
+    skin_tone: null,
+    hair_colour: "unknown" as const,
+    hair_length: "unknown" as const,
+    ethnicity: null,
+  },
+  preferred_moves: [],
   reputation: null,
   international_reputation: null,
   consistency: null,

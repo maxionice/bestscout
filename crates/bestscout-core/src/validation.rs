@@ -127,6 +127,21 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
                 "age must not exceed 120",
             );
         }
+        validate_nationalities(
+            &mut issues,
+            "player",
+            &player.id,
+            player.nationality.as_deref(),
+            &player.details.secondary_nationalities,
+        );
+        validate_person_appearance(
+            &mut issues,
+            "player",
+            &player.id,
+            "details.appearance",
+            &player.details.appearance,
+        );
+        validate_preferred_moves(&mut issues, player);
         for (attribute, value) in &player.attributes {
             if !(1..=20).contains(value) {
                 issue(
@@ -281,6 +296,20 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
                 "age must not exceed 120",
             );
         }
+        validate_nationalities(
+            &mut issues,
+            "staff",
+            &staff.id,
+            staff.nationality.as_deref(),
+            &staff.details.secondary_nationalities,
+        );
+        validate_person_appearance(
+            &mut issues,
+            "staff",
+            &staff.id,
+            "details.appearance",
+            &staff.details.appearance,
+        );
         validate_abilities(
             &mut issues,
             "staff",
@@ -1011,6 +1040,158 @@ fn validate_reciprocal_swap(
             "details.future_transfer",
             "a swap must have one inverse agreement with matching clubs, players, dates and status",
         );
+    }
+}
+
+fn validate_nationalities(
+    issues: &mut Vec<SnapshotIssue>,
+    entity_kind: &str,
+    entity_id: &str,
+    primary: Option<&str>,
+    secondary: &[String],
+) {
+    if primary.is_some_and(|value| value.trim().is_empty() || value.chars().count() > 64) {
+        issue(
+            issues,
+            "invalid_primary_nationality",
+            entity_kind,
+            entity_id,
+            "nationality",
+            "primary nationality must be non-empty and at most 64 characters",
+        );
+    }
+    if secondary.len() > 8 {
+        issue(
+            issues,
+            "too_many_secondary_nationalities",
+            entity_kind,
+            entity_id,
+            "details.secondary_nationalities",
+            "a person may have at most eight secondary nationalities",
+        );
+    }
+    let primary = primary.map(|value| value.trim().to_lowercase());
+    let mut seen = HashSet::new();
+    for (index, nationality) in secondary.iter().enumerate() {
+        let value = nationality.trim();
+        let normalized = value.to_lowercase();
+        if value.is_empty()
+            || value.chars().count() > 64
+            || primary.as_deref() == Some(normalized.as_str())
+            || !seen.insert(normalized)
+        {
+            issue(
+                issues,
+                "invalid_secondary_nationality",
+                entity_kind,
+                entity_id,
+                format!("details.secondary_nationalities.{index}"),
+                "secondary nationalities must be bounded, unique and differ from the primary nationality",
+            );
+        }
+    }
+}
+
+fn validate_person_appearance(
+    issues: &mut Vec<SnapshotIssue>,
+    entity_kind: &str,
+    entity_id: &str,
+    prefix: &str,
+    appearance: &crate::PersonAppearance,
+) {
+    if appearance
+        .height_cm
+        .is_some_and(|value| !(100..=250).contains(&value))
+    {
+        issue(
+            issues,
+            "height_out_of_range",
+            entity_kind,
+            entity_id,
+            format!("{prefix}.height_cm"),
+            "height must be between 100 and 250 centimetres",
+        );
+    }
+    if appearance
+        .weight_kg
+        .is_some_and(|value| !(30..=250).contains(&value))
+    {
+        issue(
+            issues,
+            "weight_out_of_range",
+            entity_kind,
+            entity_id,
+            format!("{prefix}.weight_kg"),
+            "weight must be between 30 and 250 kilograms",
+        );
+    }
+    if appearance
+        .skin_tone
+        .is_some_and(|value| !(1..=20).contains(&value))
+    {
+        issue(
+            issues,
+            "skin_tone_out_of_range",
+            entity_kind,
+            entity_id,
+            format!("{prefix}.skin_tone"),
+            "skin tone must be between one and 20",
+        );
+    }
+    if appearance
+        .ethnicity
+        .as_ref()
+        .is_some_and(|value| value.trim().is_empty() || value.chars().count() > 64)
+    {
+        issue(
+            issues,
+            "invalid_ethnicity",
+            entity_kind,
+            entity_id,
+            format!("{prefix}.ethnicity"),
+            "ethnicity must be non-empty and at most 64 characters",
+        );
+    }
+}
+
+fn validate_preferred_moves(issues: &mut Vec<SnapshotIssue>, player: &Player) {
+    if player.details.preferred_moves.len() > 64 {
+        issue(
+            issues,
+            "too_many_preferred_moves",
+            "player",
+            &player.id,
+            "details.preferred_moves",
+            "a player may have at most 64 preferred moves",
+        );
+    }
+    let mut ids = HashSet::new();
+    let mut names = HashSet::new();
+    for (index, preferred_move) in player.details.preferred_moves.iter().enumerate() {
+        let name = preferred_move.name.trim();
+        if preferred_move.id.trim().is_empty()
+            || preferred_move.id.len() > 128
+            || !ids.insert(preferred_move.id.as_str())
+        {
+            issue(
+                issues,
+                "invalid_preferred_move_id",
+                "player",
+                &player.id,
+                format!("details.preferred_moves.{index}.id"),
+                "preferred move IDs must be non-empty, bounded and unique per player",
+            );
+        }
+        if name.is_empty() || name.chars().count() > 128 || !names.insert(name.to_lowercase()) {
+            issue(
+                issues,
+                "invalid_preferred_move_name",
+                "player",
+                &player.id,
+                format!("details.preferred_moves.{index}.name"),
+                "preferred move names must be non-empty, bounded and unique per player",
+            );
+        }
     }
 }
 
@@ -2096,6 +2277,39 @@ mod tests {
             "unknown_club_relationship_target",
             "self_club_relationship",
             "club_relationship_strength_out_of_range",
+        ] {
+            assert!(
+                report.issues.iter().any(|issue| issue.code == code),
+                "missing expected issue code {code}: {:?}",
+                report.issues
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_person_appearance_nationalities_and_preferred_moves() {
+        let mut snapshot = synthetic_snapshot();
+        let player = &mut snapshot.players[0];
+        player.details.secondary_nationalities = vec!["Deutschland".into(), String::new()];
+        player.details.appearance.height_cm = Some(99);
+        player.details.appearance.weight_kg = Some(251);
+        player.details.appearance.skin_tone = Some(21);
+        player.details.appearance.ethnicity = Some(String::new());
+        let duplicate_move = player.details.preferred_moves[0].clone();
+        player.details.preferred_moves.push(duplicate_move);
+        snapshot.staff[0].details.secondary_nationalities = vec!["Nation".into(); 9];
+
+        let report = validate_snapshot(&snapshot);
+        assert!(!report.valid);
+        for code in [
+            "invalid_secondary_nationality",
+            "too_many_secondary_nationalities",
+            "height_out_of_range",
+            "weight_out_of_range",
+            "skin_tone_out_of_range",
+            "invalid_ethnicity",
+            "invalid_preferred_move_id",
+            "invalid_preferred_move_name",
         ] {
             assert!(
                 report.issues.iter().any(|issue| issue.code == code),

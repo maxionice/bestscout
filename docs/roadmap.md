@@ -55,6 +55,7 @@
 ## 0.7 — Advanced editor
 
 - [x] Canonical staff, registrations, languages, qualifications and relationships
+- [x] Canonical person appearance, secondary nationalities and preferred moves
 - [x] HeroUI People & Registration Center with exact preview, journal and undo
 - [ ] Live staff, registration and relationship field adapter acceptance
 - [x] Canonical competitions, fixtures, stages and standings center

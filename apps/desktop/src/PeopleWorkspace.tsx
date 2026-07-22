@@ -3,13 +3,14 @@ import { Button, Card, Input, NumberField, TextArea, TextField } from "@heroui/r
 import { invoke } from "@tauri-apps/api/core";
 import {
   BadgeCheck, BriefcaseBusiness, Check, ClipboardCheck, GraduationCap,
-  Languages, Link2, Search, ShieldCheck, Trash2, UserRoundCog, Users,
+  Languages, Link2, Palette, Search, ShieldCheck, Trash2, UserRoundCog, Users,
 } from "lucide-react";
 
 import type {
   AppliedTransaction, Contract, DatabaseSnapshot, GameDate, LanguageSkill, PeopleActionRequest,
-  PeopleCommand, PersonRelationship, Player, PlayerRegistration, PreparedPeopleAction,
-  RelationshipKind, RelationshipTargetKind, Staff,
+  HairColour, HairLength, PeopleCommand, PersonAppearance, PersonRelationship, Player,
+  PlayerRegistration, PreferredMove, PreparedPeopleAction, RelationshipKind,
+  RelationshipTargetKind, Staff,
 } from "./types";
 
 export type PeopleGateway = {
@@ -38,7 +39,7 @@ const defaultIdentityProvider: PeopleIdentityProvider = {
   now: () => new Date(),
 };
 
-type Mode = "staff" | "registrations" | "languages" | "relationships";
+type Mode = "staff" | "profiles" | "registrations" | "languages" | "relationships";
 type PersonKind = "player" | "staff";
 
 const roles = [
@@ -87,6 +88,19 @@ export function PeopleWorkspace({
   const [qualificationAwarded, setQualificationAwarded] = useState(formatInputDate(snapshot?.game_date) ?? "");
   const [qualificationEnd, setQualificationEnd] = useState("");
   const [personKind, setPersonKind] = useState<PersonKind>("player");
+  const [profileName, setProfileName] = useState(initialPlayer?.name ?? "");
+  const [profileNationality, setProfileNationality] = useState(initialPlayer?.nationality ?? "");
+  const [secondaryNationalities, setSecondaryNationalities] = useState((initialPlayer?.details?.secondary_nationalities ?? []).join(", "));
+  const [profileHeight, setProfileHeight] = useState(optionalNumberInput(initialPlayer?.details?.appearance?.height_cm));
+  const [profileWeight, setProfileWeight] = useState(optionalNumberInput(initialPlayer?.details?.appearance?.weight_kg));
+  const [profileSkinTone, setProfileSkinTone] = useState(optionalNumberInput(initialPlayer?.details?.appearance?.skin_tone));
+  const [profileHairColour, setProfileHairColour] = useState<HairColour>(initialPlayer?.details?.appearance?.hair_colour ?? "unknown");
+  const [profileHairLength, setProfileHairLength] = useState<HairLength>(initialPlayer?.details?.appearance?.hair_length ?? "unknown");
+  const [profileEthnicity, setProfileEthnicity] = useState(initialPlayer?.details?.appearance?.ethnicity ?? "");
+  const [profilePositions, setProfilePositions] = useState((initialPlayer?.positions ?? []).join(", "));
+  const [profilePreferredFoot, setProfilePreferredFoot] = useState<Player["preferred_foot"]>(initialPlayer?.preferred_foot ?? "unknown");
+  const [preferredMoves, setPreferredMoves] = useState<PreferredMove[]>(initialPlayer?.details?.preferred_moves ?? []);
+  const [preferredMoveName, setPreferredMoveName] = useState("");
   const [languageName, setLanguageName] = useState("");
   const [languageSpeaking, setLanguageSpeaking] = useState(5);
   const [languageReading, setLanguageReading] = useState(5);
@@ -146,7 +160,33 @@ export function PeopleWorkspace({
       setPlayerId(player.id);
       synchronizeRegistrationDraft(player, nextCompetitionId, nextSnapshot.game_date);
     }
+    const person = personKind === "player" ? player : staff;
+    if (person) synchronizePersonDraft(person, personKind);
     setCompetitionId(nextCompetitionId);
+  }
+
+  function synchronizePersonDraft(person: Player | Staff, kind: PersonKind) {
+    const appearance = person.details?.appearance;
+    setProfileName(person.name);
+    setProfileNationality(person.nationality ?? "");
+    setSecondaryNationalities((person.details?.secondary_nationalities ?? []).join(", "));
+    setProfileHeight(optionalNumberInput(appearance?.height_cm));
+    setProfileWeight(optionalNumberInput(appearance?.weight_kg));
+    setProfileSkinTone(optionalNumberInput(appearance?.skin_tone));
+    setProfileHairColour(appearance?.hair_colour ?? "unknown");
+    setProfileHairLength(appearance?.hair_length ?? "unknown");
+    setProfileEthnicity(appearance?.ethnicity ?? "");
+    setPreferredMoveName("");
+    if (kind === "player") {
+      const player = person as Player;
+      setProfilePositions(player.positions.join(", "));
+      setProfilePreferredFoot(player.preferred_foot);
+      setPreferredMoves(player.details?.preferred_moves ?? []);
+    } else {
+      setProfilePositions("");
+      setProfilePreferredFoot("unknown");
+      setPreferredMoves([]);
+    }
   }
 
   function synchronizeStaffDraft(staff: Staff, snapshotDate: GameDate | null | undefined) {
@@ -195,11 +235,18 @@ export function PeopleWorkspace({
 
   function selectPerson(kind: PersonKind, id: string) {
     setPersonKind(kind);
-    if (kind === "player") setPlayerId(id);
+    if (kind === "player") {
+      setPlayerId(id);
+      const player = snapshot?.players.find((item) => item.id === id);
+      if (player) synchronizePersonDraft(player, kind);
+    }
     else {
       setStaffId(id);
       const staff = snapshot?.staff.find((item) => item.id === id);
-      if (staff) synchronizeStaffDraft(staff, snapshot?.game_date);
+      if (staff) {
+        synchronizeStaffDraft(staff, snapshot?.game_date);
+        synchronizePersonDraft(staff, kind);
+      }
     }
     setTargetId(firstRelationshipTargetId(snapshot, targetKind, kind, id));
     clearPreview();
@@ -301,6 +348,50 @@ export function PeopleWorkspace({
     } catch (reason) {
       setError(String(reason));
     }
+  }
+
+  function prepareIdentityProfile() {
+    if (!selectedPerson) return;
+    try {
+      const name = requiredText(profileName, "Name");
+      const appearance: PersonAppearance = {
+        height_cm: parseOptionalInteger(profileHeight, "Größe", 100, 250),
+        weight_kg: parseOptionalInteger(profileWeight, "Gewicht", 30, 250),
+        skin_tone: parseOptionalInteger(profileSkinTone, "Hautton", 1, 20),
+        hair_colour: profileHairColour,
+        hair_length: profileHairLength,
+        ethnicity: profileEthnicity.trim() || null,
+      };
+      const shared = {
+        name,
+        nationality: profileNationality.trim() || null,
+        secondary_nationalities: commaList(secondaryNationalities),
+        appearance,
+      };
+      void prepare(personKind === "player"
+        ? {
+            kind: "update_player_identity",
+            player_id: selectedPerson.id,
+            ...shared,
+            positions: commaList(profilePositions),
+            preferred_foot: profilePreferredFoot,
+            preferred_moves: preferredMoves,
+          }
+        : { kind: "update_staff_identity", staff_id: selectedPerson.id, ...shared });
+    } catch (reason) {
+      setError(String(reason));
+    }
+  }
+
+  function upsertPreferredMoveDraft() {
+    if (!selectedPlayer || !preferredMoveName.trim()) return;
+    const name = preferredMoveName.trim();
+    const existing = preferredMoves.find((item) => normalize(item.name) === normalize(name));
+    updateDraft(setPreferredMoves, [
+      ...preferredMoves.filter((item) => item.id !== existing?.id),
+      { id: existing?.id ?? identity.createId(`preferred-move-${selectedPlayer.id}`), name },
+    ]);
+    setPreferredMoveName("");
   }
 
   function upsertLanguage() {
@@ -429,7 +520,7 @@ export function PeopleWorkspace({
 
   return <div className="people-workspace">
     <Card className="people-hero">
-      <Card.Header><div className="people-heading"><span><UserRoundCog size={21} /></span><div><span className="eyebrow">STAFF · REGISTRIERUNG · SPRACHEN · BEZIEHUNGEN</span><Card.Title>People & Registration Center</Card.Title><Card.Description>Personen- und Kaderdaten referenzsicher verwalten.</Card.Description></div></div><div className="people-safety"><ShieldCheck size={17} /><div><strong>{liveWriteEnabled ? "Live-Profil bereit" : "Sichere Arbeitskopie"}</strong><span>Vorschau · Backup · Journal · Undo</span></div></div></Card.Header>
+      <Card.Header><div className="people-heading"><span><UserRoundCog size={21} /></span><div><span className="eyebrow">PROFILE · STAFF · REGISTRIERUNG · SPRACHEN · BEZIEHUNGEN</span><Card.Title>People & Registration Center</Card.Title><Card.Description>Personen- und Kaderdaten referenzsicher verwalten.</Card.Description></div></div><div className="people-safety"><ShieldCheck size={17} /><div><strong>{liveWriteEnabled ? "Live-Profil bereit" : "Sichere Arbeitskopie"}</strong><span>Vorschau · Backup · Journal · Undo</span></div></div></Card.Header>
       <Card.Content><span>SPIELTAG {gameDate ? formatDate(gameDate) : "NICHT VERFÜGBAR"}</span><span className={error ? "error" : ""}>{error || message}</span></Card.Content>
     </Card>
 
@@ -441,7 +532,7 @@ export function PeopleWorkspace({
     </section>
 
     <div className="people-mode-tabs" role="group" aria-label="People-Bereich">
-      {(["staff", "registrations", "languages", "relationships"] as Mode[]).map((item) => <Button key={item} variant={mode === item ? "primary" : "secondary"} isDisabled={busy} onPress={() => { setMode(item); clearPreview(); }}>{modeIcon(item)} {modeLabel(item)}</Button>)}
+      {(["staff", "profiles", "registrations", "languages", "relationships"] as Mode[]).map((item) => <Button key={item} variant={mode === item ? "primary" : "secondary"} isDisabled={busy} onPress={() => { setMode(item); clearPreview(); }}>{modeIcon(item)} {modeLabel(item)}</Button>)}
     </div>
 
     <div className="people-layout">
@@ -488,6 +579,39 @@ export function PeopleWorkspace({
             onRemoveQualification={removeQualification}
             busy={busy}
           />}
+          {mode === "profiles" && selectedPerson && <ProfileEditor
+            person={selectedPerson}
+            personKind={personKind}
+            name={profileName}
+            nationality={profileNationality}
+            secondaryNationalities={secondaryNationalities}
+            height={profileHeight}
+            weight={profileWeight}
+            skinTone={profileSkinTone}
+            hairColour={profileHairColour}
+            hairLength={profileHairLength}
+            ethnicity={profileEthnicity}
+            positions={profilePositions}
+            preferredFoot={profilePreferredFoot}
+            preferredMoves={preferredMoves}
+            preferredMoveName={preferredMoveName}
+            onName={(value) => updateDraft(setProfileName, value)}
+            onNationality={(value) => updateDraft(setProfileNationality, value)}
+            onSecondaryNationalities={(value) => updateDraft(setSecondaryNationalities, value)}
+            onHeight={(value) => updateDraft(setProfileHeight, value)}
+            onWeight={(value) => updateDraft(setProfileWeight, value)}
+            onSkinTone={(value) => updateDraft(setProfileSkinTone, value)}
+            onHairColour={(value) => updateDraft(setProfileHairColour, value)}
+            onHairLength={(value) => updateDraft(setProfileHairLength, value)}
+            onEthnicity={(value) => updateDraft(setProfileEthnicity, value)}
+            onPositions={(value) => updateDraft(setProfilePositions, value)}
+            onPreferredFoot={(value) => updateDraft(setProfilePreferredFoot, value)}
+            onPreferredMoveName={(value) => updateDraft(setPreferredMoveName, value)}
+            onUpsertPreferredMove={upsertPreferredMoveDraft}
+            onRemovePreferredMove={(id) => updateDraft(setPreferredMoves, preferredMoves.filter((item) => item.id !== id))}
+            onPrepare={prepareIdentityProfile}
+            busy={busy}
+          />}
           {mode === "registrations" && selectedPlayer && <RegistrationEditor
             player={selectedPlayer}
             snapshot={snapshot}
@@ -519,6 +643,58 @@ export function PeopleWorkspace({
         <Card.Content><div className="people-safety-proof"><ShieldCheck size={16} /><div><strong>Referenzen vor Mutation</strong><span>IDs, Vereine, Wettbewerbe, Daten und Grenzwerte werden komplett geprüft.</span></div></div>{prepared ? <div className="people-preview"><div><Check size={15} /><span><strong>Vorschau konfliktfrei</strong><small>{prepared.transaction.operations.length} Feldänderungen</small></span></div><div className="people-change-list">{prepared.transaction.operations.map((operation) => <p key={`${operation.entity_kind}-${operation.entity_id}-${operation.field}`}><code>{operation.entity_id}</code><span>{operation.field}</span></p>)}</div><code>{prepared.transaction.id}</code><Button className="w-full" onPress={commit} isDisabled={busy}><ClipboardCheck size={15} /> Mit Backup & Journal anwenden</Button></div> : <div className="people-preview-empty">Aktion konfigurieren und zuerst eine exakte Vorschau erstellen.</div>}</Card.Content>
       </Card>
     </div>
+  </div>;
+}
+
+function ProfileEditor(props: {
+  person: Player | Staff; personKind: PersonKind; name: string; nationality: string;
+  secondaryNationalities: string; height: string; weight: string; skinTone: string;
+  hairColour: HairColour; hairLength: HairLength; ethnicity: string; positions: string;
+  preferredFoot: Player["preferred_foot"]; preferredMoves: PreferredMove[]; preferredMoveName: string;
+  onName: (value: string) => void; onNationality: (value: string) => void;
+  onSecondaryNationalities: (value: string) => void; onHeight: (value: string) => void;
+  onWeight: (value: string) => void; onSkinTone: (value: string) => void;
+  onHairColour: (value: HairColour) => void; onHairLength: (value: HairLength) => void;
+  onEthnicity: (value: string) => void; onPositions: (value: string) => void;
+  onPreferredFoot: (value: Player["preferred_foot"]) => void;
+  onPreferredMoveName: (value: string) => void; onUpsertPreferredMove: () => void;
+  onRemovePreferredMove: (id: string) => void; onPrepare: () => void; busy: boolean;
+}) {
+  return <div className="people-editor-sections">
+    <EditorSection title="Identität">
+      <div className="people-form-grid">
+        <TextField aria-label="Profilname" value={props.name} isDisabled={props.busy} onChange={props.onName}><span className="people-input-label">Name</span><Input /></TextField>
+        <TextField aria-label="Primäre Nationalität" value={props.nationality} isDisabled={props.busy} onChange={props.onNationality}><span className="people-input-label">Primäre Nationalität</span><Input /></TextField>
+      </div>
+      <TextField aria-label="Weitere Nationalitäten" value={props.secondaryNationalities} isDisabled={props.busy} onChange={props.onSecondaryNationalities}><span className="people-input-label">Weitere Nationalitäten</span><Input placeholder="Kommagetrennt, z. B. Schweiz, Italien" /></TextField>
+      <div className="people-profile-summary"><small>PERSONEN-ID</small><strong>{props.person.id}</strong></div>
+    </EditorSection>
+    <EditorSection title="Erscheinungsbild">
+      <div className="people-form-grid three">
+        <OptionalNumberInput label="Größe in cm" value={props.height} onChange={props.onHeight} minimum={100} maximum={250} disabled={props.busy} />
+        <OptionalNumberInput label="Gewicht in kg" value={props.weight} onChange={props.onWeight} minimum={30} maximum={250} disabled={props.busy} />
+        <OptionalNumberInput label="Hautton" value={props.skinTone} onChange={props.onSkinTone} minimum={1} maximum={20} disabled={props.busy} />
+      </div>
+      <div className="people-form-grid">
+        <label><span>Haarfarbe</span><select aria-label="Haarfarbe" value={props.hairColour} disabled={props.busy} onChange={(event) => props.onHairColour(event.target.value as HairColour)}>{(["black", "brown", "blond", "red", "grey", "white", "other", "unknown"] as HairColour[]).map((value) => <option key={value} value={value}>{humanize(value)}</option>)}</select></label>
+        <label><span>Haarlänge</span><select aria-label="Haarlänge" value={props.hairLength} disabled={props.busy} onChange={(event) => props.onHairLength(event.target.value as HairLength)}>{(["bald", "short", "medium", "long", "unknown"] as HairLength[]).map((value) => <option key={value} value={value}>{humanize(value)}</option>)}</select></label>
+      </div>
+      <TextField aria-label="Ethnizität" value={props.ethnicity} isDisabled={props.busy} onChange={props.onEthnicity}><span className="people-input-label">Ethnizität</span><Input placeholder="Nur kanonische FM-Angabe; keine Ableitung" /></TextField>
+    </EditorSection>
+    {props.personKind === "player" && <>
+      <EditorSection title="Spielerprofil">
+        <TextField aria-label="Positionen" value={props.positions} isDisabled={props.busy} onChange={props.onPositions}><span className="people-input-label">Positionen</span><Input placeholder="Kommagetrennt, z. B. MC, AMC" /></TextField>
+        <div className="people-token-grid four">{(["left", "right", "both", "unknown"] as const).map((foot) => <Button key={foot} size="sm" variant={props.preferredFoot === foot ? "primary" : "ghost"} aria-pressed={props.preferredFoot === foot} isDisabled={props.busy} onPress={() => props.onPreferredFoot(foot)}>{humanize(foot)}</Button>)}</div>
+      </EditorSection>
+      <EditorSection title="Bevorzugte Spielzüge" count={props.preferredMoves.length}>
+        <div className="people-existing-list">{props.preferredMoves.map((move) => <div key={move.id}><span><strong>{move.name}</strong><small>{move.id}</small></span><Button size="sm" variant="ghost" aria-label={`Spielzug ${move.name} entfernen`} isDisabled={props.busy} onPress={() => props.onRemovePreferredMove(move.id)}><Trash2 size={12} /></Button></div>)}</div>
+        <div className="people-form-grid">
+          <TextField aria-label="Bevorzugter Spielzug" value={props.preferredMoveName} isDisabled={props.busy} onChange={props.onPreferredMoveName}><span className="people-input-label">Spielzug</span><Input placeholder="z. B. Spielt tödliche Pässe" /></TextField>
+          <Button variant="secondary" onPress={props.onUpsertPreferredMove} isDisabled={props.busy || !props.preferredMoveName.trim()}>Spielzug vormerken</Button>
+        </div>
+      </EditorSection>
+    </>}
+    <Button className="w-full" onPress={props.onPrepare} isDisabled={props.busy || !props.name.trim()}><Palette size={14} /> Identitätsprofil-Vorschau erstellen</Button>
   </div>;
 }
 
@@ -738,15 +914,19 @@ function NumberInput({ label, value, onChange, maximum, minimum = 0, disabled = 
   return <label><span>{label}</span><NumberField aria-label={label} value={value} minValue={minimum} maxValue={maximum} isDisabled={disabled} onChange={onChange}><NumberField.Group><NumberField.Input /><NumberField.DecrementButton aria-label={`${label} verringern`}>−</NumberField.DecrementButton><NumberField.IncrementButton aria-label={`${label} erhöhen`}>+</NumberField.IncrementButton></NumberField.Group></NumberField></label>;
 }
 
+function OptionalNumberInput({ label, value, onChange, maximum, minimum, disabled }: { label: string; value: string; onChange: (value: string) => void; maximum: number; minimum: number; disabled: boolean }) {
+  return <label><span>{label}</span><input aria-label={label} type="number" value={value} min={minimum} max={maximum} disabled={disabled} placeholder="–" onChange={(event) => onChange(event.target.value)} /></label>;
+}
+
 function Metric({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: number }) {
   return <Card><Card.Content><Icon size={16} /><div><span>{label}</span><strong>{value.toLocaleString("de-DE")}</strong></div></Card.Content></Card>;
 }
 
 function modeIcon(mode: Mode) {
-  const Icon = mode === "staff" ? BriefcaseBusiness : mode === "registrations" ? BadgeCheck : mode === "languages" ? Languages : Link2;
+  const Icon = mode === "staff" ? BriefcaseBusiness : mode === "profiles" ? Palette : mode === "registrations" ? BadgeCheck : mode === "languages" ? Languages : Link2;
   return <Icon size={14} />;
 }
-function modeLabel(mode: Mode) { return { staff: "Staff & Aufgaben", registrations: "Registrierungen", languages: "Sprachen", relationships: "Beziehungen" }[mode]; }
+function modeLabel(mode: Mode) { return { staff: "Staff & Aufgaben", profiles: "Identitätsprofile", registrations: "Registrierungen", languages: "Sprachen", relationships: "Beziehungen" }[mode]; }
 function toTarget(item: Player | Staff) { return { id: item.id, name: item.name, subtitle: [item.club, item.nationality].filter(Boolean).join(" · ") || "Person" }; }
 function firstRelationshipTargetId(snapshot: DatabaseSnapshot | null | undefined, targetKind: RelationshipTargetKind, personKind: PersonKind, personId: string) {
   if (!snapshot) return "";
@@ -760,6 +940,10 @@ function relationshipTargetName(snapshot: DatabaseSnapshot, relationship: Person
 function toggle(values: string[], value: string) { return values.includes(value) ? values.filter((item) => item !== value) : [...values, value]; }
 function upsertLanguageList(values: LanguageSkill[], language: LanguageSkill) { const name = normalize(language.language); return [...values.filter((item) => normalize(item.language) !== name), language]; }
 function normalize(value: string) { return value.trim().toLocaleLowerCase("de"); }
+function commaList(value: string) { return [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))]; }
+function requiredText(value: string, label: string) { const trimmed = value.trim(); if (!trimmed) throw new Error(`${label} darf nicht leer sein`); return trimmed; }
+function optionalNumberInput(value: number | null | undefined) { return value == null ? "" : String(value); }
+function parseOptionalInteger(value: string, label: string, minimum: number, maximum: number) { const trimmed = value.trim(); if (!trimmed) return null; const parsed = Number(trimmed); if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) throw new Error(`${label} muss eine ganze Zahl zwischen ${minimum} und ${maximum} sein`); return parsed; }
 function searchable(item: Player | Staff) { return [item.name, item.club, item.nationality].filter(Boolean).join(" ").toLocaleLowerCase("de"); }
 function initials(name: string) { return name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toLocaleUpperCase("de"); }
 function humanize(value: string) { return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toLocaleUpperCase("de")); }
