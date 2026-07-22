@@ -171,6 +171,14 @@ fn analyse_squad(
 }
 
 #[tauri::command]
+fn analyse_scout_intelligence(
+    snapshot: bestscout_core::DatabaseSnapshot,
+    criteria: bestscout_core::IntelligenceCriteria,
+) -> bestscout_core::ScoutIntelligenceReport {
+    bestscout_core::analyse_scout_intelligence(&snapshot, &criteria)
+}
+
+#[tauri::command]
 fn export_shortlist(
     document: bestscout_core::ShortlistDocument,
     players: Vec<bestscout_core::Player>,
@@ -212,6 +220,7 @@ pub fn run() {
             list_roles,
             find_similar_players,
             analyse_squad,
+            analyse_scout_intelligence,
             export_shortlist,
             import_shortlist
         ])

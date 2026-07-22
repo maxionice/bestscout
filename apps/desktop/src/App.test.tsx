@@ -34,6 +34,14 @@ describe("BestScout desktop", () => {
     expect(screen.getByRole("group", { name: "Editor-Entitätstyp wählen" })).toBeTruthy();
   });
 
+  it("opens the scout intelligence workspace", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Scout-Intel" }));
+    expect(screen.getByRole("heading", { name: "Scout-Intel" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Talent-Radar" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Intelligente Scoutinglisten" })).toBeTruthy();
+  });
+
   it("shows squad depth, contracts, wages and succession risks", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Kaderanalyse" }));

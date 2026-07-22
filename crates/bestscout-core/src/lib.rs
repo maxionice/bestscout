@@ -2,6 +2,7 @@ pub mod comparison;
 pub mod editor;
 pub mod fixtures;
 pub mod import;
+pub mod intelligence;
 pub mod model;
 pub mod query;
 pub mod roles;
@@ -19,6 +20,10 @@ pub use editor::{
 };
 pub use fixtures::synthetic_snapshot;
 pub use import::{ImportError, ImportResult, import_players};
+pub use intelligence::{
+    DevelopmentProjection, IntelligenceCriteria, PlayerIntelligence, ProjectionFactor,
+    ScoutIntelligenceReport, analyse_scout_intelligence,
+};
 pub use model::{
     Attribute, Club, ClubFacilities, ClubFinances, Competition, Contract, ContractType,
     DatabaseSnapshot, Foot, GameDate, HiddenAttribute, Player, PlayerDetails, PlayerStatus,
