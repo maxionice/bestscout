@@ -38,6 +38,21 @@ by this invocation. The `NO_STRIP=1` environment setting is intentional: it
 avoids incompatibility between linuxdeploy's bundled `strip` and modern ELF RELR
 sections on rolling Linux distributions.
 
+For reproducibility, the script pins `SOURCE_DATE_EPOCH` to the current commit
+timestamp (or honors an explicitly supplied value) and fixes the timezone and
+locale. Both Tauri's application build and the two Rust normalization helpers
+run with `--locked`, so an inconsistent `Cargo.lock` fails the build instead of
+silently changing the dependency graph. AppImage tooling consumes the timestamp
+directly. A bounded DEB repacker normalizes tar, gzip and ar metadata, while the
+BestScout packaging helper uses the same pure-Rust RPM library as Tauri with its
+explicit source-date API. The RPM helper first verifies Tauri's source bundle
+and preserves every dependency class, including automatically detected runtime
+requirements. It then reopens its staged result and verifies package digests,
+identity, release metadata, the complete dependency metadata and the exact
+installed file set before atomically replacing Tauri's original bundle. The
+release workflow derives the identical timestamp from the tagged commit and
+enforces the same lockfile before building any package.
+
 The `linux-bundles` CI job invokes this same script directly. Release-metadata
 validation locks that entrypoint in place, preventing CI and documented local
 packaging from silently diverging.

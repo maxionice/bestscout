@@ -25,6 +25,7 @@ const desktopEntry = text("packaging/flatpak/io.github.maxionice.bestscout.deskt
 const ciWorkflow = text(".github/workflows/ci.yml");
 const releaseWorkflow = text(".github/workflows/release.yml");
 const localBuildScript = text("scripts/build-linux-packages.sh");
+const normalizePackageScript = text("scripts/normalize-linux-packages.sh");
 const deckLauncher = text("packaging/steam-deck/launch-bestscout.sh");
 const deckEnglish = text("packaging/steam-deck/README-DECK.en.md");
 const deckGerman = text("packaging/steam-deck/README-DECK.de.md");
@@ -117,6 +118,9 @@ for (const required of [
   attestAction,
   "subject-checksums: release-artifacts/SHA256SUMS",
   "--write-checksums --require-release-set",
+  "SOURCE_DATE_EPOCH=$source_date_epoch",
+  "run: scripts/normalize-linux-packages.sh",
+  "args: --bundles appimage,deb,rpm -- --locked",
   "scripts/list-release-assets.mjs",
   "--expected-subjects 8",
   '"${release_assets[@]}" --clobber',
@@ -134,6 +138,28 @@ if (releaseWorkflow.includes("release-artifacts/* --clobber")) {
 }
 if (!localBuildScript.includes("--write-checksums --native-only")) {
   fail("the local native build must exclude pre-existing optional release artifacts");
+}
+if (
+  !localBuildScript.includes('SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"')
+  || !localBuildScript.includes("scripts/normalize-linux-packages.sh")
+  || !localBuildScript.includes("build --bundles appimage,deb,rpm -- --locked")
+) {
+  fail("the local package build must pin timestamps, lock dependencies and normalize packages");
+}
+const normalizationCargoCommands = normalizePackageScript.match(/^cargo run\b.*$/gm) ?? [];
+if (
+  normalizationCargoCommands.length !== 2
+  || normalizationCargoCommands.some((command) => !command.includes(" --locked "))
+) {
+  fail("every package-normalization Cargo command must enforce Cargo.lock");
+}
+for (const required of [
+  "--bin bestscout-reproducible-deb",
+  "--bin bestscout-packaging",
+]) {
+  if (!normalizePackageScript.includes(required)) {
+    fail(`native package normalization is missing: ${required}`);
+  }
 }
 if (!ciWorkflow.includes("run: scripts/build-linux-packages.sh")) {
   fail("Linux bundle CI must exercise the canonical local package entrypoint");

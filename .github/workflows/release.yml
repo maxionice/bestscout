@@ -33,6 +33,14 @@ jobs:
           node scripts/verify-release-readiness.mjs \
             --tag="$GITHUB_REF_NAME" \
             --require-complete
+      - name: Pin reproducible package timestamps to the release commit
+        run: |
+          source_date_epoch="$(git show -s --format=%ct "${GITHUB_REF_NAME}^{commit}")"
+          [[ "$source_date_epoch" =~ ^[1-9][0-9]{0,9}$ ]]
+          (( source_date_epoch <= 4294967295 ))
+          echo "SOURCE_DATE_EPOCH=$source_date_epoch" >> "$GITHUB_ENV"
+          echo "TZ=UTC" >> "$GITHUB_ENV"
+          echo "LC_ALL=C" >> "$GITHUB_ENV"
       - name: Install Linux packaging dependencies
         run: |
           sudo apt-get update
@@ -60,13 +68,15 @@ jobs:
         with:
           projectPath: apps/desktop
           tauriScript: npm run tauri
-          args: --bundles appimage,deb,rpm
+          args: --bundles appimage,deb,rpm -- --locked
           tagName: ${{ github.ref_name }}
           releaseName: BestScout ${{ github.ref_name }}
           generateReleaseNotes: true
           releaseDraft: true
           prerelease: false
           uploadUpdaterJson: false
+      - name: Normalize native package metadata
+        run: scripts/normalize-linux-packages.sh
       - name: Build offline Flatpak edition
         run: scripts/build-flatpak.sh
       - name: Prepare native Steam Deck edition

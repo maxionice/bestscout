@@ -1,4 +1,4 @@
-# Linux release acceptance — 2026-07-22
+# Linux release acceptance — 2026-07-23
 
 This record covers the package-set, Steam Deck and signed-publication gates. It
 does not claim FM26 live-adapter or native Steam Deck hardware acceptance.
@@ -19,6 +19,11 @@ does not claim FM26 live-adapter or native Steam Deck hardware acceptance.
   manifest. A regression fixture covers a populated output directory.
 - The Linux bundle CI job calls the same local packaging entrypoint rather than
   maintaining a second build recipe; release metadata validation enforces this.
+- Native builds pin the timestamp, timezone and locale to the source commit.
+  Tauri and both normalization helpers enforce the committed `Cargo.lock`;
+  AppImage consumes `SOURCE_DATE_EPOCH`, while bounded DEB and RPM normalization
+  removes current archive/build timestamps before signature and checksum
+  verification.
 - The tag workflow creates a draft before uploads, validates and checksums the
   complete set, generates SLSA provenance with the commit-pinned
   `actions/attest@v4.2.0`, verifies every subject and publishes only at the final
@@ -43,11 +48,11 @@ set. `sha256sum -c SHA256SUMS` passed for every listed subject:
 
 | Artifact | Bytes | SHA-256 |
 | --- | ---: | --- |
-| `BestScout_0.1.0_amd64.AppImage` | 107,620,856 | `04c13410dd70c5a80b2b2f8860dea4cdfbea76d7d3b7e66012912068a3ed282f` |
-| `BestScout_0.1.0_amd64.deb` | 4,667,452 | `c17757153f53f0d9e53cb08c329d3a0d200e2b71fb12ce53e83902a6fb68c49b` |
-| `BestScout-0.1.0-1.x86_64.rpm` | 4,667,690 | `7102d04d2c1ec415434ee362eb25b137e05215d060e384ddbebe79a55abdd979` |
-| `BestScout_0.1.0_x86_64.flatpak` | 3,167,496 | `b046e347fda1e5a61ba146e6517cdf06763469b91d8f51082dd5c72214e17540` |
-| `BestScout_0.1.0_SteamDeck_x86_64.AppImage` | 107,620,856 | `04c13410dd70c5a80b2b2f8860dea4cdfbea76d7d3b7e66012912068a3ed282f` |
+| `BestScout_0.1.0_amd64.AppImage` | 108,104,184 | `b897ab2f64240fd531995923993c5a3cb08d7fbe38c05c49ec8eae8474c36bf6` |
+| `BestScout_0.1.0_amd64.deb` | 5,087,896 | `9645442e0d3597f33926a8855bf277467cf47f6361b5a28ff2f887b14d1af4cf` |
+| `BestScout-0.1.0-1.x86_64.rpm` | 5,111,246 | `851dfff43669ad7230f7222890370fae12aae01ce88e3b9f1cf019a9350cb036` |
+| `BestScout_0.1.0_x86_64.flatpak` | 3,546,840 | `4e75449c2d10f7b8f6c5b82f895ff5a6a03a8dc93ffbf7fc48c1deb390d5179a` |
+| `BestScout_0.1.0_SteamDeck_x86_64.AppImage` | 108,104,184 | `b897ab2f64240fd531995923993c5a3cb08d7fbe38c05c49ec8eae8474c36bf6` |
 | `BestScout_0.1.0_SteamDeck_x86_64.sh` | 553 | `65fbd6d99e6b069ac0a88678f8aa7301f56ad4416068a6dc5e87ca93cf08de57` |
 | `BestScout_0.1.0_SteamDeck_x86_64.en.md` | 1,377 | `2ac3cc04783120412b38fced8bc8576c8be34fadae430e9b2a920d4eeb4d591e` |
 | `BestScout_0.1.0_SteamDeck_x86_64.de.md` | 1,470 | `27951245dfc40d491706d8840ce3c37cd617a6b383ee1bb95425000d7641457d` |
@@ -55,7 +60,33 @@ set. `sha256sum -c SHA256SUMS` passed for every listed subject:
 The Flatpak build directory additionally passed `appstreamcli validate --no-net`,
 `desktop-file-validate` and a read-only sandbox probe. The probe exposed the
 expected `FLATPAK_ID=io.github.maxionice.bestscout` and only five processes in
-its private `/proc` namespace.
+its private `/proc` namespace. The current AppImage was also extracted without
+launching it, the DEB and RPM payloads were independently unpacked, and all three
+contained an executable x86-64 desktop binary plus the expected desktop entry.
+The Flatpak bundle imported successfully into a fresh temporary OSTree repository
+as `app/io.github.maxionice.bestscout/x86_64/stable`.
+
+Two complete native-package builds from commit
+`b4f43fb5841a96a51b0295137c62d1dbbf07b247` were then run with its derived
+`SOURCE_DATE_EPOCH=1784762651`, `TZ=UTC`, `LC_ALL=C` and the committed
+`Cargo.lock` enforced for Tauri and both normalization helpers. All three
+independently copied outputs compared byte for byte with `cmp`:
+
+| Reproducible native artifact | Bytes | SHA-256 in both builds |
+| --- | ---: | --- |
+| `BestScout_0.1.0_amd64.AppImage` | 108,104,184 | `5482480e685f7497d79716805ddf020dfd270b575b0e0e04b53d5408ed6c0f04` |
+| `BestScout_0.1.0_amd64.deb` | 5,087,894 | `11d217e97701dc5dda1a9d7dcbf7f03bd25332b23f21dc9314293bf668a53cef` |
+| `BestScout-0.1.0-1.x86_64.rpm` | 5,111,246 | `89d3d4ff2424d96d6fc68442892c486d481a36734bc14f2cc74aa7f15cfe8971` |
+
+Both RPM copies also retained Tauri's automatically detected
+`libwebkit2gtk-4.1.so.0()(64bit)` and `libgtk-3.so.0()(64bit)` runtime
+requirements. A regression fixture exercises every RPM dependency class;
+normalization compares the complete source and rebuilt dependency metadata before
+replacement.
+
+This closes the native byte-reproducibility check only. The signed tag workflow,
+published artifacts and cross-distribution installation remain separate runtime
+gates below.
 
 ## Remaining acceptance gates
 
