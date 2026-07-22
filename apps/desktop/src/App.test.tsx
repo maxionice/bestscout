@@ -43,6 +43,15 @@ describe("BestScout desktop", () => {
     expect(screen.getByRole("heading", { name: "Change Monitor" })).toBeTruthy();
   });
 
+  it("opens the safe People and Registration Center", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "People" }));
+    expect(screen.getByRole("heading", { name: "People" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "People & Registration Center" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "People-Bereich" })).toBeTruthy();
+    expect(screen.getByText("Sichere Arbeitskopie")).toBeTruthy();
+  });
+
   it("opens the scout intelligence workspace", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Scout-Intel" }));
@@ -83,10 +92,12 @@ describe("BestScout desktop", () => {
     expect(screen.getByRole("columnheader", { name: "PROFESSIONALITÄT" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "VERTRAGSVEREIN-ID" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "VERLETZT" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "REGISTRIERUNGEN" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Staff/ }));
     expect(screen.getByRole("grid", { name: "Staffdaten" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "TAKTIKWISSEN" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "VERANTWORTUNGEN" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Vereine/ }));
     expect(screen.getByRole("grid", { name: "Vereinsdaten" })).toBeTruthy();

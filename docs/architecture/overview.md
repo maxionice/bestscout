@@ -25,6 +25,11 @@ verification.
 The adapter-independent transaction and persistence design is specified in the
 [editor architecture](editor.md).
 
+The current, not-yet-accepted advanced-editor draft for staff assignments,
+languages, registrations, qualifications and relationships is documented in
+the [People architecture](people.md). Its explicit open gates are tracked in
+the [People acceptance record](../acceptance/people.md).
+
 ## Canonical snapshots and queries
 
 All adapters produce a schema-versioned `DatabaseSnapshot` containing players,

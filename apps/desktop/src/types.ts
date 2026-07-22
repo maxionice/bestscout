@@ -27,6 +27,40 @@ export type FutureTransfer = {
   status: TransferStatus;
 };
 
+export type LanguageSkill = {
+  language: string;
+  speaking: number;
+  reading: number;
+  writing: number;
+};
+
+export type RelationshipTargetKind = "player" | "staff" | "club";
+export type RelationshipKind =
+  | "favorite_person" | "disliked_person" | "friend" | "mentor" | "family" | "agent"
+  | "favorite_club" | "disliked_club";
+
+export type PersonRelationship = {
+  id: string;
+  kind: RelationshipKind;
+  target_kind: RelationshipTargetKind;
+  target_id: string;
+  strength: number;
+};
+
+export type RegistrationStatus = "registered" | "pending" | "unregistered" | "ineligible";
+
+export type PlayerRegistration = {
+  id: string;
+  competition_id: string;
+  club_id: string;
+  status: RegistrationStatus;
+  registered_on: GameDate | null;
+  expires_on: GameDate | null;
+  squad_number: number | null;
+  homegrown_at_club: boolean;
+  homegrown_in_nation: boolean;
+};
+
 export type Player = {
   id: string;
   name: string;
@@ -62,6 +96,9 @@ export type Player = {
     happiness?: number | null;
     injuries?: PlayerInjury[];
     bans?: PlayerBan[];
+    languages?: LanguageSkill[];
+    relationships?: PersonRelationship[];
+    registrations?: PlayerRegistration[];
     status?: {
       transfer_listed: boolean;
       loan_listed: boolean;
@@ -119,6 +156,20 @@ export type Staff = {
   reputation: number | null;
   attributes: Record<string, number>;
   contract?: Contract | null;
+  details?: {
+    date_of_birth?: GameDate | null;
+    languages?: LanguageSkill[];
+    relationships?: PersonRelationship[];
+    responsibilities?: string[];
+    qualifications?: Array<{
+      id: string;
+      name: string;
+      level: number;
+      awarded_on: GameDate | null;
+      expires_on: GameDate | null;
+    }>;
+    note?: string | null;
+  };
 };
 
 export type Club = {
@@ -390,6 +441,46 @@ export type TransferActionRequest = {
 
 export type PreparedTransferAction = {
   command: TransferCommand;
+  transaction: EditTransaction;
+  preview: AppliedTransaction;
+};
+
+export type PeopleCommand =
+  | {
+      kind: "update_staff_assignment";
+      staff_id: string;
+      roles: string[];
+      responsibilities: string[];
+      contract: Contract | null;
+    }
+  | {
+      kind: "update_staff_profile";
+      staff_id: string;
+      date_of_birth: GameDate | null;
+      note: string | null;
+    }
+  | { kind: "set_player_languages"; player_id: string; languages: LanguageSkill[] }
+  | { kind: "set_staff_languages"; staff_id: string; languages: LanguageSkill[] }
+  | {
+      kind: "set_staff_qualifications";
+      staff_id: string;
+      qualifications: NonNullable<NonNullable<Staff["details"]>["qualifications"]>;
+    }
+  | { kind: "upsert_player_registration"; player_id: string; registration: PlayerRegistration }
+  | { kind: "remove_player_registration"; player_id: string; registration_id: string }
+  | { kind: "upsert_player_relationship"; player_id: string; relationship: PersonRelationship }
+  | { kind: "remove_player_relationship"; player_id: string; relationship_id: string }
+  | { kind: "upsert_staff_relationship"; staff_id: string; relationship: PersonRelationship }
+  | { kind: "remove_staff_relationship"; staff_id: string; relationship_id: string };
+
+export type PeopleActionRequest = {
+  transaction_id: string;
+  created_at_utc: string;
+  command: PeopleCommand;
+};
+
+export type PreparedPeopleAction = {
+  command: PeopleCommand;
   transaction: EditTransaction;
   preview: AppliedTransaction;
 };

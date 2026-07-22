@@ -298,6 +298,67 @@ pub struct PlayerBan {
     pub matches_remaining: Option<u16>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LanguageSkill {
+    pub language: String,
+    pub speaking: u8,
+    pub reading: u8,
+    pub writing: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RelationshipTargetKind {
+    Player,
+    Staff,
+    Club,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RelationshipKind {
+    FavoritePerson,
+    DislikedPerson,
+    Friend,
+    Mentor,
+    Family,
+    Agent,
+    FavoriteClub,
+    DislikedClub,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PersonRelationship {
+    pub id: String,
+    pub kind: RelationshipKind,
+    pub target_kind: RelationshipTargetKind,
+    pub target_id: String,
+    pub strength: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum RegistrationStatus {
+    #[default]
+    Registered,
+    Pending,
+    Unregistered,
+    Ineligible,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerRegistration {
+    pub id: String,
+    pub competition_id: String,
+    pub club_id: String,
+    pub status: RegistrationStatus,
+    pub registered_on: Option<GameDate>,
+    pub expires_on: Option<GameDate>,
+    pub squad_number: Option<u8>,
+    pub homegrown_at_club: bool,
+    pub homegrown_in_nation: bool,
+}
+
 impl PlayerBan {
     pub fn is_active_on(&self, date: GameDate) -> bool {
         self.starts_on.is_none_or(|starts| starts <= date)
@@ -325,6 +386,9 @@ pub struct PlayerDetails {
     pub happiness: Option<u8>,
     pub injuries: Vec<PlayerInjury>,
     pub bans: Vec<PlayerBan>,
+    pub languages: Vec<LanguageSkill>,
+    pub relationships: Vec<PersonRelationship>,
+    pub registrations: Vec<PlayerRegistration>,
     pub status: PlayerStatus,
     pub tags: Vec<String>,
     pub note: Option<String>,
@@ -399,7 +463,7 @@ pub enum StaffAttribute {
     Technical,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StaffRole {
     Manager,
@@ -417,6 +481,43 @@ pub enum StaffRole {
     SportsScientist,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StaffResponsibility {
+    TeamSelection,
+    Tactics,
+    TeamTraining,
+    IndividualTraining,
+    SetPieces,
+    OppositionInstructions,
+    TeamTalks,
+    Recruitment,
+    ContractNegotiations,
+    Loans,
+    YouthDevelopment,
+    Media,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StaffQualification {
+    pub id: String,
+    pub name: String,
+    pub level: u8,
+    pub awarded_on: Option<GameDate>,
+    pub expires_on: Option<GameDate>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct StaffDetails {
+    pub date_of_birth: Option<GameDate>,
+    pub languages: Vec<LanguageSkill>,
+    pub relationships: Vec<PersonRelationship>,
+    pub responsibilities: Vec<StaffResponsibility>,
+    pub qualifications: Vec<StaffQualification>,
+    pub note: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Staff {
     pub id: String,
@@ -430,6 +531,8 @@ pub struct Staff {
     pub reputation: Option<u16>,
     pub attributes: BTreeMap<StaffAttribute, u8>,
     pub contract: Option<Contract>,
+    #[serde(default)]
+    pub details: StaffDetails,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -525,6 +628,34 @@ mod tests {
         assert!(details.fitness.condition.is_none());
         assert!(details.injuries.is_empty());
         assert!(details.bans.is_empty());
+        assert!(details.languages.is_empty());
+        assert!(details.relationships.is_empty());
+        assert!(details.registrations.is_empty());
+    }
+
+    #[test]
+    fn accepts_staff_payloads_without_the_new_detail_object() {
+        let staff: Staff = serde_json::from_value(serde_json::json!({
+            "id": "legacy-staff",
+            "name": "Legacy Staff",
+            "age": 45,
+            "club": null,
+            "nationality": null,
+            "roles": ["scout"],
+            "current_ability": null,
+            "potential_ability": null,
+            "reputation": null,
+            "attributes": {},
+            "contract": null
+        }))
+        .unwrap();
+
+        assert!(staff.details.date_of_birth.is_none());
+        assert!(staff.details.languages.is_empty());
+        assert!(staff.details.relationships.is_empty());
+        assert!(staff.details.responsibilities.is_empty());
+        assert!(staff.details.qualifications.is_empty());
+        assert!(staff.details.note.is_none());
     }
 
     #[test]

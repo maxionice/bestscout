@@ -6,6 +6,7 @@ pub mod freezer;
 pub mod import;
 pub mod intelligence;
 pub mod model;
+pub mod people;
 pub mod query;
 pub mod roles;
 pub mod scoring;
@@ -42,8 +43,13 @@ pub use intelligence::{
 pub use model::{
     Attribute, BanScope, Club, ClubFacilities, ClubFinances, Competition, Contract, ContractType,
     DatabaseSnapshot, Foot, FutureTransfer, GameDate, HiddenAttribute, InjurySeverity,
-    InjuryTreatment, Player, PlayerBan, PlayerDetails, PlayerFitness, PlayerInjury, PlayerStatus,
-    Position, SnapshotSource, Staff, StaffAttribute, StaffRole, TransferKind, TransferStatus,
+    InjuryTreatment, LanguageSkill, PersonRelationship, Player, PlayerBan, PlayerDetails,
+    PlayerFitness, PlayerInjury, PlayerRegistration, PlayerStatus, Position, RegistrationStatus,
+    RelationshipKind, RelationshipTargetKind, SnapshotSource, Staff, StaffAttribute, StaffDetails,
+    StaffQualification, StaffResponsibility, StaffRole, TransferKind, TransferStatus,
+};
+pub use people::{
+    PeopleActionRequest, PeopleCommand, PeopleError, PreparedPeopleAction, prepare_people_action,
 };
 pub use query::{
     EntityKind, FilterExpression, GlobalSearchQuery, PlayerPredicate, PlayerQuery,

@@ -738,6 +738,9 @@ pub(crate) fn is_editable_field(kind: EditEntityKind, field: &str) -> bool {
                         | "details.happiness"
                         | "details.injuries"
                         | "details.bans"
+                        | "details.languages"
+                        | "details.relationships"
+                        | "details.registrations"
                         | "details.status.transfer_listed"
                         | "details.status.loan_listed"
                         | "details.status.injured"
@@ -767,6 +770,13 @@ pub(crate) fn is_editable_field(kind: EditEntityKind, field: &str) -> bool {
                         | "contract.wage"
                         | "contract.release_clause"
                         | "contract.squad_status"
+                        | "details"
+                        | "details.date_of_birth"
+                        | "details.languages"
+                        | "details.relationships"
+                        | "details.responsibilities"
+                        | "details.qualifications"
+                        | "details.note"
                 )
         }
         EditEntityKind::Club => matches!(

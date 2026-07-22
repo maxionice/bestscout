@@ -51,6 +51,9 @@ and editing tools while remaining local, transparent and safe.
   availability, a full HeroUI medical workspace and journaled correction actions
 - Canonical immediate, future, loan and reciprocal swap transfers with validated
   routes, two-sided destination contracts and a journaled HeroUI Transfer Center
+- Canonical staff assignments, profile data, languages, qualifications,
+  competition registrations and typed relationships with a journaled HeroUI
+  People & Registration Center
 - Explainable development probability and projected CA/attribute peaks with
   configurable Wonderkid, bargain, free-agent and expiring-contract smart lists
 - Reproducible AppImage, DEB and RPM builds with bundle validation and SHA-256

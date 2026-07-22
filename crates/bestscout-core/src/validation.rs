@@ -94,7 +94,15 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
         .iter()
         .map(|player| player.id.as_str())
         .collect();
+    let staff_ids: HashSet<_> = snapshot
+        .staff
+        .iter()
+        .map(|staff| staff.id.as_str())
+        .collect();
     let mut future_transfer_ids = HashSet::new();
+    let mut relationship_ids = HashSet::new();
+    let mut registration_ids = HashSet::new();
+    let mut qualification_ids = HashSet::new();
     for player in &snapshot.players {
         if player.name.trim().is_empty() {
             issue(
@@ -188,6 +196,31 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
             }
         }
         validate_player_availability(&mut issues, player, &competition_ids);
+        validate_languages(
+            &mut issues,
+            "player",
+            &player.id,
+            "details.languages",
+            &player.details.languages,
+        );
+        validate_relationships(
+            &mut issues,
+            "player",
+            &player.id,
+            "details.relationships",
+            &player.details.relationships,
+            &player_ids,
+            &staff_ids,
+            &club_ids,
+            &mut relationship_ids,
+        );
+        validate_registrations(
+            &mut issues,
+            player,
+            &competition_ids,
+            &club_ids,
+            &mut registration_ids,
+        );
         if let Some(transfer) = &player.details.future_transfer {
             validate_future_transfer(
                 &mut issues,
@@ -259,6 +292,83 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
             "reputation",
             staff.reputation,
         );
+        if staff.roles.is_empty()
+            || staff.roles.iter().collect::<HashSet<_>>().len() != staff.roles.len()
+        {
+            issue(
+                &mut issues,
+                "invalid_staff_roles",
+                "staff",
+                &staff.id,
+                "roles",
+                "staff must have at least one unique role",
+            );
+        }
+        if staff
+            .details
+            .responsibilities
+            .iter()
+            .collect::<HashSet<_>>()
+            .len()
+            != staff.details.responsibilities.len()
+        {
+            issue(
+                &mut issues,
+                "duplicate_staff_responsibility",
+                "staff",
+                &staff.id,
+                "details.responsibilities",
+                "staff responsibilities must be unique",
+            );
+        }
+        if staff
+            .details
+            .date_of_birth
+            .is_some_and(|date| GameDate::new(date.year, date.month, date.day) != Some(date))
+        {
+            issue(
+                &mut issues,
+                "invalid_date",
+                "staff",
+                &staff.id,
+                "details.date_of_birth",
+                "staff date of birth is not a valid calendar date",
+            );
+        }
+        if staff
+            .details
+            .note
+            .as_ref()
+            .is_some_and(|note| note.len() > 4_000)
+        {
+            issue(
+                &mut issues,
+                "staff_note_too_long",
+                "staff",
+                &staff.id,
+                "details.note",
+                "staff note must not exceed 4000 bytes",
+            );
+        }
+        validate_languages(
+            &mut issues,
+            "staff",
+            &staff.id,
+            "details.languages",
+            &staff.details.languages,
+        );
+        validate_relationships(
+            &mut issues,
+            "staff",
+            &staff.id,
+            "details.relationships",
+            &staff.details.relationships,
+            &player_ids,
+            &staff_ids,
+            &club_ids,
+            &mut relationship_ids,
+        );
+        validate_staff_qualifications(&mut issues, staff, &mut qualification_ids);
         for (attribute, value) in &staff.attributes {
             if !(1..=20).contains(value) {
                 issue(
@@ -423,6 +533,261 @@ fn validate_reciprocal_swap(
             &player.id,
             "details.future_transfer",
             "a swap must have one inverse agreement with matching clubs, players, dates and status",
+        );
+    }
+}
+
+fn validate_languages(
+    issues: &mut Vec<SnapshotIssue>,
+    entity_kind: &str,
+    entity_id: &str,
+    prefix: &str,
+    languages: &[crate::LanguageSkill],
+) {
+    let mut names = HashSet::new();
+    for (index, language) in languages.iter().enumerate() {
+        let name = language.language.trim();
+        let normalized = name.to_lowercase();
+        if name.is_empty() || name.len() > 64 || !names.insert(normalized) {
+            issue(
+                issues,
+                "invalid_language",
+                entity_kind,
+                entity_id,
+                format!("{prefix}.{index}.language"),
+                "language names must be non-empty, bounded and unique per person",
+            );
+        }
+        if [language.speaking, language.reading, language.writing]
+            .into_iter()
+            .any(|value| !(1..=10).contains(&value))
+        {
+            issue(
+                issues,
+                "language_proficiency_out_of_range",
+                entity_kind,
+                entity_id,
+                format!("{prefix}.{index}"),
+                "language proficiency must be between one and 10",
+            );
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn validate_relationships<'a>(
+    issues: &mut Vec<SnapshotIssue>,
+    entity_kind: &str,
+    entity_id: &str,
+    prefix: &str,
+    relationships: &'a [crate::PersonRelationship],
+    player_ids: &HashSet<&str>,
+    staff_ids: &HashSet<&str>,
+    club_ids: &HashSet<&str>,
+    relationship_ids: &mut HashSet<&'a str>,
+) {
+    use crate::{RelationshipKind, RelationshipTargetKind};
+    for (index, relationship) in relationships.iter().enumerate() {
+        if relationship.id.trim().is_empty()
+            || relationship.id.len() > 128
+            || !relationship_ids.insert(relationship.id.as_str())
+        {
+            issue(
+                issues,
+                "invalid_relationship_id",
+                entity_kind,
+                entity_id,
+                format!("{prefix}.{index}.id"),
+                "relationship IDs must be non-empty, bounded and unique in the snapshot",
+            );
+        }
+        let target_exists = match relationship.target_kind {
+            RelationshipTargetKind::Player => player_ids.contains(relationship.target_id.as_str()),
+            RelationshipTargetKind::Staff => staff_ids.contains(relationship.target_id.as_str()),
+            RelationshipTargetKind::Club => club_ids.contains(relationship.target_id.as_str()),
+        };
+        if !target_exists {
+            issue(
+                issues,
+                "unknown_relationship_target",
+                entity_kind,
+                entity_id,
+                format!("{prefix}.{index}.target_id"),
+                "relationship target must exist with the declared entity kind",
+            );
+        }
+        let target_kind_matches = match relationship.kind {
+            RelationshipKind::FavoriteClub | RelationshipKind::DislikedClub => {
+                relationship.target_kind == RelationshipTargetKind::Club
+            }
+            RelationshipKind::Agent => relationship.target_kind == RelationshipTargetKind::Staff,
+            _ => matches!(
+                relationship.target_kind,
+                RelationshipTargetKind::Player | RelationshipTargetKind::Staff
+            ),
+        };
+        if !target_kind_matches {
+            issue(
+                issues,
+                "relationship_kind_target_mismatch",
+                entity_kind,
+                entity_id,
+                format!("{prefix}.{index}.target_kind"),
+                "relationship kind is incompatible with its target entity kind",
+            );
+        }
+        let targets_self = relationship.target_id == entity_id
+            && matches!(
+                (entity_kind, relationship.target_kind),
+                ("player", RelationshipTargetKind::Player)
+                    | ("staff", RelationshipTargetKind::Staff)
+            );
+        if targets_self {
+            issue(
+                issues,
+                "self_relationship",
+                entity_kind,
+                entity_id,
+                format!("{prefix}.{index}.target_id"),
+                "a person cannot have a relationship with themselves",
+            );
+        }
+        if !(1..=100).contains(&relationship.strength) {
+            issue(
+                issues,
+                "relationship_strength_out_of_range",
+                entity_kind,
+                entity_id,
+                format!("{prefix}.{index}.strength"),
+                "relationship strength must be between one and 100",
+            );
+        }
+    }
+}
+
+fn validate_registrations<'a>(
+    issues: &mut Vec<SnapshotIssue>,
+    player: &'a Player,
+    competition_ids: &HashSet<&str>,
+    club_ids: &HashSet<&str>,
+    registration_ids: &mut HashSet<&'a str>,
+) {
+    let mut registered_competitions = HashSet::new();
+    let contract_club_id = player
+        .details
+        .contract
+        .as_ref()
+        .and_then(|contract| contract.club_id.as_deref());
+    for (index, registration) in player.details.registrations.iter().enumerate() {
+        let prefix = format!("details.registrations.{index}");
+        if registration.id.trim().is_empty()
+            || registration.id.len() > 128
+            || !registration_ids.insert(registration.id.as_str())
+        {
+            issue(
+                issues,
+                "invalid_registration_id",
+                "player",
+                &player.id,
+                format!("{prefix}.id"),
+                "registration IDs must be non-empty, bounded and unique in the snapshot",
+            );
+        }
+        if !competition_ids.contains(registration.competition_id.as_str())
+            || !registered_competitions.insert(registration.competition_id.as_str())
+        {
+            issue(
+                issues,
+                "invalid_registration_competition",
+                "player",
+                &player.id,
+                format!("{prefix}.competition_id"),
+                "each registration must reference one unique competition in the snapshot",
+            );
+        }
+        if !club_ids.contains(registration.club_id.as_str())
+            || Some(registration.club_id.as_str()) != contract_club_id
+        {
+            issue(
+                issues,
+                "invalid_registration_club",
+                "player",
+                &player.id,
+                format!("{prefix}.club_id"),
+                "registration club must be the player's current contract club",
+            );
+        }
+        validate_date_range(
+            issues,
+            "player",
+            &player.id,
+            &prefix,
+            ("registered_on", registration.registered_on),
+            ("expires_on", registration.expires_on),
+        );
+        if registration
+            .squad_number
+            .is_some_and(|number| !(1..=99).contains(&number))
+        {
+            issue(
+                issues,
+                "squad_number_out_of_range",
+                "player",
+                &player.id,
+                format!("{prefix}.squad_number"),
+                "squad number must be between one and 99",
+            );
+        }
+    }
+}
+
+fn validate_staff_qualifications<'a>(
+    issues: &mut Vec<SnapshotIssue>,
+    staff: &'a crate::Staff,
+    qualification_ids: &mut HashSet<&'a str>,
+) {
+    for (index, qualification) in staff.details.qualifications.iter().enumerate() {
+        let prefix = format!("details.qualifications.{index}");
+        if qualification.id.trim().is_empty()
+            || qualification.id.len() > 128
+            || !qualification_ids.insert(qualification.id.as_str())
+        {
+            issue(
+                issues,
+                "invalid_staff_qualification_id",
+                "staff",
+                &staff.id,
+                format!("{prefix}.id"),
+                "qualification IDs must be non-empty, bounded and unique in the snapshot",
+            );
+        }
+        if qualification.name.trim().is_empty() || qualification.name.len() > 128 {
+            issue(
+                issues,
+                "invalid_staff_qualification_name",
+                "staff",
+                &staff.id,
+                format!("{prefix}.name"),
+                "qualification name must be non-empty and bounded",
+            );
+        }
+        if !(1..=5).contains(&qualification.level) {
+            issue(
+                issues,
+                "staff_qualification_level_out_of_range",
+                "staff",
+                &staff.id,
+                format!("{prefix}.level"),
+                "qualification level must be between one and five",
+            );
+        }
+        validate_date_range(
+            issues,
+            "staff",
+            &staff.id,
+            &prefix,
+            ("awarded_on", qualification.awarded_on),
+            ("expires_on", qualification.expires_on),
         );
     }
 }
@@ -972,7 +1337,11 @@ fn issue(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Attribute, FutureTransfer, TransferStatus, synthetic_snapshot};
+    use crate::{
+        Attribute, FutureTransfer, LanguageSkill, PersonRelationship, PlayerRegistration,
+        RegistrationStatus, RelationshipKind, RelationshipTargetKind, StaffQualification,
+        StaffResponsibility, TransferStatus, synthetic_snapshot,
+    };
 
     #[test]
     fn accepts_the_synthetic_reference_snapshot() {
@@ -1037,5 +1406,132 @@ mod tests {
                 .iter()
                 .any(|issue| issue.code == "non_reciprocal_swap")
         );
+    }
+
+    #[test]
+    fn reports_every_nested_people_boundary_failure() {
+        let mut snapshot = synthetic_snapshot();
+        snapshot.players[0].details.languages = vec![
+            LanguageSkill {
+                language: "Deutsch".into(),
+                speaking: 0,
+                reading: 10,
+                writing: 10,
+            },
+            LanguageSkill {
+                language: " deutsch ".into(),
+                speaking: 10,
+                reading: 10,
+                writing: 10,
+            },
+            LanguageSkill {
+                language: "Spanisch".into(),
+                speaking: 11,
+                reading: 10,
+                writing: 10,
+            },
+        ];
+        snapshot.players[0].details.relationships = vec![PersonRelationship {
+            id: "duplicate-relationship".into(),
+            kind: RelationshipKind::FavoriteClub,
+            target_kind: RelationshipTargetKind::Player,
+            target_id: "player-ada".into(),
+            strength: 0,
+        }];
+        snapshot.staff[0].details.relationships = vec![PersonRelationship {
+            id: "duplicate-relationship".into(),
+            kind: RelationshipKind::Friend,
+            target_kind: RelationshipTargetKind::Player,
+            target_id: "missing-player".into(),
+            strength: 101,
+        }];
+        let mut second_competition = snapshot.competitions[0].clone();
+        second_competition.id = "competition-cup".into();
+        second_competition.name = "Synthetic Cup".into();
+        snapshot.competitions.push(second_competition);
+        snapshot.players[0].details.registrations = vec![
+            PlayerRegistration {
+                id: String::new(),
+                competition_id: "missing-competition".into(),
+                club_id: "missing-club".into(),
+                status: RegistrationStatus::Registered,
+                registered_on: Some(GameDate {
+                    year: 2027,
+                    month: 2,
+                    day: 30,
+                }),
+                expires_on: GameDate::new(2026, 1, 1),
+                squad_number: Some(0),
+                homegrown_at_club: false,
+                homegrown_in_nation: false,
+            },
+            PlayerRegistration {
+                id: "registration-upper-bound".into(),
+                competition_id: "competition-cup".into(),
+                club_id: "club-nordhafen".into(),
+                status: RegistrationStatus::Registered,
+                registered_on: GameDate::new(2026, 7, 1),
+                expires_on: GameDate::new(2027, 6, 30),
+                squad_number: Some(100),
+                homegrown_at_club: false,
+                homegrown_in_nation: false,
+            },
+        ];
+        snapshot.staff[0].roles.clear();
+        snapshot.staff[0].details.responsibilities = vec![
+            StaffResponsibility::Recruitment,
+            StaffResponsibility::Recruitment,
+        ];
+        snapshot.staff[0].details.note = Some("x".repeat(4_001));
+        snapshot.staff[0].details.qualifications = vec![
+            StaffQualification {
+                id: String::new(),
+                name: String::new(),
+                level: 0,
+                awarded_on: Some(GameDate {
+                    year: 2027,
+                    month: 13,
+                    day: 1,
+                }),
+                expires_on: GameDate::new(2026, 1, 1),
+            },
+            StaffQualification {
+                id: "qualification-upper-bound".into(),
+                name: "Synthetic Licence".into(),
+                level: 6,
+                awarded_on: GameDate::new(2026, 1, 1),
+                expires_on: None,
+            },
+        ];
+
+        let report = validate_snapshot(&snapshot);
+        assert!(!report.valid);
+        for code in [
+            "invalid_language",
+            "language_proficiency_out_of_range",
+            "invalid_relationship_id",
+            "unknown_relationship_target",
+            "relationship_kind_target_mismatch",
+            "self_relationship",
+            "relationship_strength_out_of_range",
+            "invalid_registration_id",
+            "invalid_registration_competition",
+            "invalid_registration_club",
+            "invalid_date",
+            "invalid_date_range",
+            "squad_number_out_of_range",
+            "invalid_staff_roles",
+            "duplicate_staff_responsibility",
+            "staff_note_too_long",
+            "invalid_staff_qualification_id",
+            "invalid_staff_qualification_name",
+            "staff_qualification_level_out_of_range",
+        ] {
+            assert!(
+                report.issues.iter().any(|issue| issue.code == code),
+                "missing expected issue code {code}: {:?}",
+                report.issues
+            );
+        }
     }
 }

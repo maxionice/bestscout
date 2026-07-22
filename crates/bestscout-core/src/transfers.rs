@@ -151,6 +151,13 @@ pub fn prepare_transfer_action(
                 "details.future_transfer",
                 Value::Null,
             )?;
+            add_change(
+                snapshot,
+                &mut operations,
+                player_id,
+                "details.registrations",
+                Value::Array(Vec::new()),
+            )?;
         }
         TransferCommand::ArrangeFuture {
             player_id,
@@ -265,6 +272,13 @@ pub fn prepare_transfer_action(
                 player_id,
                 "details.future_transfer",
                 Value::Null,
+            )?;
+            add_change(
+                snapshot,
+                &mut operations,
+                player_id,
+                "details.registrations",
+                Value::Array(Vec::new()),
             )?;
         }
         TransferCommand::SwapNow {
@@ -532,6 +546,13 @@ fn add_swap_completion(
             "details.future_transfer",
             Value::Null,
         )?;
+        add_change(
+            snapshot,
+            operations,
+            player_id,
+            "details.registrations",
+            Value::Array(Vec::new()),
+        )?;
     }
     Ok(())
 }
@@ -626,6 +647,10 @@ mod tests {
             wage: Some(24_000.0),
             ..Default::default()
         });
+        let mut registration = snapshot.players[0].details.registrations[0].clone();
+        registration.id = "registration-milo-nordliga".into();
+        registration.club_id = "club-suedstadt".into();
+        snapshot.players[1].details.registrations = vec![registration];
         snapshot
     }
 
@@ -738,7 +763,8 @@ mod tests {
             Some("club-suedstadt")
         );
         assert!(player.details.future_transfer.is_none());
-        assert_eq!(prepared.transaction.operations.len(), 3);
+        assert!(player.details.registrations.is_empty());
+        assert_eq!(prepared.transaction.operations.len(), 4);
     }
 
     #[test]
@@ -823,7 +849,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(prepared.transaction.operations.len(), 4);
+        assert_eq!(prepared.transaction.operations.len(), 6);
         assert!(
             prepared.transaction.operations.iter().all(|operation| {
                 matches!(operation.expected_before, FieldExpectation::Exact(_))
@@ -847,6 +873,8 @@ mod tests {
                 .and_then(|contract| contract.club_id.as_deref()),
             Some("club-nordhafen")
         );
+        assert!(ada.details.registrations.is_empty());
+        assert!(milo.details.registrations.is_empty());
     }
 
     #[test]
@@ -926,7 +954,7 @@ mod tests {
         ));
         due.game_date = Some(transfer.effective_on);
         let completed = prepare_transfer_action(&due, &completion_request).unwrap();
-        assert_eq!(completed.transaction.operations.len(), 6);
+        assert_eq!(completed.transaction.operations.len(), 8);
         assert!(
             completed
                 .preview
@@ -934,6 +962,14 @@ mod tests {
                 .players
                 .iter()
                 .all(|item| item.details.future_transfer.is_none())
+        );
+        assert!(
+            completed
+                .preview
+                .snapshot
+                .players
+                .iter()
+                .all(|item| item.details.registrations.is_empty())
         );
     }
 
@@ -966,6 +1002,7 @@ mod tests {
             .as_mut()
             .unwrap()
             .club_id = Some("club-nordhafen".into());
+        same_club.players[1].details.registrations[0].club_id = "club-nordhafen".into();
         assert!(matches!(
             prepare_transfer_action(
                 &same_club,

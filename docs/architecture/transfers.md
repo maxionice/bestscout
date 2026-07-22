@@ -32,9 +32,10 @@ future agreement, cancelling an agreement and completing a due agreement. It
 also supports immediate reciprocal swaps, atomic future-swap arrangement and
 atomic completion of a due future swap.
 Immediate and completed moves update the player-facing club name, canonical
-contract and future-transfer record atomically. The destination contract club ID
-is derived from the selected destination instead of trusting conflicting UI
-input.
+contract and future-transfer record atomically. Because registrations are bound
+to the current contract club, the same transaction clears the player's previous
+competition registrations. The destination contract club ID is derived from the
+selected destination instead of trusting conflicting UI input.
 
 Completion requires a canonical in-game date at or after the effective date. A
 loan requires a loan contract. A swap requires two different contracted players
@@ -43,7 +44,9 @@ both contracts and both future-transfer records are changed by the same editor
 transaction. Future swaps use two unique inverse records; arrangement,
 cancellation and due completion always touch both records together. The ordinary
 single-player commands reject swap records, so BestScout cannot prepare half of
-a swap through the transfer API.
+a swap through the transfer API. Immediate and completed swaps also clear both
+players' previous competition registrations atomically; arranging or cancelling
+a future swap leaves registrations unchanged.
 
 Each changed field carries the exact value read for preview as
 `expected_before`. Applying the prepared transaction therefore rejects stale
