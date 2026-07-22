@@ -62,10 +62,6 @@ fn run(arguments: Result<Arguments, String>) -> Result<(), Box<dyn Error>> {
         .and_then(|name| name.to_str())
         .ok_or("RPM binary has no UTF-8 filename")?;
     let package_name = AsKebabCase(product_name).to_string();
-    let provides = string_array(rpm_config, "provides")?;
-    let recommends = string_array(rpm_config, "recommends")?;
-    let conflicts = string_array(rpm_config, "conflicts")?;
-    let obsoletes = string_array(rpm_config, "obsoletes")?;
     let expected_paths = [
         PathBuf::from(format!("/usr/bin/{binary_name}")),
         PathBuf::from(format!("/usr/share/applications/{product_name}.desktop")),
@@ -96,10 +92,33 @@ fn run(arguments: Result<Arguments, String>) -> Result<(), Box<dyn Error>> {
         return Err("Tauri RPM metadata does not match the requested package".into());
     }
     let tauri_requirements = tauri_metadata.get_requires()?;
+    let mut tauri_provides = tauri_metadata.get_provides()?;
+    let tauri_recommends = tauri_metadata.get_recommends()?;
+    let tauri_conflicts = tauri_metadata.get_conflicts()?;
+    let tauri_obsoletes = tauri_metadata.get_obsoletes()?;
+    let tauri_suggests = tauri_metadata.get_suggests()?;
+    let tauri_enhances = tauri_metadata.get_enhances()?;
+    let tauri_supplements = tauri_metadata.get_supplements()?;
     let expected_requirement_keys = dependency_keys(&tauri_requirements);
+    let expected_provide_keys = dependency_keys(&tauri_provides);
+    let expected_recommend_keys = dependency_keys(&tauri_recommends);
+    let expected_conflict_keys = dependency_keys(&tauri_conflicts);
+    let expected_obsolete_keys = dependency_keys(&tauri_obsoletes);
+    let expected_suggest_keys = dependency_keys(&tauri_suggests);
+    let expected_enhance_keys = dependency_keys(&tauri_enhances);
+    let expected_supplement_keys = dependency_keys(&tauri_supplements);
     let preserved_requirements = tauri_requirements
         .into_iter()
-        .filter(|dependency| !dependency.name.starts_with("rpmlib("));
+        .filter(|dependency| !dependency.name.starts_with("rpmlib("))
+        .collect::<Vec<_>>();
+    let automatic_provides = [
+        dependency_key(&Dependency::eq(&package_name, version)),
+        dependency_key(&Dependency::eq(
+            format!("{package_name}({architecture})"),
+            version,
+        )),
+    ];
+    tauri_provides.retain(|dependency| !automatic_provides.contains(&dependency_key(dependency)));
     let patched_binary_path =
         output_parent.join(format!(".bestscout-rpm-binary-{}", std::process::id()));
     let mut patched_binary = patch_bundle_type(fs::read(&arguments.binary)?)?;
@@ -142,17 +161,26 @@ fn run(arguments: Result<Arguments, String>) -> Result<(), Box<dyn Error>> {
         for dependency in preserved_requirements {
             builder = builder.requires(dependency);
         }
-        for dependency in provides {
-            builder = builder.provides(Dependency::any(dependency));
+        for dependency in tauri_provides {
+            builder = builder.provides(dependency);
         }
-        for dependency in recommends {
-            builder = builder.recommends(Dependency::any(dependency));
+        for dependency in tauri_recommends {
+            builder = builder.recommends(dependency);
         }
-        for dependency in conflicts {
-            builder = builder.conflicts(Dependency::any(dependency));
+        for dependency in tauri_conflicts {
+            builder = builder.conflicts(dependency);
         }
-        for dependency in obsoletes {
-            builder = builder.obsoletes(Dependency::any(dependency));
+        for dependency in tauri_obsoletes {
+            builder = builder.obsoletes(dependency);
+        }
+        for dependency in tauri_suggests {
+            builder = builder.suggests(dependency);
+        }
+        for dependency in tauri_enhances {
+            builder = builder.enhances(dependency);
+        }
+        for dependency in tauri_supplements {
+            builder = builder.supplements(dependency);
         }
         builder.build()
     })();
@@ -179,8 +207,16 @@ fn run(arguments: Result<Arguments, String>) -> Result<(), Box<dyn Error>> {
     if metadata.get_file_paths()? != expected_paths {
         return Err("written RPM contains an unexpected file set".into());
     }
-    if dependency_keys(&metadata.get_requires()?) != expected_requirement_keys {
-        return Err("written RPM does not preserve Tauri's runtime requirements".into());
+    if dependency_keys(&metadata.get_requires()?) != expected_requirement_keys
+        || dependency_keys(&metadata.get_provides()?) != expected_provide_keys
+        || dependency_keys(&metadata.get_recommends()?) != expected_recommend_keys
+        || dependency_keys(&metadata.get_conflicts()?) != expected_conflict_keys
+        || dependency_keys(&metadata.get_obsoletes()?) != expected_obsolete_keys
+        || dependency_keys(&metadata.get_suggests()?) != expected_suggest_keys
+        || dependency_keys(&metadata.get_enhances()?) != expected_enhance_keys
+        || dependency_keys(&metadata.get_supplements()?) != expected_supplement_keys
+    {
+        return Err("written RPM does not preserve Tauri's dependency metadata".into());
     }
     fs::rename(staged_output, &arguments.output)?;
     Ok(())
@@ -199,6 +235,14 @@ fn dependency_keys(dependencies: &[Dependency]) -> Vec<(String, u32, String)> {
         .collect::<Vec<_>>();
     keys.sort();
     keys
+}
+
+fn dependency_key(dependency: &Dependency) -> (String, u32, String) {
+    (
+        dependency.name.clone(),
+        dependency.flags.bits(),
+        dependency.version.clone(),
+    )
 }
 
 fn patch_bundle_type(mut binary: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -271,22 +315,6 @@ fn string_at<'a>(value: &'a Value, path: &[&str]) -> Result<&'a str, Box<dyn Err
     object_at(value, path)?
         .as_str()
         .ok_or_else(|| format!("configuration field {} must be a string", path.join(".")).into())
-}
-
-fn string_array(value: &Value, field: &str) -> Result<Vec<String>, Box<dyn Error>> {
-    let Some(entries) = value.get(field) else {
-        return Ok(Vec::new());
-    };
-    entries
-        .as_array()
-        .ok_or_else(|| format!("RPM configuration field {field} must be an array"))?
-        .iter()
-        .map(|entry| {
-            entry.as_str().map(str::to_owned).ok_or_else(|| {
-                format!("RPM configuration field {field} must contain strings").into()
-            })
-        })
-        .collect()
 }
 
 #[cfg(test)]
@@ -377,6 +405,13 @@ mod tests {
                 .description("Reproducibility fixture")
                 .url("https://example.invalid")
                 .requires(Dependency::any("libwebkit2gtk-4.1.so.0()(64bit)"))
+                .provides(Dependency::greater_eq("bestscout-virtual", "0.9"))
+                .recommends(Dependency::any("bestscout-helper"))
+                .conflicts(Dependency::less("bestscout-legacy", "0.1"))
+                .obsoletes(Dependency::less_eq("bestscout-old", "0.1"))
+                .suggests(Dependency::any("bestscout-docs"))
+                .enhances(Dependency::any("football-manager"))
+                .supplements(Dependency::any("steam"))
                 .with_file(
                     &binary,
                     FileOptions::new("/usr/bin/bestscout-desktop").mode(FileMode::regular(0o755)),

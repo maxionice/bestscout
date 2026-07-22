@@ -77,7 +77,9 @@ copied outputs compared byte for byte with `cmp`:
 
 Both RPM copies also retained Tauri's automatically detected
 `libwebkit2gtk-4.1.so.0()(64bit)` and `libgtk-3.so.0()(64bit)` runtime
-requirements; normalization verifies that requirement set before replacement.
+requirements. A regression fixture exercises every RPM dependency class;
+normalization compares the complete source and rebuilt dependency metadata before
+replacement.
 
 This closes the native byte-reproducibility check only. The signed tag workflow,
 published artifacts and cross-distribution installation remain separate runtime
