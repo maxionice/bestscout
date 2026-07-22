@@ -16,10 +16,11 @@ const details = (expiresYear: number, expiresMonth = 6, expiresDay = 30) => ({
   professionalism: null,
   ambition: null,
   contract: {
-    club_id: "sv-nordhafen",
+    club_id: "club-nordhafen",
     expires_on: { year: expiresYear, month: expiresMonth, day: expiresDay },
     contract_type: "full_time" as const,
   },
+  future_transfer: null,
   fitness: { condition: 92, match_fitness: 88, fatigue: 18, jadedness: 10 },
   morale: 16,
   happiness: 17,

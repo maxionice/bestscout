@@ -86,6 +86,7 @@ const basicFields: Record<EditEntityKind, EditorField[]> = {
     field("details.contract.wage", "Vertragsgehalt", "Vertrag", "number", true, 0),
     field("details.contract.release_clause", "Ausstiegsklausel", "Vertrag", "number", true, 0),
     field("details.contract.squad_status", "Kaderstatus", "Vertrag", "string", true),
+    field("details.future_transfer", "Zukunftstransfer (JSON)", "Transfer", "json", true),
     field("details.fitness", "Gesamte Fitness (JSON)", "Medizin & Wohlbefinden", "json"),
     field("details.fitness.condition", "Kondition", "Medizin & Wohlbefinden", "integer", true, 0, 100),
     field("details.fitness.match_fitness", "Matchfitness", "Medizin & Wohlbefinden", "integer", true, 0, 100),

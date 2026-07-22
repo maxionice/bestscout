@@ -5,7 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   Activity, BarChart3, Building2, CheckCircle2, ChevronDown, CircleOff, Database,
   FileUp, Filter, Fingerprint, LayoutDashboard, LockKeyhole, RefreshCw, Search, TableProperties,
-  ShieldCheck, Star, Trophy, UserRoundCog, Users, Zap, Minus, Square, X, PencilLine, Sparkles, Snowflake, HeartPulse,
+  ShieldCheck, Star, Trophy, UserRoundCog, Users, Zap, Minus, Square, X, PencilLine, Sparkles, Snowflake, HeartPulse, ArrowRightLeft,
 } from "lucide-react";
 import { AvailabilityWorkspace } from "./AvailabilityWorkspace";
 import { demoPlayers } from "./demo";
@@ -17,6 +17,7 @@ import { IntelligenceWorkspace } from "./IntelligenceWorkspace";
 import { RoleExplorer } from "./RoleExplorer";
 import { ShortlistWorkspace } from "./ShortlistWorkspace";
 import { SquadAnalysisWorkspace } from "./SquadAnalysisWorkspace";
+import { TransferWorkspace } from "./TransferWorkspace";
 import { locallyRatedRows, previewRoles } from "./roles";
 import { loadShortlist, persistShortlist } from "./shortlist";
 import { ViewToolbar } from "./ViewToolbar";
@@ -31,7 +32,7 @@ import type {
 
 const nav = [
   [LayoutDashboard, "Übersicht"], [Sparkles, "Scout-Intel"], [TableProperties, "Datenbank"], [Search, "Spielersuche"], [Users, "Kaderanalyse"],
-  [Star, "Shortlist"], [BarChart3, "Vergleich"], [HeartPulse, "Verfügbarkeit"], [PencilLine, "Editor"], [Snowflake, "Freezer"], [Activity, "Live-Spiel"],
+  [Star, "Shortlist"], [BarChart3, "Vergleich"], [HeartPulse, "Verfügbarkeit"], [ArrowRightLeft, "Transfers"], [PencilLine, "Editor"], [Snowflake, "Freezer"], [Activity, "Live-Spiel"],
 ] as const;
 
 const money = new Intl.NumberFormat("de-DE", { notation: "compact", style: "currency", currency: "EUR", maximumFractionDigits: 1 });
@@ -79,7 +80,7 @@ export default function App() {
   const visibleColumnDefinitions = playerColumns.filter((column) => column.locked || visibleColumns.includes(column.id));
   const [filtered, setFiltered] = useState<PlayerQueryRow[]>(() => locallyRatedRows(demoPlayers, previewRoles[0]));
   const activeFilterCount = Number(u21Only) + Number(freeAgentsOnly) + Number(minPotential > 0) + Number(maxValueMillions > 0);
-  const metricPlayers = (active === "Editor" || active === "Freezer" || active === "Verfügbarkeit") && snapshot ? snapshot.players : players;
+  const metricPlayers = (active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers") && snapshot ? snapshot.players : players;
 
   useEffect(() => {
     let cancelled = false;
@@ -319,6 +320,11 @@ export default function App() {
       case "contract_wage": return player.details?.contract?.wage == null ? "–" : `${money.format(player.details.contract.wage)} / W.`;
       case "release_clause": return player.details?.contract?.release_clause == null ? "–" : money.format(player.details.contract.release_clause);
       case "squad_status": return player.details?.contract?.squad_status ?? "–";
+      case "future_transfer_kind": return player.details?.future_transfer?.kind ?? "–";
+      case "future_transfer_destination": return player.details?.future_transfer?.to_club_id ?? "–";
+      case "future_transfer_date": return formatGameDate(player.details?.future_transfer?.effective_on);
+      case "future_transfer_fee": return player.details?.future_transfer?.fee == null ? "–" : money.format(player.details.future_transfer.fee);
+      case "future_transfer_status": return player.details?.future_transfer?.status ?? "–";
       case "player_status": return player.details?.status ? Object.entries(player.details.status).filter(([, active]) => active).map(([status]) => status).join(", ") || "Verfügbar" : "–";
       case "transfer_listed": return formatBoolean(player.details?.status?.transfer_listed);
       case "loan_listed": return formatBoolean(player.details?.status?.loan_listed);
@@ -386,7 +392,7 @@ export default function App() {
         </header>
 
         <section className="metrics" aria-label="Datenübersicht">
-          <Metric label="Spieler im Datensatz" value={metricPlayers.length.toLocaleString("de-DE")} detail={active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" ? "Editor-Arbeitskopie" : "Aktueller Import"} />
+          <Metric label="Spieler im Datensatz" value={metricPlayers.length.toLocaleString("de-DE")} detail={active === "Editor" || active === "Freezer" || active === "Verfügbarkeit" || active === "Transfers" ? "Editor-Arbeitskopie" : "Aktueller Import"} />
           <Metric label="U21-Talente" value={metricPlayers.filter((p) => (p.age ?? 99) <= 21).length.toString()} detail="Potenzialanalyse" accent />
           <Metric label="Auf Shortlist" value={shortlist.size.toString()} detail="Lokale Auswahl" />
           <Metric label="Datenabdeckung" value={`${Math.round(metricPlayers.reduce((sum, p) => sum + Object.keys(p.attributes).length, 0) / Math.max(metricPlayers.length, 1) / totalPlayerAttributes * 100)}%`} detail="47 FM26-Attribute" />
@@ -410,6 +416,8 @@ export default function App() {
           <SquadAnalysisWorkspace players={players} />
         ) : active === "Verfügbarkeit" ? (
           <AvailabilityWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
+        ) : active === "Transfers" ? (
+          <TransferWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
         ) : active === "Editor" ? (
           <EditorWorkspace snapshot={snapshot} onSnapshotChange={updateEditedSnapshot} liveWriteEnabled={liveEnvironment?.editor_allowed ?? false} />
         ) : active === "Freezer" ? (
@@ -617,6 +625,12 @@ function fallbackSnapshot(players: Player[]): DatabaseSnapshot {
       stadium_capacity: 24_500, average_attendance: 19_300,
       finances: { balance: 18_000_000, transfer_budget: 6_500_000, wage_budget: 450_000, debt: 2_000_000 },
       facilities: { training: 15, youth: 16, youth_recruitment: 14, junior_coaching: 15 },
+    }, {
+      id: "club-suedstadt", name: "Fußballclub Südstadt", short_name: "FC Südstadt", nation: "Deutschland",
+      competition: "Nordliga", reputation: 4200, professional_status: "professional", stadium: "Südstadt-Arena",
+      stadium_capacity: 18_500, average_attendance: 13_800,
+      finances: { balance: 11_000_000, transfer_budget: 4_000_000, wage_budget: 320_000, debt: 1_000_000 },
+      facilities: { training: 13, youth: 12, youth_recruitment: 11, junior_coaching: 12 },
     }],
     competitions: [{
       id: "competition-nordliga", name: "Nordliga", short_name: "NL", nation: "Deutschland",

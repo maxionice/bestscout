@@ -49,6 +49,8 @@ and editing tools while remaining local, transparent and safe.
   monitor-only policies, unresolved-rule blocking and journaled correction
 - Canonical fitness, morale, injury and ban model with deterministic squad
   availability, a full HeroUI medical workspace and journaled correction actions
+- Canonical immediate, future, loan and reciprocal swap transfers with validated
+  routes, two-sided destination contracts and a journaled HeroUI Transfer Center
 - Explainable development probability and projected CA/attribute peaks with
   configurable Wonderkid, bargain, free-agent and expiring-contract smart lists
 - Reproducible AppImage, DEB and RPM builds with bundle validation and SHA-256
@@ -57,6 +59,8 @@ and editing tools while remaining local, transparent and safe.
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.
+The exact resumable development state is recorded in
+[the current handoff](docs/handoff.md).
 
 ## Development
 

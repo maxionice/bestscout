@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{DatabaseSnapshot, GameDate, Player};
+use crate::{DatabaseSnapshot, GameDate, Player, TransferKind};
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
@@ -89,6 +89,12 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
         .iter()
         .map(|competition| competition.id.as_str())
         .collect();
+    let player_ids: HashSet<_> = snapshot
+        .players
+        .iter()
+        .map(|player| player.id.as_str())
+        .collect();
+    let mut future_transfer_ids = HashSet::new();
     for player in &snapshot.players {
         if player.name.trim().is_empty() {
             issue(
@@ -182,6 +188,16 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
             }
         }
         validate_player_availability(&mut issues, player, &competition_ids);
+        if let Some(transfer) = &player.details.future_transfer {
+            validate_future_transfer(
+                &mut issues,
+                player,
+                transfer,
+                &club_ids,
+                &player_ids,
+                &mut future_transfer_ids,
+            );
+        }
         if let Some(contract) = &player.details.contract {
             validate_contract(
                 &mut issues,
@@ -194,6 +210,17 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
                 contract.release_clause,
                 &club_ids,
             );
+        }
+    }
+
+    for player in &snapshot.players {
+        if let Some(transfer) = player
+            .details
+            .future_transfer
+            .as_ref()
+            .filter(|transfer| transfer.kind == TransferKind::Swap)
+        {
+            validate_reciprocal_swap(&mut issues, player, transfer, snapshot);
         }
     }
 
@@ -346,6 +373,203 @@ pub fn validate_snapshot(snapshot: &DatabaseSnapshot) -> SnapshotValidationRepor
             .iter()
             .all(|issue| issue.severity != IssueSeverity::Error),
         issues,
+    }
+}
+
+fn validate_reciprocal_swap(
+    issues: &mut Vec<SnapshotIssue>,
+    player: &Player,
+    transfer: &crate::FutureTransfer,
+    snapshot: &DatabaseSnapshot,
+) {
+    let reciprocal = transfer
+        .swap_player_id
+        .as_deref()
+        .and_then(|partner_id| snapshot.players.iter().find(|item| item.id == partner_id))
+        .and_then(|partner| {
+            partner
+                .details
+                .future_transfer
+                .as_ref()
+                .map(|partner_transfer| (partner, partner_transfer))
+        });
+    let player_club_id = player
+        .details
+        .contract
+        .as_ref()
+        .and_then(|contract| contract.club_id.as_deref());
+    let valid = reciprocal.is_some_and(|(partner, partner_transfer)| {
+        let partner_club_id = partner
+            .details
+            .contract
+            .as_ref()
+            .and_then(|contract| contract.club_id.as_deref());
+        partner_transfer.kind == TransferKind::Swap
+            && partner_transfer.id != transfer.id
+            && partner_transfer.swap_player_id.as_deref() == Some(player.id.as_str())
+            && transfer.from_club_id.as_deref() == player_club_id
+            && Some(transfer.to_club_id.as_str()) == partner_club_id
+            && partner_transfer.from_club_id.as_deref() == partner_club_id
+            && Some(partner_transfer.to_club_id.as_str()) == player_club_id
+            && transfer.arranged_on == partner_transfer.arranged_on
+            && transfer.effective_on == partner_transfer.effective_on
+            && transfer.status == partner_transfer.status
+    });
+    if !valid {
+        issue(
+            issues,
+            "non_reciprocal_swap",
+            "player",
+            &player.id,
+            "details.future_transfer",
+            "a swap must have one inverse agreement with matching clubs, players, dates and status",
+        );
+    }
+}
+
+fn validate_future_transfer<'a>(
+    issues: &mut Vec<SnapshotIssue>,
+    player: &Player,
+    transfer: &'a crate::FutureTransfer,
+    club_ids: &HashSet<&str>,
+    player_ids: &HashSet<&str>,
+    transfer_ids: &mut HashSet<&'a str>,
+) {
+    let prefix = "details.future_transfer";
+    if transfer.id.trim().is_empty()
+        || transfer.id.len() > 128
+        || !transfer_ids.insert(transfer.id.as_str())
+    {
+        issue(
+            issues,
+            "invalid_future_transfer_id",
+            "player",
+            &player.id,
+            format!("{prefix}.id"),
+            "future transfer ID must be non-empty, bounded and unique in the snapshot",
+        );
+    }
+    if transfer.to_club_id.trim().is_empty() || !club_ids.contains(transfer.to_club_id.as_str()) {
+        issue(
+            issues,
+            "unknown_club_reference",
+            "player",
+            &player.id,
+            format!("{prefix}.to_club_id"),
+            "future transfer destination must reference a club in the snapshot",
+        );
+    }
+    if transfer
+        .from_club_id
+        .as_deref()
+        .is_some_and(|id| !club_ids.contains(id))
+    {
+        issue(
+            issues,
+            "unknown_club_reference",
+            "player",
+            &player.id,
+            format!("{prefix}.from_club_id"),
+            "future transfer origin must reference a club in the snapshot",
+        );
+    }
+    if transfer.from_club_id.as_deref() == Some(transfer.to_club_id.as_str()) {
+        issue(
+            issues,
+            "invalid_transfer_route",
+            "player",
+            &player.id,
+            format!("{prefix}.to_club_id"),
+            "future transfer origin and destination must differ",
+        );
+    }
+    validate_date_range(
+        issues,
+        "player",
+        &player.id,
+        prefix,
+        ("arranged_on", transfer.arranged_on),
+        ("effective_on", Some(transfer.effective_on)),
+    );
+    validate_date_range(
+        issues,
+        "player",
+        &player.id,
+        prefix,
+        ("effective_on", Some(transfer.effective_on)),
+        ("loan_end", transfer.loan_end),
+    );
+    if transfer
+        .fee
+        .is_some_and(|fee| !fee.is_finite() || !(0.0..=1_000_000_000_000.0).contains(&fee))
+    {
+        issue(
+            issues,
+            "transfer_fee_out_of_range",
+            "player",
+            &player.id,
+            format!("{prefix}.fee"),
+            "transfer fee must be finite and between zero and one trillion",
+        );
+    }
+    if transfer
+        .wage_contribution_percent
+        .is_some_and(|percentage| percentage > 100)
+    {
+        issue(
+            issues,
+            "wage_contribution_out_of_range",
+            "player",
+            &player.id,
+            format!("{prefix}.wage_contribution_percent"),
+            "wage contribution must be between zero and 100 percent",
+        );
+    }
+    match transfer.kind {
+        TransferKind::Loan if transfer.loan_end.is_none() => issue(
+            issues,
+            "missing_loan_end",
+            "player",
+            &player.id,
+            format!("{prefix}.loan_end"),
+            "a future loan requires an end date",
+        ),
+        TransferKind::Loan => {}
+        _ if transfer.loan_end.is_some() || transfer.wage_contribution_percent.is_some() => issue(
+            issues,
+            "invalid_loan_terms",
+            "player",
+            &player.id,
+            format!("{prefix}.loan_end"),
+            "loan terms are only valid for a loan transfer",
+        ),
+        _ => {}
+    }
+    let valid_swap = transfer
+        .swap_player_id
+        .as_deref()
+        .is_some_and(|id| id != player.id && player_ids.contains(id));
+    if (transfer.kind == TransferKind::Swap && !valid_swap)
+        || (transfer.kind != TransferKind::Swap && transfer.swap_player_id.is_some())
+    {
+        issue(
+            issues,
+            "invalid_swap_player",
+            "player",
+            &player.id,
+            format!("{prefix}.swap_player_id"),
+            "swap transfers require one different player in the snapshot; other kinds cannot set one",
+        );
+    }
+    if transfer.kind == TransferKind::FreeTransfer && transfer.fee.is_some_and(|fee| fee != 0.0) {
+        issue(
+            issues,
+            "invalid_free_transfer_fee",
+            "player",
+            &player.id,
+            format!("{prefix}.fee"),
+            "a free transfer cannot contain a non-zero fee",
+        );
     }
 }
 
@@ -748,7 +972,7 @@ fn issue(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Attribute, synthetic_snapshot};
+    use crate::{Attribute, FutureTransfer, TransferStatus, synthetic_snapshot};
 
     #[test]
     fn accepts_the_synthetic_reference_snapshot() {
@@ -787,5 +1011,31 @@ mod tests {
         ] {
             assert!(report.issues.iter().any(|issue| issue.code == code));
         }
+    }
+
+    #[test]
+    fn rejects_a_one_sided_future_swap() {
+        let mut snapshot = synthetic_snapshot();
+        snapshot.players[0].details.future_transfer = Some(FutureTransfer {
+            id: "half-swap".into(),
+            kind: TransferKind::Swap,
+            from_club_id: Some("club-nordhafen".into()),
+            to_club_id: "club-suedstadt".into(),
+            arranged_on: GameDate::new(2026, 7, 22),
+            effective_on: GameDate::new(2026, 8, 1).unwrap(),
+            fee: Some(0.0),
+            loan_end: None,
+            wage_contribution_percent: None,
+            swap_player_id: Some("player-milo".into()),
+            status: TransferStatus::Agreed,
+        });
+        let report = validate_snapshot(&snapshot);
+        assert!(!report.valid);
+        assert!(
+            report
+                .issues
+                .iter()
+                .any(|issue| issue.code == "non_reciprocal_swap")
+        );
     }
 }

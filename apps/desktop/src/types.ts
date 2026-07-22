@@ -10,6 +10,23 @@ export type Contract = {
   squad_status?: string | null;
 };
 
+export type TransferKind = "permanent" | "loan" | "free_transfer" | "swap";
+export type TransferStatus = "agreed" | "confirmed" | "completed" | "cancelled";
+
+export type FutureTransfer = {
+  id: string;
+  kind: TransferKind;
+  from_club_id: string | null;
+  to_club_id: string;
+  arranged_on: GameDate | null;
+  effective_on: GameDate;
+  fee: number | null;
+  loan_end: GameDate | null;
+  wage_contribution_percent: number | null;
+  swap_player_id: string | null;
+  status: TransferStatus;
+};
+
 export type Player = {
   id: string;
   name: string;
@@ -34,6 +51,7 @@ export type Player = {
     professionalism: number | null;
     ambition: number | null;
     contract?: Contract | null;
+    future_transfer?: FutureTransfer | null;
     fitness?: {
       condition: number | null;
       match_fitness: number | null;
@@ -333,6 +351,45 @@ export type AvailabilityActionRequest = {
 export type PreparedAvailabilityAction = {
   action: AvailabilityAction;
   affected_player_count: number;
+  transaction: EditTransaction;
+  preview: AppliedTransaction;
+};
+
+export type TransferCommand =
+  | { kind: "move_now"; player_id: string; destination_club_id: string; contract: Contract }
+  | { kind: "arrange_future"; player_id: string; transfer: FutureTransfer }
+  | { kind: "cancel_future"; player_id: string }
+  | { kind: "complete_future"; player_id: string; contract: Contract }
+  | {
+      kind: "swap_now";
+      player_id: string;
+      swap_player_id: string;
+      player_contract: Contract;
+      swap_player_contract: Contract;
+    }
+  | {
+      kind: "arrange_future_swap";
+      player_id: string;
+      swap_player_id: string;
+      transfer: FutureTransfer;
+      reciprocal_transfer: FutureTransfer;
+    }
+  | {
+      kind: "complete_future_swap";
+      player_id: string;
+      swap_player_id: string;
+      player_contract: Contract;
+      swap_player_contract: Contract;
+    };
+
+export type TransferActionRequest = {
+  transaction_id: string;
+  created_at_utc: string;
+  command: TransferCommand;
+};
+
+export type PreparedTransferAction = {
+  command: TransferCommand;
   transaction: EditTransaction;
   preview: AppliedTransaction;
 };

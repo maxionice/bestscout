@@ -1035,7 +1035,7 @@ mod tests {
         let fixture = bestscout_core::synthetic_snapshot();
         let served_fixture = fixture.clone();
         let server = thread::spawn(move || {
-            for _ in 0..8 {
+            for _ in 0..9 {
                 let (mut stream, _) = listener.accept().unwrap();
                 let mut line = String::new();
                 BufReader::new(stream.try_clone().unwrap())
@@ -1054,8 +1054,8 @@ mod tests {
                         "schema_version": 1,
                         "generated_at_utc": "2026-07-21T20:00:00Z",
                         "page_size": 1,
-                        "counts": {"players": 2, "staff": 1, "clubs": 1, "competitions": 1},
-                        "pages": {"players": 2, "staff": 1, "clubs": 1, "competitions": 1}
+                        "counts": {"players": 2, "staff": 1, "clubs": 2, "competitions": 1},
+                        "pages": {"players": 2, "staff": 1, "clubs": 2, "competitions": 1}
                     }),
                     "snapshot_page" => {
                         let parameters = &request["parameters"];
