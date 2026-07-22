@@ -46,11 +46,11 @@ set. `sha256sum -c SHA256SUMS` passed for every listed subject:
 
 | Artifact | Bytes | SHA-256 |
 | --- | ---: | --- |
-| `BestScout_0.1.0_amd64.AppImage` | 107,620,856 | `04c13410dd70c5a80b2b2f8860dea4cdfbea76d7d3b7e66012912068a3ed282f` |
-| `BestScout_0.1.0_amd64.deb` | 4,667,452 | `c17757153f53f0d9e53cb08c329d3a0d200e2b71fb12ce53e83902a6fb68c49b` |
-| `BestScout-0.1.0-1.x86_64.rpm` | 4,667,690 | `7102d04d2c1ec415434ee362eb25b137e05215d060e384ddbebe79a55abdd979` |
-| `BestScout_0.1.0_x86_64.flatpak` | 3,167,496 | `b046e347fda1e5a61ba146e6517cdf06763469b91d8f51082dd5c72214e17540` |
-| `BestScout_0.1.0_SteamDeck_x86_64.AppImage` | 107,620,856 | `04c13410dd70c5a80b2b2f8860dea4cdfbea76d7d3b7e66012912068a3ed282f` |
+| `BestScout_0.1.0_amd64.AppImage` | 108,104,184 | `897d954bc2819e04c995d1d73e3a8ce16253db0b993c43b7ea1cd859e4564960` |
+| `BestScout_0.1.0_amd64.deb` | 5,087,892 | `ef6015672b0a23fe0b40e7f6188a7fe1e07e2f366b5dfbde8b2486622de93cde` |
+| `BestScout-0.1.0-1.x86_64.rpm` | 5,111,182 | `50f4e5b7187c6df049f538643a2834696f1ae1fac2c32860840fa6671d68b290` |
+| `BestScout_0.1.0_x86_64.flatpak` | 3,546,840 | `4e75449c2d10f7b8f6c5b82f895ff5a6a03a8dc93ffbf7fc48c1deb390d5179a` |
+| `BestScout_0.1.0_SteamDeck_x86_64.AppImage` | 108,104,184 | `897d954bc2819e04c995d1d73e3a8ce16253db0b993c43b7ea1cd859e4564960` |
 | `BestScout_0.1.0_SteamDeck_x86_64.sh` | 553 | `65fbd6d99e6b069ac0a88678f8aa7301f56ad4416068a6dc5e87ca93cf08de57` |
 | `BestScout_0.1.0_SteamDeck_x86_64.en.md` | 1,377 | `2ac3cc04783120412b38fced8bc8576c8be34fadae430e9b2a920d4eeb4d591e` |
 | `BestScout_0.1.0_SteamDeck_x86_64.de.md` | 1,470 | `27951245dfc40d491706d8840ce3c37cd617a6b383ee1bb95425000d7641457d` |
