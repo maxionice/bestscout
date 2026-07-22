@@ -4,6 +4,7 @@
 //! enabled after a version profile has matched an executable fingerprint.
 
 mod bridge;
+mod deployment;
 mod discovery;
 mod fingerprint;
 mod process;
@@ -14,7 +15,14 @@ pub use bridge::{
     DomainReferenceMetadata, DomainRootState, DomainRootStatus, SnapshotEntityCounts,
     SnapshotEntityKind, SnapshotManifest, SnapshotPageCounts, probe_bridge,
 };
-pub use discovery::{FmInstallation, FmProcess, LiveEnvironment, discover_environment};
+pub use deployment::{
+    BRIDGE_VERSION, BridgeDeploymentAction, BridgeDeploymentError, BridgeDeploymentOutcome,
+    BridgeDeploymentState, BridgeDeploymentStatus, BridgeInstallManifest, bridge_deployment_status,
+    install_bridge, uninstall_bridge,
+};
+pub use discovery::{
+    FmInstallation, FmProcess, LiveEnvironment, discover_environment, inspect_installation,
+};
 pub use fingerprint::{
     BuildFingerprint, ExecutableFingerprint, FingerprintError, fingerprint_file,
 };

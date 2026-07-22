@@ -53,3 +53,12 @@ The repository will not redistribute Football Manager assemblies. Bridge builds
 must reference files from the user's own installation, and the protocol must bind
 to loopback with per-launch authentication. The native read-only adapter remains
 available for build diagnostics and independently validated entity readers.
+
+Bridge deployment is a separate gated transaction. The lifecycle command first
+requires an exact compatibility profile and no detected real or launcher FM
+process. It accepts only a bounded, regular, non-symlink PE DLL with the expected
+name, stages and hashes both artifact and manifest inside the final filesystem,
+then atomically activates them. A managed update or uninstall proceeds only when
+the installed bytes still equal the recorded SHA-256. Unmanaged, partial,
+modified, symlinked or transaction-residue states are reported and never
+overwritten automatically. See [bridge lifecycle](bridge-lifecycle.md).

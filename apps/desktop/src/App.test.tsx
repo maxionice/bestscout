@@ -191,6 +191,18 @@ describe("BestScout desktop", () => {
           error: null,
         },
       },
+      bridge_deployment: {
+        state: "managed", plugin_directory: "/game/BepInEx/plugins/BestScout",
+        bridge_path: "/game/BepInEx/plugins/BestScout/BestScout.Bridge.dll",
+        manifest_path: "/game/BepInEx/plugins/BestScout/bestscout-install.json",
+        manifest: {
+          schema_version: 1, bridge_version: "0.3.0", profile_id: "fm26-steam-23583635",
+          bridge_filename: "BestScout.Bridge.dll", sha256: "a".repeat(64), size: 1024,
+          installed_at_unix_seconds: 1,
+        },
+        observed_artifact: { sha256: "a".repeat(64), size: 1024 },
+        reason: "managed bridge integrity is verified",
+      },
       process_access: {
         inspection: { pid: 77, region_count: 100, readable_region_count: 90, fm_executable_base: 0x140000000, game_assembly_base: 0x6ffff0000000 },
         executable_signature_valid: true,
@@ -204,5 +216,9 @@ describe("BestScout desktop", () => {
     expect(screen.getByText("1 Interop-Root · Referenzen verifiziert")).toBeTruthy();
     expect(screen.getByText("0x140000000")).toBeTruthy();
     expect(screen.getByTitle("PID 77 · 90/100 Bereiche lesbar")).toBeTruthy();
+
+    cleanup();
+    render(<LiveWorkspace environment={{ ...environment, processes: [], bridge: null, process_access: null }} isDetecting={false} onDetect={() => undefined} />);
+    expect(screen.getByText("Bridge 0.3.0 installiert · FM26 starten")).toBeTruthy();
   });
 });

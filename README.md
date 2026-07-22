@@ -20,6 +20,8 @@ and editing tools while remaining local, transparent and safe.
 - Bounded read-only Linux process inspection with no write API
 - Real Proton game-process selection with a two-byte PE-signature access probe
 - Authenticated loopback bridge scaffold for BepInEx/IL2CPP
+- Managed bridge install, update, integrity status and uninstall with a hard
+  running-game lock and exact-build gate
 - Read-only main-thread probe for FM26 initialisation, interop, database-factory
   and typed person/club/competition reference roots
 - Bounded paginated live-snapshot protocol with end-to-end canonical validation
@@ -64,6 +66,17 @@ Diagnose the local FM26/Proton environment without starting the UI:
 ```bash
 cargo run -p bestscout-live --bin bestscout-diagnose
 ```
+
+Inspect the bridge installation without changing the game:
+
+```bash
+cargo run -p bestscout-live --bin bestscout-bridge -- status \
+  --game-root "/path/to/Football Manager 26"
+```
+
+The same command supports `install --artifact /path/to/BestScout.Bridge.dll`
+and `uninstall`, but both mutations refuse to run until FM26 has been closed
+normally. See [bridge lifecycle](docs/architecture/bridge-lifecycle.md).
 
 ## Safety
 
