@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    Attribute, Club, ClubFacilities, ClubFinances, Competition, Contract, ContractType,
-    DatabaseSnapshot, Foot, GameDate, LanguageSkill, PersonRelationship, Player, PlayerDetails,
-    PlayerFitness, PlayerRegistration, PlayerStatus, RegistrationStatus, RelationshipKind,
-    RelationshipTargetKind, SnapshotSource, Staff, StaffAttribute, StaffQualification,
-    StaffResponsibility, StaffRole,
+    Attribute, Club, ClubFacilities, ClubFinances, Competition, CompetitionFixture,
+    CompetitionStage, CompetitionStageKind, CompetitionStanding, Contract, ContractType,
+    DatabaseSnapshot, FixtureStatus, Foot, GameDate, LanguageSkill, PersonRelationship, Player,
+    PlayerDetails, PlayerFitness, PlayerRegistration, PlayerStatus, RegistrationStatus,
+    RelationshipKind, RelationshipTargetKind, SnapshotSource, Staff, StaffAttribute,
+    StaffQualification, StaffResponsibility, StaffRole,
 };
 
 pub fn synthetic_snapshot() -> DatabaseSnapshot {
@@ -239,8 +240,58 @@ pub fn synthetic_snapshot() -> DatabaseSnapshot {
             short_name: Some("NL".into()),
             nation: Some("Deutschland".into()),
             reputation: Some(6_000),
-            current_champion: Some("SV Nordhafen".into()),
+            current_champion: Some("Sportverein Nordhafen".into()),
+            current_champion_club_id: Some("club-nordhafen".into()),
             level: Some(1),
+            stages: vec![CompetitionStage {
+                id: "stage-nordliga-2026".into(),
+                name: "Ligaphase 2026/27".into(),
+                kind: CompetitionStageKind::League,
+                order: 1,
+                starts_on: GameDate::new(2026, 7, 1),
+                ends_on: GameDate::new(2027, 5, 31),
+                current: true,
+            }],
+            fixtures: vec![CompetitionFixture {
+                id: "fixture-nordliga-opening".into(),
+                stage_id: Some("stage-nordliga-2026".into()),
+                home_club_id: "club-nordhafen".into(),
+                away_club_id: "club-suedstadt".into(),
+                scheduled_on: GameDate::new(2026, 8, 1),
+                status: FixtureStatus::Scheduled,
+                home_score: None,
+                away_score: None,
+                round: Some("1".into()),
+                venue: Some("Hafenpark".into()),
+            }],
+            standings: vec![
+                CompetitionStanding {
+                    stage_id: Some("stage-nordliga-2026".into()),
+                    club_id: "club-nordhafen".into(),
+                    position: 1,
+                    played: 0,
+                    won: 0,
+                    drawn: 0,
+                    lost: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                    goal_difference: 0,
+                    points: 0,
+                },
+                CompetitionStanding {
+                    stage_id: Some("stage-nordliga-2026".into()),
+                    club_id: "club-suedstadt".into(),
+                    position: 2,
+                    played: 0,
+                    won: 0,
+                    drawn: 0,
+                    lost: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                    goal_difference: 0,
+                    points: 0,
+                },
+            ],
         }],
     }
 }

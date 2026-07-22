@@ -110,6 +110,18 @@ pub fn prepare_club_action(
                 "professional_status",
                 professional_status,
             )?;
+            for competition in snapshot.competitions.iter().filter(|competition| {
+                competition.current_champion_club_id.as_deref() == Some(club_id)
+            }) {
+                add_entity_serialized_change(
+                    snapshot,
+                    &mut operations,
+                    EditEntityKind::Competition,
+                    &competition.id,
+                    "current_champion",
+                    &Some(name.clone()),
+                )?;
+            }
         }
         ClubCommand::UpdateStadium {
             club_id,
@@ -252,15 +264,33 @@ fn add_serialized_change<T: Serialize>(
     field: &str,
     after: &T,
 ) -> Result<(), ClubError> {
-    let entity = entity_value(snapshot, EditEntityKind::Club, club_id)?;
+    add_entity_serialized_change(
+        snapshot,
+        operations,
+        EditEntityKind::Club,
+        club_id,
+        field,
+        after,
+    )
+}
+
+fn add_entity_serialized_change<T: Serialize>(
+    snapshot: &DatabaseSnapshot,
+    operations: &mut Vec<EditOperation>,
+    entity_kind: EditEntityKind,
+    entity_id: &str,
+    field: &str,
+    after: &T,
+) -> Result<(), ClubError> {
+    let entity = entity_value(snapshot, entity_kind, entity_id)?;
     let before = value_at_path(&entity, field)
         .cloned()
         .ok_or_else(|| TransactionError::FieldNotFound(field.to_owned()))?;
     let after = serde_json::to_value(after).map_err(TransactionError::SnapshotSerialization)?;
     if before != after {
         operations.push(EditOperation {
-            entity_kind: EditEntityKind::Club,
-            entity_id: club_id.to_owned(),
+            entity_kind,
+            entity_id: entity_id.to_owned(),
             field: field.to_owned(),
             expected_before: FieldExpectation::Exact(before),
             after,
@@ -298,6 +328,9 @@ mod tests {
         let mut competition = snapshot.competitions[0].clone();
         competition.id = "competition-cup".into();
         competition.name = "Nordpokal".into();
+        competition.stages.clear();
+        competition.fixtures.clear();
+        competition.standings.clear();
         snapshot.competitions.push(competition);
         let prepared = prepare_club_action(
             &snapshot,

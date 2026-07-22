@@ -61,6 +61,15 @@ describe("BestScout desktop", () => {
     expect(screen.getByText("Sichere Arbeitskopie")).toBeTruthy();
   });
 
+  it("opens the canonical competition, stage, fixture and standings center", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Wettbewerbs-Zentrale" }));
+    expect(screen.getByRole("heading", { name: "Wettbewerbs-Zentrale" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Competition Operations Center" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Wettbewerbs-Bereich" })).toBeTruthy();
+    expect(screen.getByText("Sichere Arbeitskopie")).toBeTruthy();
+  });
+
   it("opens the scout intelligence workspace", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Scout-Intel" }));
@@ -115,6 +124,10 @@ describe("BestScout desktop", () => {
     fireEvent.click(screen.getByRole("button", { name: /Wettbewerbe/ }));
     expect(screen.getByRole("grid", { name: "Wettbewerbsdaten" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "TITELVERTEIDIGER" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "TITELVERTEIDIGER-ID" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "STUFEN" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "PAARUNGEN" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "TABELLENZEILEN" })).toBeTruthy();
   });
 
   it("switches between FM26 phases and recalculates the selected role", () => {

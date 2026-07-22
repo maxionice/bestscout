@@ -209,7 +209,52 @@ export type Competition = {
   nation: string | null;
   reputation: number | null;
   current_champion?: string | null;
+  current_champion_club_id?: string | null;
   level?: number | null;
+  stages?: CompetitionStage[];
+  fixtures?: CompetitionFixture[];
+  standings?: CompetitionStanding[];
+};
+
+export type CompetitionStageKind = "league" | "group" | "knockout" | "qualifying" | "playoff" | "final";
+
+export type CompetitionStage = {
+  id: string;
+  name: string;
+  kind: CompetitionStageKind;
+  order: number;
+  starts_on: GameDate | null;
+  ends_on: GameDate | null;
+  current: boolean;
+};
+
+export type FixtureStatus = "scheduled" | "in_progress" | "played" | "postponed" | "cancelled";
+
+export type CompetitionFixture = {
+  id: string;
+  stage_id: string | null;
+  home_club_id: string;
+  away_club_id: string;
+  scheduled_on: GameDate | null;
+  status: FixtureStatus;
+  home_score: number | null;
+  away_score: number | null;
+  round: string | null;
+  venue: string | null;
+};
+
+export type CompetitionStanding = {
+  stage_id: string | null;
+  club_id: string;
+  position: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goals_for: number;
+  goals_against: number;
+  goal_difference: number;
+  points: number;
 };
 
 export type DatabaseSnapshot = {
@@ -519,6 +564,34 @@ export type ClubActionRequest = {
 
 export type PreparedClubAction = {
   command: ClubCommand;
+  transaction: EditTransaction;
+  preview: AppliedTransaction;
+};
+
+export type CompetitionCommand =
+  | {
+      kind: "update_profile";
+      competition_id: string;
+      name: string;
+      short_name: string | null;
+      nation: string | null;
+      reputation: number | null;
+      current_champion_club_id: string | null;
+      level: number | null;
+    }
+  | { kind: "set_stages"; competition_id: string; stages: CompetitionStage[] }
+  | { kind: "upsert_fixture"; competition_id: string; fixture: CompetitionFixture }
+  | { kind: "remove_fixture"; competition_id: string; fixture_id: string }
+  | { kind: "set_standings"; competition_id: string; standings: CompetitionStanding[] };
+
+export type CompetitionActionRequest = {
+  transaction_id: string;
+  created_at_utc: string;
+  command: CompetitionCommand;
+};
+
+export type PreparedCompetitionAction = {
+  command: CompetitionCommand;
   transaction: EditTransaction;
   preview: AppliedTransaction;
 };

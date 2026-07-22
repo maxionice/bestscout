@@ -802,7 +802,16 @@ pub(crate) fn is_editable_field(kind: EditEntityKind, field: &str) -> bool {
         ),
         EditEntityKind::Competition => matches!(
             field,
-            "name" | "short_name" | "nation" | "reputation" | "current_champion" | "level"
+            "name"
+                | "short_name"
+                | "nation"
+                | "reputation"
+                | "current_champion"
+                | "current_champion_club_id"
+                | "level"
+                | "stages"
+                | "fixtures"
+                | "standings"
         ),
     }
 }

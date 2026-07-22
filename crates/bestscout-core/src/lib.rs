@@ -1,6 +1,7 @@
 pub mod availability;
 pub mod clubs;
 pub mod comparison;
+pub mod competitions;
 pub mod editor;
 pub mod fixtures;
 pub mod freezer;
@@ -26,6 +27,10 @@ pub use clubs::{
     ClubActionRequest, ClubCommand, ClubError, PreparedClubAction, prepare_club_action,
 };
 pub use comparison::{SimilarPlayer, find_similar_players};
+pub use competitions::{
+    CompetitionActionRequest, CompetitionCommand, CompetitionError, PreparedCompetitionAction,
+    prepare_competition_action,
+};
 pub use editor::{
     AppliedTransaction, EDITOR_SCHEMA_VERSION, EditEntityKind, EditOperation, EditTransaction,
     EditorPreset, FieldExpectation, JournalChange, JournalEntry, MassEditRequest, PreparedMassEdit,
@@ -45,12 +50,14 @@ pub use intelligence::{
     ScoutIntelligenceReport, analyse_scout_intelligence,
 };
 pub use model::{
-    Attribute, BanScope, Club, ClubFacilities, ClubFinances, Competition, Contract, ContractType,
-    DatabaseSnapshot, Foot, FutureTransfer, GameDate, HiddenAttribute, InjurySeverity,
-    InjuryTreatment, LanguageSkill, PersonRelationship, Player, PlayerBan, PlayerDetails,
-    PlayerFitness, PlayerInjury, PlayerRegistration, PlayerStatus, Position, RegistrationStatus,
-    RelationshipKind, RelationshipTargetKind, SnapshotSource, Staff, StaffAttribute, StaffDetails,
-    StaffQualification, StaffResponsibility, StaffRole, TransferKind, TransferStatus,
+    Attribute, BanScope, Club, ClubFacilities, ClubFinances, Competition, CompetitionFixture,
+    CompetitionStage, CompetitionStageKind, CompetitionStanding, Contract, ContractType,
+    DatabaseSnapshot, FixtureStatus, Foot, FutureTransfer, GameDate, HiddenAttribute,
+    InjurySeverity, InjuryTreatment, LanguageSkill, PersonRelationship, Player, PlayerBan,
+    PlayerDetails, PlayerFitness, PlayerInjury, PlayerRegistration, PlayerStatus, Position,
+    RegistrationStatus, RelationshipKind, RelationshipTargetKind, SnapshotSource, Staff,
+    StaffAttribute, StaffDetails, StaffQualification, StaffResponsibility, StaffRole, TransferKind,
+    TransferStatus,
 };
 pub use people::{
     PeopleActionRequest, PeopleCommand, PeopleError, PreparedPeopleAction, prepare_people_action,
