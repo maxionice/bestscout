@@ -75,5 +75,5 @@
 
 - [ ] Every supported feature passes the parity acceptance test
 - [ ] AppImage, Flatpak, deb, rpm and Steam Deck validation
-- [ ] German and English documentation
+- [x] German and English user documentation with parity and link validation
 - [ ] Signed builds and reproducible release process
