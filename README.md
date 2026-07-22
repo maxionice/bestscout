@@ -65,6 +65,10 @@ and editing tools while remaining local, transparent and safe.
 - Reproducible AppImage, DEB and RPM builds with bundle validation and SHA-256
   manifests
 - Sandboxed Flatpak offline edition with explicit runtime capability gating
+- Native Steam Deck AppImage edition with a Gaming Mode launcher and bilingual
+  setup instructions
+- Draft-first release workflow with signed SLSA provenance and pre-publication
+  verification for every checksummed artifact
 
 See [the roadmap](docs/roadmap.md) and
 [the feature-parity specification](docs/feature-parity.md) for the complete target.
