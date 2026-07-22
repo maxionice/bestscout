@@ -1,6 +1,7 @@
 pub mod comparison;
 pub mod editor;
 pub mod fixtures;
+pub mod freezer;
 pub mod import;
 pub mod intelligence;
 pub mod model;
@@ -20,6 +21,11 @@ pub use editor::{
     undo_transaction, verify_read_back,
 };
 pub use fixtures::synthetic_snapshot;
+pub use freezer::{
+    FREEZER_SCHEMA_VERSION, FreezeObservation, FreezeObservationState, FreezePlan, FreezePolicy,
+    FreezeReport, FreezeRule, FreezerError, PreparedFreezeCorrection, evaluate_freeze_plan,
+    prepare_freeze_correction, validate_freeze_plan,
+};
 pub use import::{ImportError, ImportResult, import_players};
 pub use intelligence::{
     DevelopmentProjection, IntelligenceCriteria, PlayerIntelligence, ProjectionFactor,

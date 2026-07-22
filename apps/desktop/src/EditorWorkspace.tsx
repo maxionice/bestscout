@@ -14,9 +14,9 @@ import type {
 } from "./types";
 import { playerColumns } from "./view-preferences";
 
-type EditorEntity = Player | Staff | Club | Competition;
-type ValueType = "string" | "integer" | "number" | "boolean" | "list" | "date" | "json" | "enum";
-type EditorField = {
+export type EditorEntity = Player | Staff | Club | Competition;
+export type ValueType = "string" | "integer" | "number" | "boolean" | "list" | "date" | "json" | "enum";
+export type EditorField = {
   path: string;
   label: string;
   group: string;
@@ -668,7 +668,7 @@ function field(path: string, label: string, group: string, type: ValueType, null
   return { path, label, group, type, nullable, min, max };
 }
 
-function entitiesFor(snapshot: DatabaseSnapshot | null, kind: EditEntityKind): EditorEntity[] {
+export function entitiesFor(snapshot: DatabaseSnapshot | null, kind: EditEntityKind): EditorEntity[] {
   if (!snapshot) return [];
   if (kind === "player") return snapshot.players;
   if (kind === "staff") return snapshot.staff;
@@ -676,7 +676,7 @@ function entitiesFor(snapshot: DatabaseSnapshot | null, kind: EditEntityKind): E
   return snapshot.competitions;
 }
 
-function fieldsFor(kind: EditEntityKind, entity: EditorEntity | null): EditorField[] {
+export function fieldsFor(kind: EditEntityKind, entity: EditorEntity | null): EditorField[] {
   const fields = entity ? basicFields[kind].filter((item) => {
     if (item.path.includes("contract.") && valueAtPath(entity, item.path.split(".").slice(0, -1).join(".")) == null) return false;
     if (item.path.startsWith("details.status.") && valueAtPath(entity, "details.status") == null) return false;
@@ -774,7 +774,7 @@ function describeStrategy(strategy: PresetChange["strategy"]) {
   return `${strategy.minimum} bis ${strategy.maximum}`;
 }
 
-function valueAtPath(entity: EditorEntity, path: string): unknown {
+export function valueAtPath(entity: EditorEntity, path: string): unknown {
   return path.split(".").reduce<unknown>((current, segment) => current && typeof current === "object"
     ? (current as Record<string, unknown>)[segment] : undefined, entity);
 }
@@ -830,8 +830,8 @@ function newTransactionId(prefix: string) {
   return `${prefix}-${random}`;
 }
 
-function entityName(entity: EditorEntity) { return entity.name; }
-function entitySubtitle(entity: EditorEntity, kind: EditEntityKind) {
+export function entityName(entity: EditorEntity) { return entity.name; }
+export function entitySubtitle(entity: EditorEntity, kind: EditEntityKind) {
   if (kind === "player" || kind === "staff") return ["club" in entity ? entity.club : null, "nationality" in entity ? entity.nationality : null].filter(Boolean).join(" · ") || entity.id;
   if (kind === "club") return [(entity as Club).competition, (entity as Club).nation].filter(Boolean).join(" · ") || entity.id;
   return (entity as Competition).nation || entity.id;
