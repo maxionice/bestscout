@@ -17,6 +17,8 @@ const desktopPackage = json("apps/desktop/package.json");
 const tauri = json("apps/desktop/src-tauri/tauri.conf.json");
 const workspaceCargo = text("Cargo.toml");
 const rustToolchain = text("rust-toolchain.toml");
+const dotnetSdk = JSON.parse(text("global.json"));
+const bridgeProject = text("bridge/BestScout.Bridge/BestScout.Bridge.csproj");
 const flatpakManifest = text("packaging/flatpak/io.github.maxionice.bestscout.yml");
 const flatpakMetadata = text("packaging/flatpak/io.github.maxionice.bestscout.metainfo.xml");
 const desktopEntry = text("packaging/flatpak/io.github.maxionice.bestscout.desktop");
@@ -60,6 +62,26 @@ if (!text("LICENSE").includes("GNU GENERAL PUBLIC LICENSE")) {
 }
 if (!rustToolchain.includes('channel = "1.97.1"')) {
   fail("the release Rust toolchain is not pinned to 1.97.1");
+}
+if (
+  dotnetSdk.sdk?.version !== "10.0.110"
+  || dotnetSdk.sdk?.rollForward !== "disable"
+  || dotnetSdk.sdk?.allowPrerelease !== false
+) {
+  fail("the bridge .NET SDK is not exactly pinned to 10.0.110");
+}
+for (const property of [
+  "<TargetFramework>net6.0</TargetFramework>",
+  "<LangVersion>10.0</LangVersion>",
+  "<Version>0.5.0</Version>",
+  "<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>",
+  "<EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>",
+  "<EnableSourceLink>false</EnableSourceLink>",
+  "<Deterministic>true</Deterministic>",
+  "<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>",
+  "<PathMap>$(MSBuildProjectDirectory)=/_/bridge/BestScout.Bridge</PathMap>",
+]) {
+  if (!bridgeProject.includes(property)) fail(`bridge build is missing: ${property}`);
 }
 if (!flatpakManifest.includes("id: io.github.maxionice.bestscout")) {
   fail("the Flatpak manifest has an unexpected application identifier");
