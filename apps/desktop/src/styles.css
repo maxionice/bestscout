@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
+.people-form-grid select { min-width: 0; min-height: 32px; padding: 0 8px; color: #cbd4d9; border: 1px solid #2d3541; border-radius: 7px; background: #080e13; color-scheme: dark; font-size: 8px; }
+
 :root {
   color-scheme: dark;
   --background: #080b10;

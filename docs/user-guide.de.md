@@ -79,8 +79,10 @@ werden Referenzen und Domäneninvarianten vollständig geprüft.
 
 - **Verfügbarkeit** umfasst Fitness, Kondition, Moral, Verletzungen und Sperren.
 - **Transfers** umfasst sofortige, künftige, Leih- und gegenseitige Tauschrouten.
-- **People** umfasst Staff-Zuweisungen, Sprachen, Qualifikationen,
-  Registrierungen und Beziehungen.
+- **People** umfasst Spieler-/Staff-Identität, weitere Nationalitäten,
+  Erscheinungsdaten, bevorzugte Spielzüge, Staff-Zuweisungen, Sprachen,
+  Qualifikationen, Registrierungen und Beziehungen. Ethnizität wird nur aus
+  kanonischen FM-Daten übernommen und niemals abgeleitet.
 - **Club-Zentrale** umfasst Identität, Wettbewerbslinks, Finanzen, Stadion,
   Einrichtungen, `#RRGGBB`-Clubfarben, vier typisierte Trikotslots und
   Clubbeziehungen.

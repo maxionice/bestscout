@@ -4,10 +4,10 @@ use crate::{
     Attribute, Club, ClubBranding, ClubFacilities, ClubFinances, ClubKit, ClubKitKind,
     ClubRelationship, ClubRelationshipKind, Competition, CompetitionFixture, CompetitionStage,
     CompetitionStageKind, CompetitionStanding, Contract, ContractType, DatabaseSnapshot,
-    FixtureStatus, Foot, GameDate, LanguageSkill, PersonRelationship, Player, PlayerDetails,
-    PlayerFitness, PlayerRegistration, PlayerStatus, RegistrationStatus, RelationshipKind,
-    RelationshipTargetKind, SnapshotSource, Staff, StaffAttribute, StaffQualification,
-    StaffResponsibility, StaffRole,
+    FixtureStatus, Foot, GameDate, HairColour, HairLength, LanguageSkill, PersonAppearance,
+    PersonRelationship, Player, PlayerDetails, PlayerFitness, PlayerRegistration, PlayerStatus,
+    PreferredMove, RegistrationStatus, RelationshipKind, RelationshipTargetKind, SnapshotSource,
+    Staff, StaffAttribute, StaffQualification, StaffResponsibility, StaffRole,
 };
 
 pub fn synthetic_snapshot() -> DatabaseSnapshot {
@@ -59,6 +59,19 @@ pub fn synthetic_snapshot() -> DatabaseSnapshot {
                     happiness: Some(17),
                     injuries: Vec::new(),
                     bans: Vec::new(),
+                    secondary_nationalities: vec!["Schweiz".into()],
+                    appearance: PersonAppearance {
+                        height_cm: Some(178),
+                        weight_kg: Some(70),
+                        skin_tone: Some(4),
+                        hair_colour: HairColour::Brown,
+                        hair_length: HairLength::Short,
+                        ethnicity: Some("Central European".into()),
+                    },
+                    preferred_moves: vec![PreferredMove {
+                        id: "tries_killer_balls".into(),
+                        name: "Tries killer balls often".into(),
+                    }],
                     languages: vec![
                         LanguageSkill {
                             language: "Deutsch".into(),
@@ -148,6 +161,15 @@ pub fn synthetic_snapshot() -> DatabaseSnapshot {
             }),
             details: crate::StaffDetails {
                 date_of_birth: GameDate::new(1985, 3, 14),
+                secondary_nationalities: vec!["Deutschland".into()],
+                appearance: PersonAppearance {
+                    height_cm: Some(169),
+                    weight_kg: Some(62),
+                    skin_tone: Some(3),
+                    hair_colour: HairColour::Black,
+                    hair_length: HairLength::Medium,
+                    ethnicity: Some("Central European".into()),
+                },
                 languages: vec![
                     LanguageSkill {
                         language: "Deutsch".into(),

@@ -3,7 +3,8 @@
 Status: kanonische Implementierung auf `agent/staff-registrations-relationships`;
 automatisiert abgenommen, native Sichtprüfung und Live-FM26-Adapter offen.
 
-BestScout behandelt Staff-Zuweisungen, Sprachen, Registrierungen,
+BestScout behandelt Identität, Erscheinungsbild, weitere Nationalitäten,
+bevorzugte Spielzüge, Staff-Zuweisungen, Sprachen, Registrierungen,
 Qualifikationen und Beziehungen als kanonische Snapshot-Daten. Der
 spezialisierte Arbeitsbereich besitzt keinen eigenen Write-Bypass: Jede Aktion
 wird in die vorhandene exakte Editor-Transaktion übersetzt.
@@ -29,6 +30,13 @@ erweiterten `PlayerDetails` verwenden
 Serde-Defaults, damit fehlende Felder älterer kanonischer Snapshots neutral
 eingelesen werden können.
 
+Player und Staff teilen ein explizites `PersonAppearance` mit optionaler Größe,
+optionalem Gewicht, optionalem Hautton, typisierter Haarfarbe/-länge und einer
+optionalen kanonischen Ethnizitätsangabe. Diese Daten werden niemals aus Name,
+Nationalität oder Bild abgeleitet. Weitere Nationalitäten bleiben eine
+geordnete, eindeutige Liste. Bevorzugte Spielzüge gehören ausschließlich zum
+Player und besitzen stabile IDs sowie lesbare Namen.
+
 ## Referenz- und Wertevalidierung
 
 Whole-snapshot validation prüft alle Personenfelder gemeinsam. IDs von
@@ -41,6 +49,11 @@ Personenbeziehungen nur auf Player oder Staff. Sprachkompetenzen sind 1–10,
 Beziehungsstärken 1–100, Rückennummern 1–99 und Qualifikationslevel 1–5.
 Datumsintervalle verwenden die kanonische `GameDate`-Validierung.
 
+Weitere Nationalitäten dürfen weder doppelt noch mit der primären Nationalität
+identisch sein. Größe ist auf 100–250 cm, Gewicht auf 30–250 kg und Hautton auf
+1–20 begrenzt. Ethnizität und alle Namen sind getrimmt und längenbegrenzt;
+Spielzug-IDs und -Namen müssen je Player eindeutig sein.
+
 Ein Staff-Datensatz benötigt mindestens eine eindeutige Rolle. Verantwortungen
 müssen eindeutig sein. Eine Spielerregistrierung wird ungültig, sobald ihr
 Verein nicht mehr dem Vertragsverein entspricht.
@@ -49,6 +62,9 @@ Verein nicht mehr dem Vertragsverein entspricht.
 
 `PeopleCommand` unterstützt:
 
+- atomare Identitätsprofile für Player und Staff einschließlich
+  Erscheinungsbild und weiterer Nationalitäten sowie bei Spielern Positionen,
+  starkem Fuß und bevorzugten Spielzügen;
 - atomare Staff-Zuweisung aus Club-Anzeigename, Rollen, Verantwortungen und
   Vertrag;
 - atomare Staff-Profildaten aus Geburtsdatum und Notiz;
@@ -81,8 +97,8 @@ eindeutigen Snapshot gegenüber implizit veralteten Einträgen.
 
 ## UI-Grenze
 
-Der People-Workspace ist in vier Modi getrennt: Staff/Aufgaben,
-Registrierungen, Sprachen und Beziehungen. Auswahl, Formular und Vorschau sind
+Der People-Workspace ist in fünf Modi getrennt: Staff/Aufgaben,
+Identitätsprofile, Registrierungen, Sprachen und Beziehungen. Auswahl, Formular und Vorschau sind
 sichtbar getrennt. Der Commit darf ausschließlich auf einer aktuell zum
 Formular passenden Prepared-Antwort basieren; jede Eingabeänderung muss eine
 vorhandene Vorschau verwerfen. Dasselbe gilt für eine noch laufende asynchrone

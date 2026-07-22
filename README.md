@@ -61,6 +61,8 @@ and editing tools while remaining local, transparent and safe.
 - Canonical staff assignments, profile data, languages, qualifications,
   competition registrations and typed relationships with a journaled HeroUI
   People & Registration Center
+- Canonical player/staff appearance, secondary nationalities and player
+  preferred moves with bounded validation and backward-compatible defaults
 - Referentially validated club identity, competition, finance, stadium and
   facilities commands with a journaled HeroUI Club Operations Center
 - Referentially validated competition profiles, champions, stages, fixtures

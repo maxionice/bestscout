@@ -7,6 +7,8 @@ GitHub-CI bestanden. Native Sichtprüfung und FM26-Live-Adapter bleiben offen.
 
 - [x] Sprach-, Beziehungs-, Registrierungs-, Verantwortungs- und
   Qualifikationstypen sind angelegt.
+- [x] Weitere Nationalitäten, typisiertes Erscheinungsbild und bevorzugte
+  Spielzüge sind kanonisch für Player/Staff modelliert.
 - [x] Neue Player-/Staff-Felder besitzen neutrale Defaults.
 - [x] Synthetische Fixtures enthalten gültige Beispiele.
 - [x] Alte Player- und Staff-Snapshot-Payloads sind durch Regressionstests
@@ -18,6 +20,8 @@ GitHub-CI bestanden. Native Sichtprüfung und FM26-Live-Adapter bleiben offen.
 
 - [x] Staff-Zuweisung bereitet Club, Rollen, Verantwortungen und Vertrag atomar
   vor.
+- [x] Player- und Staff-Identitätsprofile erzeugen ausschließlich exakte,
+  atomare Feldänderungen.
 - [x] Sprache, Qualifikation, Registrierung und Beziehung verwenden das
   zweiphasige Editorprotokoll.
 - [x] Jede erzeugte Operation besitzt eine exakte Vorbedingung.
@@ -34,16 +38,19 @@ GitHub-CI bestanden. Native Sichtprüfung und FM26-Live-Adapter bleiben offen.
 
 ## Oberfläche
 
-- [x] People-Navigation und vier spezialisierte Modi sind implementiert.
+- [x] People-Navigation und fünf spezialisierte Modi sind implementiert.
 - [x] Der Workspace nutzt HeroUI v3 und die eigene rahmenlose dunkle Shell.
 - [x] TypeScript- und Vite-Produktionsbuild bestehen.
-- [x] UI-Tests decken Staff, Registrierungen, Sprachen und Beziehungen ab.
+- [x] UI-Tests decken Identitätsprofile, Staff, Registrierungen, Sprachen und
+  Beziehungen ab.
 - [x] DOM-Tests prüfen zugängliche Labels, Fehlerstatus, Busy-Gates und Commit.
 - [ ] Native Tastatur-, Fokus- und Interaktionsprüfung ist durchgeführt.
 - [ ] Breite und schmale native Tauri-Ansicht sind visuell abgenommen.
 - [ ] Lange Namen, leere Listen und große Datensätze bleiben bedienbar.
 - [x] Datenbankansichten lösen Beziehungsziele und Wettbewerbe zu lesbaren
   Namen auf.
+- [x] Datenbankansichten zeigen weitere Nationalitäten, Erscheinungsfelder und
+  bevorzugte Spielzüge ohne implizite Ableitung.
 
 ## Repository-Prüfung
 

@@ -136,6 +136,63 @@ describe("People & Registration Center", () => {
     });
   });
 
+  it("prepares complete player and staff identity profiles with canonical appearance data", async () => {
+    const snapshot = peopleSnapshot();
+    const prepare = echoingPrepare(snapshot);
+
+    render(<PeopleWorkspace snapshot={snapshot} onSnapshotChange={() => undefined} gateway={gatewayWith({ prepare })} identity={identity} />);
+    fireEvent.click(screen.getByRole("button", { name: "Identitätsprofile" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Weitere Nationalitäten" }), { target: { value: "Schweiz, Italien" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Größe in cm" }), { target: { value: "181" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Haarfarbe" }), { target: { value: "brown" } });
+    fireEvent.click(screen.getByRole("button", { name: "Both" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Bevorzugter Spielzug" }), { target: { value: "Spielt tödliche Pässe" } });
+    fireEvent.click(screen.getByRole("button", { name: "Spielzug vormerken" }));
+    fireEvent.click(screen.getByRole("button", { name: "Identitätsprofil-Vorschau erstellen" }));
+
+    await waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
+    expect(prepare.mock.calls[0][1].command).toEqual({
+      kind: "update_player_identity",
+      player_id: "101",
+      name: "Noah Hartmann",
+      nationality: "Deutschland",
+      secondary_nationalities: ["Schweiz", "Italien"],
+      positions: ["M (Z)", "OM (Z)"],
+      preferred_foot: "both",
+      appearance: {
+        height_cm: 181,
+        weight_kg: null,
+        skin_tone: null,
+        hair_colour: "brown",
+        hair_length: "unknown",
+        ethnicity: null,
+      },
+      preferred_moves: [{ id: "preferred-move-101-deterministic", name: "Spielt tödliche Pässe" }],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Staff" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Weitere Nationalitäten" }), { target: { value: "Österreich" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Hautton" }), { target: { value: "4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Identitätsprofil-Vorschau erstellen" }));
+
+    await waitFor(() => expect(prepare).toHaveBeenCalledTimes(2));
+    expect(prepare.mock.calls[1][1].command).toEqual({
+      kind: "update_staff_identity",
+      staff_id: "staff-lina",
+      name: "Lina Becker",
+      nationality: "Deutschland",
+      secondary_nationalities: ["Österreich"],
+      appearance: {
+        height_cm: null,
+        weight_kg: null,
+        skin_tone: 4,
+        hair_colour: "unknown",
+        hair_length: "unknown",
+        ethnicity: null,
+      },
+    });
+  });
+
   it("prepares languages and invalidates the preview after any draft change", async () => {
     const snapshot = peopleSnapshot();
     const prepare = echoingPrepare(snapshot);

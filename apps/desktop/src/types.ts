@@ -47,6 +47,23 @@ export type PersonRelationship = {
   strength: number;
 };
 
+export type HairColour = "black" | "brown" | "blond" | "red" | "grey" | "white" | "other" | "unknown";
+export type HairLength = "bald" | "short" | "medium" | "long" | "unknown";
+
+export type PersonAppearance = {
+  height_cm: number | null;
+  weight_kg: number | null;
+  skin_tone: number | null;
+  hair_colour: HairColour;
+  hair_length: HairLength;
+  ethnicity: string | null;
+};
+
+export type PreferredMove = {
+  id: string;
+  name: string;
+};
+
 export type RegistrationStatus = "registered" | "pending" | "unregistered" | "ineligible";
 
 export type PlayerRegistration = {
@@ -76,6 +93,9 @@ export type Player = {
   attributes: Record<string, number>;
   details?: {
     date_of_birth?: GameDate | null;
+    secondary_nationalities?: string[];
+    appearance?: PersonAppearance;
+    preferred_moves?: PreferredMove[];
     reputation: number | null;
     international_reputation: number | null;
     consistency: number | null;
@@ -209,6 +229,8 @@ export type Staff = {
   contract?: Contract | null;
   details?: {
     date_of_birth?: GameDate | null;
+    secondary_nationalities?: string[];
+    appearance?: PersonAppearance;
     languages?: LanguageSkill[];
     relationships?: PersonRelationship[];
     responsibilities?: string[];
@@ -576,6 +598,25 @@ export type PreparedTransferAction = {
 };
 
 export type PeopleCommand =
+  | {
+      kind: "update_player_identity";
+      player_id: string;
+      name: string;
+      nationality: string | null;
+      secondary_nationalities: string[];
+      positions: string[];
+      preferred_foot: Player["preferred_foot"];
+      appearance: PersonAppearance;
+      preferred_moves: PreferredMove[];
+    }
+  | {
+      kind: "update_staff_identity";
+      staff_id: string;
+      name: string;
+      nationality: string | null;
+      secondary_nationalities: string[];
+      appearance: PersonAppearance;
+    }
   | {
       kind: "update_staff_assignment";
       staff_id: string;

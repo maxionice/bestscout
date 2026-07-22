@@ -338,6 +338,48 @@ pub struct PersonRelationship {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
+pub enum HairColour {
+    Black,
+    Brown,
+    Blond,
+    Red,
+    Grey,
+    White,
+    Other,
+    #[default]
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum HairLength {
+    Bald,
+    Short,
+    Medium,
+    Long,
+    #[default]
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct PersonAppearance {
+    pub height_cm: Option<u16>,
+    pub weight_kg: Option<u16>,
+    pub skin_tone: Option<u8>,
+    pub hair_colour: HairColour,
+    pub hair_length: HairLength,
+    pub ethnicity: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PreferredMove {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
 pub enum RegistrationStatus {
     #[default]
     Registered,
@@ -386,6 +428,9 @@ pub struct PlayerDetails {
     pub happiness: Option<u8>,
     pub injuries: Vec<PlayerInjury>,
     pub bans: Vec<PlayerBan>,
+    pub secondary_nationalities: Vec<String>,
+    pub appearance: PersonAppearance,
+    pub preferred_moves: Vec<PreferredMove>,
     pub languages: Vec<LanguageSkill>,
     pub relationships: Vec<PersonRelationship>,
     pub registrations: Vec<PlayerRegistration>,
@@ -511,6 +556,8 @@ pub struct StaffQualification {
 #[serde(default)]
 pub struct StaffDetails {
     pub date_of_birth: Option<GameDate>,
+    pub secondary_nationalities: Vec<String>,
+    pub appearance: PersonAppearance,
     pub languages: Vec<LanguageSkill>,
     pub relationships: Vec<PersonRelationship>,
     pub responsibilities: Vec<StaffResponsibility>,
@@ -754,6 +801,9 @@ mod tests {
         assert!(details.fitness.condition.is_none());
         assert!(details.injuries.is_empty());
         assert!(details.bans.is_empty());
+        assert!(details.secondary_nationalities.is_empty());
+        assert_eq!(details.appearance, PersonAppearance::default());
+        assert!(details.preferred_moves.is_empty());
         assert!(details.languages.is_empty());
         assert!(details.relationships.is_empty());
         assert!(details.registrations.is_empty());
@@ -777,6 +827,8 @@ mod tests {
         .unwrap();
 
         assert!(staff.details.date_of_birth.is_none());
+        assert!(staff.details.secondary_nationalities.is_empty());
+        assert_eq!(staff.details.appearance, PersonAppearance::default());
         assert!(staff.details.languages.is_empty());
         assert!(staff.details.relationships.is_empty());
         assert!(staff.details.responsibilities.is_empty());
